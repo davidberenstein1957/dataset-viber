@@ -19,7 +19,7 @@ I have not published this yet on PyPi, but for now you can install it from the r
 pip install git+https://github.com/davidberenstein1957/data-viber.git
 ```
 
-## What's in the box
+## How are we vibing
 
 ### GradioDataCollectorInterface
 
@@ -65,6 +65,24 @@ interface = GradioDataCollectorInterface.from_interface(
 interface.launch()
 ```
 
+## Contribute and development setup
+
+First, [install PDM](https://pdm-project.org/latest/#installation).
+
+Then, install the environment, this will automatically create a `.venv` virtual env and install the dev environment.
+
+```bash
+pdm install
+```
+
+Lastly, run pre-commit for formatting on commit.
+
+```
+pre-commit install
+```
+
+Follow this [guide on making first contributions](https://github.com/firstcontributions/first-contributions?tab=readme-ov-file#first-contributions).
+
 ## References
 
 ### Logo
@@ -76,5 +94,4 @@ interface.launch()
 - https://huggingface.co/spaces/davidberenstein1957/llm-human-feedback-collector-chat-interface-dpo
 - https://huggingface.co/spaces/davidberenstein1957/llm-human-feedback-collector-chat-interface-kto
 - https://medium.com/@oxenai/collecting-data-from-human-feedback-for-generative-ai-ec9e20bf01b9
-- https://github.com/allenai/adapt-demos
 - https://hamel.dev/notes/llm/finetuning/04_data_cleaning.html
