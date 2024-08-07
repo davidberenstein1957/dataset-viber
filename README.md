@@ -7,21 +7,71 @@
 
 <h3 align="center">Avoid the hype, check the vibe!</h2>
 
-Hi there, data lover! I've cooked up Data Viber, a cool set of tools to make your life easier when dealing with data for NLP and image models. Data Viber is all about making your data prep journey smooth and fun. It's not productionr eady or trying to be all fancy and formal - just a bunch of cool tools to help you with collecting feedback from and vibe checking your AI models. Want to see it in action? Just plug it in and start vibing with your data. It's that easy!
+Hi there, data lover! I've cooked up Data Viber, a cool set of tools to make your life easier when dealing with data for NLP and image models. Data Viber is all about making your data prep journey smooth and fun. It's not production-ready or trying to be all fancy and formal - just a bunch of cool tools to help you with collecting feedback from and vibe-checking your AI models. Want to see it in action? Just plug it in and start vibing with your data. It's that easy!
 
-What's in the box:
+Need any tweaks or want to hear more about a specific tool? Just give me a shout!
 
-- LLM Human Feedback Collector 
+## Installation
 
-Need any tweaks or want to hear more about a specific tool? Just give a shout!
+I have not published this yet on PyPi, but for now you can install it from the repo.
 
-# References
+```bash
+pip install git+https://github.com/davidberenstein1957/data-viber.git
+```
 
-## Logo
+## What's in the box
+
+### GradioDataCollectorInterface
+
+An implementation for any random `transformers.pipeline`.
+
+```python
+from transformers import pipeline
+from data_viber import GradioDataCollectorInterface
+
+pipeline = pipeline("text-classification", model="mrm8488/bert-tiny-finetuned-sms-spam-detection")
+interface = GradioDataCollectorInterface.from_pipeline(
+    pipeline=pipeline,
+    dataset_name="<my_hf_org>/<my_dataset>"
+)
+interface.launch()
+```
+
+An implementation for any random `gr.Interface`.
+
+```python
+import gradio as gr
+from data_viber import GradioDataCollectorInterface
+
+def calculator(num1, operation, num2):
+    if operation == "add":
+        return num1 + num2
+    elif operation == "subtract":
+        return num1 - num2
+    elif operation == "multiply":
+        return num1 * num2
+    elif operation == "divide":
+        return num1 / num2
+
+interface = gr.Interface(
+    calculator,
+    ["number", gr.Radio(["add", "subtract", "multiply", "divide"]), "number"],
+    "number"
+)
+interface = GradioDataCollectorInterface.from_interface(
+    interface=interface,
+    dataset_name="<my_hf_org>/<my_dataset>"
+)
+interface.launch()
+```
+
+## References
+
+### Logo
 
 <a href="https://www.flaticon.com/free-icons/keyboard" title="keyboard icons">Keyboard icons created by srip - Flaticon</a>
 
-## Inspirations
+### Inspirations
 
 - https://huggingface.co/spaces/davidberenstein1957/llm-human-feedback-collector-chat-interface-dpo
 - https://huggingface.co/spaces/davidberenstein1957/llm-human-feedback-collector-chat-interface-kto

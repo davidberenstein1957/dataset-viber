@@ -1,0 +1,139 @@
+# Copyright 2024-present, David Berenstein, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import warnings
+from typing import List, Optional
+
+import gradio
+import huggingface_hub
+from typing_extensions import TYPE_CHECKING
+
+from data_viber._utils import _get_init_payload
+
+if TYPE_CHECKING:
+    from transformers import pipeline
+
+
+class GradioDataCollectorInterface(gradio.Interface):
+    @staticmethod
+    def _validate_flagging_options(allow_flagging, flagging_options) -> None:
+        if allow_flagging == "auto" and flagging_options:
+            raise ValueError(
+                "automatic flagging cannot be combined with 'flagging_options'"
+            )
+        if allow_flagging == "never":
+            warnings.warn("You are using a datacollector but don't enable flagging")
+
+    @staticmethod
+    def _get_flagging_callback(
+        dataset_name: str,
+        hf_token: str,
+        private: bool = False,
+    ) -> gradio.HuggingFaceDatasetSaver:
+        return gradio.HuggingFaceDatasetSaver(
+            hf_token=hf_token,
+            dataset_name=dataset_name,
+            private=private,
+            info_filename="dataset_info.json",
+            separate_dirs=False,
+        )
+
+    @staticmethod
+    def _get_repo_url(
+        flagging_callback: gradio.HuggingFaceDatasetSaver,
+    ) -> huggingface_hub.RepoUrl:
+        return f"Data is being written to a dataset on the Hub: https://huggingface.co/datasets/{huggingface_hub.create_repo(
+            repo_id=flagging_callback.dataset_id,
+            token=flagging_callback.hf_token,
+            private=flagging_callback.dataset_private,
+            repo_type="dataset",
+            exist_ok=True,
+        ).repo_id}"
+
+    @classmethod
+    def from_pipeline(
+        cls,
+        pipeline: "pipeline",
+        dataset_name: str,
+        *,
+        hf_token: Optional[str] = None,
+        private: Optional[bool] = False,
+        allow_flagging: Optional[str] = "auto",
+        flagging_options: Optional[List[str]] = None,
+    ) -> gradio.Interface:
+        """
+        Parameters:
+            pipeline: an initialized the transformers.pipeline
+            dataset_name: the "org/dataset" to which the data needs to be logged
+            hf_token: optional token to pass, otherwise will default to env var HF_TOKEN
+            private: whether or not to create a private repo
+            allow_flagging: One of "never", "auto", or "manual". If "never" or "auto", users will not see a button to flag an input and output. If "manual", users will see a button to flag. If "auto", every input the user submits will be automatically flagged, along with the generated output. If "manual", both the input and outputs are flagged when the user clicks flag button. This parameter can be set with environmental variable GRADIO_ALLOW_FLAGGING; otherwise defaults to "manual".
+            flagging_options: If provided, allows user to select from the list of options when flagging. Only applies if allow_flagging is "manual". Can either be a list of tuples of the form (label, value), where label is the string that will be displayed on the button and value is the string that will be stored in the flagging CSV; or it can be a list of strings ["X", "Y"], in which case the values will be the list of strings and the labels will ["Flag as X", "Flag as Y"], etc.
+
+        Return:
+            an intialized GradioDataCollectorInterface
+        """
+        cls._validate_flagging_options(
+            allow_flagging=allow_flagging, flagging_options=flagging_options
+        )
+        flagging_callback = cls._get_flagging_callback(
+            dataset_name=dataset_name, hf_token=hf_token, private=private
+        )
+        return super().from_pipeline(
+            pipeline=pipeline,
+            flagging_callback=flagging_callback,
+            allow_flagging=allow_flagging,
+            flagging_options=flagging_options,
+            article=cls._get_repo_url(flagging_callback),
+        )
+
+    @classmethod
+    def from_interface(
+        cls,
+        interface: gradio.Interface,
+        dataset_name: str,
+        *,
+        hf_token: Optional[str] = None,
+        private: Optional[bool] = False,
+        allow_flagging: Optional[str] = "auto",
+        flagging_options: Optional[List[str]] = None,
+    ) -> gradio.Interface:
+        """
+        Parameters:
+            interface: any initialized gradio.Interface
+            dataset_name: the "org/dataset" to which the data needs to be logged
+            hf_token: optional token to pass, otherwise will default to env var HF_TOKEN
+            private: whether or not to create a private repo
+            allow_flagging: One of "never", "auto", or "manual". If "never" or "auto", users will not see a button to flag an input and output. If "manual", users will see a button to flag. If "auto", every input the user submits will be automatically flagged, along with the generated output. If "manual", both the input and outputs are flagged when the user clicks flag button. This parameter can be set with environmental variable GRADIO_ALLOW_FLAGGING; otherwise defaults to "manual".
+            flagging_options: If provided, allows user to select from the list of options when flagging. Only applies if allow_flagging is "manual". Can either be a list of tuples of the form (label, value), where label is the string that will be displayed on the button and value is the string that will be stored in the flagging CSV; or it can be a list of strings ["X", "Y"], in which case the values will be the list of strings and the labels will ["Flag as X", "Flag as Y"], etc.
+
+        Return:
+            an intialized GradioDataCollectorInterface
+        """
+        cls._validate_flagging_options(
+            allow_flagging=allow_flagging, flagging_options=flagging_options
+        )
+        flagging_callback = cls._get_flagging_callback(
+            dataset_name=dataset_name, hf_token=hf_token, private=private
+        )
+        payload = _get_init_payload(interface)
+        payload.update(
+            {
+                "flagging_callback": flagging_callback,
+                "allow_flagging": allow_flagging,
+                "flagging_options": flagging_options,
+                "article": cls._get_repo_url(flagging_callback),
+            }
+        )
+        return cls(**payload)

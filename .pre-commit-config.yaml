@@ -1,0 +1,49 @@
+repos:
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: v0.4.8
+    hooks:
+      - id: ruff-format
+
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: v0.4.8
+    hooks:
+      - id: ruff
+        files: 'src/data_viber/.*\.py$'
+        args:
+          - --fix
+  - repo: https://github.com/Lucas-C/pre-commit-hooks
+    rev: v1.5.5
+    hooks:
+      - id: insert-license
+        name: "Insert license header in Python source files"
+        files: '^src/data_viber/.*\.py$'
+        args:
+          - --license-filepath
+          - LICENSE_HEADER
+          - --fuzzy-match-generates-todo
+  - repo: https://github.com/kynan/nbstripout
+    rev: 0.7.1
+    hooks:
+      - id: nbstripout
+        files: '^src/data_viber/.*\.ipynb$'
+        args:
+          - --keep-count
+          - --keep-output
+          # - --keep-prompt-number
+          # - --keep-cell-ids
+          # - --keep-markdown
+          # - --keep-output-timestamp
+          # - --keep-execution-count
+          # - --keep-metadata
+          # - --keep-version
+
+ci:
+  autofix_commit_msg: |
+    [pre-commit.ci] auto fixes from pre-commit.com hooks
+    for more information, see https://pre-commit.ci
+  autofix_prs: true
+  autoupdate_branch: ""
+  autoupdate_commit_msg: "[pre-commit.ci] pre-commit autoupdate"
+  autoupdate_schedule: weekly
+  skip: []
+  submodules: false
