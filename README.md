@@ -7,9 +7,9 @@
 
 <h3 align="center">Avoid the hype, check the vibe!</h2>
 
-I've cooked up Data Viber, a cool set of tools to make your life easier when dealing with data for NLP and image models. Data Viber is all about making your data prep journey smooth and fun. It's not production-ready or trying to be all fancy and formal - just a bunch of cool tools to help you with collecting feedback from and vibe-checking your AI models. Want to see it in action? Just plug it in and start vibing with your data. It's that easy!
+I've cooked up Data Viber, a cool set of tools to make your life easier when dealing with data for NLP and image models. Data Viber is all about making your data prep journey smooth and fun. It's **not production-ready** or trying to be all fancy and formal - **just a bunch of cool tools to help you in collecting feedback and doing vibe-checks for AI models**. Want to see it in action? Just plug it in and start vibing with your data. It's that easy!
 
-Need any tweaks or want to hear more about a specific tool? Just give me a shout!
+Need any tweaks or want to hear more about a specific tool? Just open an issue or give me a shout!
 
 ## Installation
 
