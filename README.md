@@ -1,6 +1,6 @@
-# Awesome tools for collecting, cleaning and curating
+# Data Viber
 
-Implementations for quick and easy data collection, cleaning and curating
+Implementations for quick and easy data collection, cleaning and curating through vibe checks.
 
 # inspirations 
 - https://huggingface.co/spaces/davidberenstein1957/llm-human-feedback-collector-chat-interface-dpo
