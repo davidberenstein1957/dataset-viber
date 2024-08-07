@@ -17,6 +17,10 @@ Need any tweaks or want to hear more about a specific tool? Just give a shout!
 
 # References
 
+## Logo
+
+<a href="https://www.flaticon.com/free-icons/keyboard" title="keyboard icons">Keyboard icons created by srip - Flaticon</a>
+
 ## Inspirations
 
 - https://huggingface.co/spaces/davidberenstein1957/llm-human-feedback-collector-chat-interface-dpo
