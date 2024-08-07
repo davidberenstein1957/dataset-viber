@@ -19,11 +19,13 @@ I have not published this yet on PyPi, but for now you can install it from the r
 pip install git+https://github.com/davidberenstein1957/data-viber.git
 ```
 
-## How are we vibing
+## How are we vibing?
 
 ### GradioDataCollectorInterface
 
-An implementation for any random `transformers.pipeline`.
+> Built on top of the `gr.Interface` and `gr.ChatInterface` to collect data and log it to the hub.
+
+Collect data from any `transformers.pipeline`.
 
 ```python
 from transformers import pipeline
@@ -37,7 +39,7 @@ interface = GradioDataCollectorInterface.from_pipeline(
 interface.launch()
 ```
 
-An implementation for any random `gr.Interface`.
+Collect data from any `gr.Interface`.
 
 ```python
 import gradio as gr
