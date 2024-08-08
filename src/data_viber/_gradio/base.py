@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import warnings
-from typing import List, Optional
+from typing import TYPE_CHECKING, Callable, List, Optional, Sequence
 
 import gradio
 import huggingface_hub
-from typing_extensions import TYPE_CHECKING
+from gradio.components import Component
 
 from data_viber._utils import _get_init_payload
 
@@ -26,6 +26,123 @@ if TYPE_CHECKING:
 
 
 class GradioDataCollectorInterface(gradio.Interface):
+    def __init__(
+        self,
+        fn: Callable,
+        inputs: str | Component | Sequence[str | Component] | None,
+        outputs: str | Component | Sequence[str | Component] | None,
+        dataset_name: str,
+        *,
+        hf_token: Optional[str] = None,
+        private: Optional[bool] = False,
+        allow_flagging: Optional[str] = "auto",
+        flagging_options: Optional[List[str]] = None,
+        show_embedded_viewer: Optional[bool] = True,
+        **kwargs,
+    ):
+        self._validate_flagging_options(
+            allow_flagging=allow_flagging, flagging_options=flagging_options
+        )
+        flagging_callback = self._get_flagging_callback(
+            dataset_name=dataset_name, hf_token=hf_token, private=private
+        )
+        kwargs.update(
+            {
+                "flagging_callback": flagging_callback,
+                "allow_flagging": allow_flagging,
+                "flagging_options": flagging_options,
+            }
+        )
+        super().__init__(fn=fn, inputs=inputs, outputs=outputs, **kwargs)
+        self = self._add_html_component_with_viewer(
+            self, flagging_callback, show_embedded_viewer
+        )
+
+    @classmethod
+    def from_pipeline(
+        cls,
+        pipeline: "pipeline",
+        dataset_name: str,
+        *,
+        hf_token: Optional[str] = None,
+        private: Optional[bool] = False,
+        allow_flagging: Optional[str] = "auto",
+        flagging_options: Optional[List[str]] = None,
+        show_embedded_viewer: Optional[bool] = True,
+    ) -> gradio.Interface:
+        """
+        Parameters:
+            pipeline: an initialized the transformers.pipeline
+            dataset_name: the "org/dataset" to which the data needs to be logged
+            hf_token: optional token to pass, otherwise will default to env var HF_TOKEN
+            private: whether or not to create a private repo
+            allow_flagging: One of "never", "auto", or "manual". If "never" or "auto", users will not see a button to flag an input and output. If "manual", users will see a button to flag. If "auto", every input the user submits will be automatically flagged, along with the generated output. If "manual", both the input and outputs are flagged when the user clicks flag button. This parameter can be set with environmental variable GRADIO_ALLOW_FLAGGING; otherwise defaults to "manual".
+            flagging_options: If provided, allows user to select from the list of options when flagging. Only applies if allow_flagging is "manual". Can either be a list of tuples of the form (label, value), where label is the string that will be displayed on the button and value is the string that will be stored in the flagging CSV; or it can be a list of strings ["X", "Y"], in which case the values will be the list of strings and the labels will ["Flag as X", "Flag as Y"], etc.
+
+        Return:
+            an intialized GradioDataCollectorInterface
+        """
+        cls._validate_flagging_options(
+            allow_flagging=allow_flagging, flagging_options=flagging_options
+        )
+        flagging_callback = cls._get_flagging_callback(
+            dataset_name=dataset_name, hf_token=hf_token, private=private
+        )
+        instance = super().from_pipeline(
+            pipeline=pipeline,
+            flagging_callback=flagging_callback,
+            allow_flagging=allow_flagging,
+            flagging_options=flagging_options,
+        )
+        instance = cls._add_html_component_with_viewer(
+            instance, flagging_callback, show_embedded_viewer
+        )
+        return instance
+
+    @classmethod
+    def from_interface(
+        cls,
+        interface: gradio.Interface,
+        dataset_name: str,
+        *,
+        hf_token: Optional[str] = None,
+        private: Optional[bool] = False,
+        allow_flagging: Optional[str] = "auto",
+        flagging_options: Optional[List[str]] = None,
+        show_embedded_viewer: Optional[bool] = True,
+    ) -> gradio.Interface:
+        """
+        Parameters:
+            interface: any initialized gradio.Interface
+            dataset_name: the "org/dataset" to which the data needs to be logged
+            hf_token: optional token to pass, otherwise will default to env var HF_TOKEN
+            private: whether or not to create a private repo
+            allow_flagging: One of "never", "auto", or "manual". If "never" or "auto", users will not see a button to flag an input and output. If "manual", users will see a button to flag. If "auto", every input the user submits will be automatically flagged, along with the generated output. If "manual", both the input and outputs are flagged when the user clicks flag button. This parameter can be set with environmental variable GRADIO_ALLOW_FLAGGING; otherwise defaults to "manual".
+            flagging_options: If provided, allows user to select from the list of options when flagging. Only applies if allow_flagging is "manual". Can either be a list of tuples of the form (label, value), where label is the string that will be displayed on the button and value is the string that will be stored in the flagging CSV; or it can be a list of strings ["X", "Y"], in which case the values will be the list of strings and the labels will ["Flag as X", "Flag as Y"], etc.
+
+        Return:
+            an intialized GradioDataCollectorInterface
+        """
+        cls._validate_flagging_options(
+            allow_flagging=allow_flagging, flagging_options=flagging_options
+        )
+        flagging_callback = cls._get_flagging_callback(
+            dataset_name=dataset_name, hf_token=hf_token, private=private
+        )
+        payload = _get_init_payload(interface)
+        payload.update(
+            {
+                "flagging_callback": flagging_callback,
+                "allow_flagging": allow_flagging,
+                "flagging_options": flagging_options,
+            }
+        )
+        instance = cls(**payload)
+        instance = cls._add_html_component_with_viewer(
+            instance, flagging_callback, show_embedded_viewer
+        )
+        return instance
+
     @staticmethod
     def _validate_flagging_options(allow_flagging, flagging_options) -> None:
         if allow_flagging == "auto" and flagging_options:
@@ -53,7 +170,7 @@ class GradioDataCollectorInterface(gradio.Interface):
     def _get_repo_url(
         flagging_callback: gradio.HuggingFaceDatasetSaver,
     ) -> huggingface_hub.RepoUrl:
-        return f"Data is being written to a dataset on the Hub: https://huggingface.co/datasets/{huggingface_hub.create_repo(
+        return f"https://huggingface.co/datasets/{huggingface_hub.create_repo(
             repo_id=flagging_callback.dataset_id,
             token=flagging_callback.hf_token,
             private=flagging_callback.dataset_private,
@@ -61,79 +178,33 @@ class GradioDataCollectorInterface(gradio.Interface):
             exist_ok=True,
         ).repo_id}"
 
-    @classmethod
-    def from_pipeline(
-        cls,
-        pipeline: "pipeline",
-        dataset_name: str,
-        *,
-        hf_token: Optional[str] = None,
-        private: Optional[bool] = False,
-        allow_flagging: Optional[str] = "auto",
-        flagging_options: Optional[List[str]] = None,
-    ) -> gradio.Interface:
-        """
-        Parameters:
-            pipeline: an initialized the transformers.pipeline
-            dataset_name: the "org/dataset" to which the data needs to be logged
-            hf_token: optional token to pass, otherwise will default to env var HF_TOKEN
-            private: whether or not to create a private repo
-            allow_flagging: One of "never", "auto", or "manual". If "never" or "auto", users will not see a button to flag an input and output. If "manual", users will see a button to flag. If "auto", every input the user submits will be automatically flagged, along with the generated output. If "manual", both the input and outputs are flagged when the user clicks flag button. This parameter can be set with environmental variable GRADIO_ALLOW_FLAGGING; otherwise defaults to "manual".
-            flagging_options: If provided, allows user to select from the list of options when flagging. Only applies if allow_flagging is "manual". Can either be a list of tuples of the form (label, value), where label is the string that will be displayed on the button and value is the string that will be stored in the flagging CSV; or it can be a list of strings ["X", "Y"], in which case the values will be the list of strings and the labels will ["Flag as X", "Flag as Y"], etc.
-
-        Return:
-            an intialized GradioDataCollectorInterface
-        """
-        cls._validate_flagging_options(
-            allow_flagging=allow_flagging, flagging_options=flagging_options
-        )
-        flagging_callback = cls._get_flagging_callback(
-            dataset_name=dataset_name, hf_token=hf_token, private=private
-        )
-        return super().from_pipeline(
-            pipeline=pipeline,
-            flagging_callback=flagging_callback,
-            allow_flagging=allow_flagging,
-            flagging_options=flagging_options,
-            article=cls._get_repo_url(flagging_callback),
-        )
+    @staticmethod
+    def _get_embedded_dataset_viewer(repo_url: str) -> str:
+        return f"""
+<iframe
+  src="{repo_url}/embed/viewer/default/train"
+  frameborder="0"
+  width="100%"
+  height="560px"
+></iframe>
+"""
 
     @classmethod
-    def from_interface(
+    def _add_html_component_with_viewer(
         cls,
-        interface: gradio.Interface,
-        dataset_name: str,
-        *,
-        hf_token: Optional[str] = None,
-        private: Optional[bool] = False,
-        allow_flagging: Optional[str] = "auto",
-        flagging_options: Optional[List[str]] = None,
-    ) -> gradio.Interface:
-        """
-        Parameters:
-            interface: any initialized gradio.Interface
-            dataset_name: the "org/dataset" to which the data needs to be logged
-            hf_token: optional token to pass, otherwise will default to env var HF_TOKEN
-            private: whether or not to create a private repo
-            allow_flagging: One of "never", "auto", or "manual". If "never" or "auto", users will not see a button to flag an input and output. If "manual", users will see a button to flag. If "auto", every input the user submits will be automatically flagged, along with the generated output. If "manual", both the input and outputs are flagged when the user clicks flag button. This parameter can be set with environmental variable GRADIO_ALLOW_FLAGGING; otherwise defaults to "manual".
-            flagging_options: If provided, allows user to select from the list of options when flagging. Only applies if allow_flagging is "manual". Can either be a list of tuples of the form (label, value), where label is the string that will be displayed on the button and value is the string that will be stored in the flagging CSV; or it can be a list of strings ["X", "Y"], in which case the values will be the list of strings and the labels will ["Flag as X", "Flag as Y"], etc.
-
-        Return:
-            an intialized GradioDataCollectorInterface
-        """
-        cls._validate_flagging_options(
-            allow_flagging=allow_flagging, flagging_options=flagging_options
+        instance: gradio.Interface,
+        flagging_callback: gradio.HuggingFaceDatasetSaver,
+        show_embedded_viewer: bool,
+    ):
+        repo_url = cls._get_repo_url(flagging_callback)
+        formatted_repo_url = (
+            f"Data is being written to a dataset on the Hub: {repo_url} "
         )
-        flagging_callback = cls._get_flagging_callback(
-            dataset_name=dataset_name, hf_token=hf_token, private=private
-        )
-        payload = _get_init_payload(interface)
-        payload.update(
-            {
-                "flagging_callback": flagging_callback,
-                "allow_flagging": allow_flagging,
-                "flagging_options": flagging_options,
-                "article": cls._get_repo_url(flagging_callback),
-            }
-        )
-        return cls(**payload)
+        with instance:
+            with gradio.Row(equal_height=False):
+                gradio.HTML(formatted_repo_url)
+            if show_embedded_viewer and not flagging_callback.dataset_private:
+                with gradio.Row():
+                    with gradio.Accordion("dataset viewer"):
+                        gradio.HTML(cls._get_embedded_dataset_viewer(repo_url))
+        return instance
