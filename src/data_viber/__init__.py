@@ -13,3 +13,4 @@
 # limitations under the License.
 
 from data_viber._gradio import GradioDataCollectorInterface  # noqa
+from data_viber._gradio import GradioAnnotatorInterFace  # noqa
