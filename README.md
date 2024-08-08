@@ -21,25 +21,13 @@ pip install git+https://github.com/davidberenstein1957/data-viber.git
 
 ## How are we vibing?
 
-### GradioDataCollectorInterface
+### Gradio
+
+#### GradioDataCollectorInterface
 
 > Built on top of the `gr.Interface` and `gr.ChatInterface` to collect data and log it to the hub.
 
-Collect data from any `transformers.pipeline`.
-
-```python
-from transformers import pipeline
-from data_viber import GradioDataCollectorInterface
-
-pipeline = pipeline("text-classification", model="mrm8488/bert-tiny-finetuned-sms-spam-detection")
-interface = GradioDataCollectorInterface.from_pipeline(
-    pipeline=pipeline,
-    dataset_name="<my_hf_org>/<my_dataset>"
-)
-interface.launch()
-```
-
-Collect data from any `gr.Interface`.
+Collect data using the `GradioDataCollectorInterface`.
 
 ```python
 import gradio as gr
@@ -55,17 +43,103 @@ def calculator(num1, operation, num2):
     elif operation == "divide":
         return num1 / num2
 
-interface = gr.Interface(
-    calculator,
-    ["number", gr.Radio(["add", "subtract", "multiply", "divide"]), "number"],
-    "number"
-)
-interface = GradioDataCollectorInterface.from_interface(
-    interface=interface,
+inputs = ["number", gr.Radio(["add", "subtract", "multiply", "divide"]), "number"]
+outputs = "number"
+
+interface = GradioDataCollectorInterface(
+    fn=calculator,
+    inputs=inputs,
+    outputs=outputs
     dataset_name="<my_hf_org>/<my_dataset>"
 )
 interface.launch()
 ```
+
+Collect data from any `gr.Interface`.
+
+```python
+interface = gr.Interface(
+    fn=calculator,
+    inputs=inputs,
+    outputs=outputs
+)
+interface = GradioDataCollectorInterface.from_interface(
+   interface=interface,
+   dataset_name="<my_hf_org>/<my_dataset>"
+)
+interface.launch()
+```
+
+Collect data from any `transformers.pipeline`.
+
+```python
+from transformers import pipeline
+from data_viber import GradioDataCollectorInterface
+
+pipeline = pipeline("text-classification", model="mrm8488/bert-tiny-finetuned-sms-spam-detection")
+interface = GradioDataCollectorInterface.from_pipeline(
+    pipeline=pipeline,
+    dataset_name="<my_hf_org>/<my_dataset>"
+)
+interface.launch()
+```
+
+#### GradioDataAnnotatorInterface
+
+> Built on top of the `gr.GradioDataAnnotatorInterface` to collect and annotate data and log it to the Hub.
+> TODO: adding models to the loop (potentially using from_pipeline = interactive)
+
+Annotate data for `text-classification`.
+
+```python
+from data_viber import GradioAnnotatorInterFace
+
+text = ["I hate it!", "I love it!"]
+labels = ["positive", "negative"]
+
+interface = GradioAnnotatorInterFace.for_text_classification(
+    texts=texts,
+    labels=labels,
+    dataset_name="<my_hf_org>/<my_dataset>"
+)
+interface.launch()
+```
+
+Annotate data for `token-classification`.
+
+```python
+from data_viber import GradioAnnotatorInterFace
+
+text = ["Anthony Bourdain was an amazing chef in New York."]
+labels = ["NAME", "LOC"]
+
+interface = GradioAnnotatorInterFace.for_token_classification(
+    texts=texts,
+    labels=labels,
+    dataset_name="<my_hf_org>/<my_dataset>"
+)
+interface.launch()
+```
+
+Annotate data for `question-answering`. [WIP]
+
+```python
+from data_viber import GradioAnnotatorInterFace
+
+questions = ["Where was Anthony Bourdain located?"]
+contexts = ["Anthony Bourdain was an amazing chef in New York."]
+
+interface = GradioAnnotatorInterFace.for_question_answering(
+    texts=texts,
+    labels=labels,
+    dataset_name="<my_hf_org>/<my_dataset>"
+)
+interface.launch()
+```
+
+Annotate data for `chat`. [WIP]
+
+Annotate data for `chat_preference`. [WIP]
 
 ## Contribute and development setup
 
@@ -79,7 +153,7 @@ pdm install
 
 Lastly, run pre-commit for formatting on commit.
 
-```
+```bash
 pre-commit install
 ```
 
