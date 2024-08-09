@@ -23,9 +23,7 @@ pip install git+https://github.com/davidberenstein1957/data-viber.git
 
 ## How are we vibing?
 
-### Gradio
-
-#### GradioDataCollectorInterface
+### GradioDataCollectorInterface
 
 > Built on top of the `gr.Interface` and `gr.ChatInterface` to collect data and log it to the hub.
 > TODO: add a way to collect data from a gr.ChatInterface
@@ -87,11 +85,13 @@ interface = GradioDataCollectorInterface.from_pipeline(
 interface.launch()
 ```
 
-#### GradioDataAnnotatorInterface
+### GradioDataAnnotatorInterface
 
 > Built on top of the `gr.GradioDataAnnotatorInterface` to collect and annotate data and log it to the Hub.
 > TODO: adding models to the loop (potentially using from_pipeline = interactive)
 > TODO: add counters for the number of annotations
+> TODO: add local datasets saver / loader from csv
+> TODO: add a way to show input-data and output-data in the interface
 
 Annotate data for `text-classification` or `multi-label-text-classification`.
 
@@ -155,10 +155,14 @@ Annotate data for `chat`. [WIP]
 
 Annotate data for `chat_preference`. [WIP]
 
-#### GradioDataExplorerInterface
+### GradioDataExplorerInterface
 
 > Built on top of the `gr.ScatterPlot`, `gr.DataFrame`, `umap-learn`, and `sentence-transformers` to understand the data distribution and similarity.
-> TODO: everything
+> TODO: create basic explorer for text data
+> TODO: add score representation
+> TODO: add filters for categories / scores
+> TODO: add image support
+> TODO: create label explorer
 
 ## Contribute and development setup
 
