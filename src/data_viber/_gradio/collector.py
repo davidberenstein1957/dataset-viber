@@ -22,7 +22,7 @@ from gradio.components import Component
 from data_viber._utils import _get_init_payload
 
 if TYPE_CHECKING:
-    from transformers import pipeline
+    from transformers.pipelines import Pipeline
 
 
 class GradioDataCollectorInterface(gradio.Interface):
@@ -43,8 +43,11 @@ class GradioDataCollectorInterface(gradio.Interface):
         self._validate_flagging_options(
             allow_flagging=allow_flagging, flagging_options=flagging_options
         )
-        flagging_callback = self._get_flagging_callback(
-            dataset_name=dataset_name, hf_token=hf_token, private=private
+        flagging_callback = kwargs.pop(
+            "flagging_callback",
+            self._get_flagging_callback(
+                dataset_name=dataset_name, hf_token=hf_token, private=private
+            ),
         )
         kwargs.update(
             {
@@ -61,14 +64,15 @@ class GradioDataCollectorInterface(gradio.Interface):
     @classmethod
     def from_pipeline(
         cls,
-        pipeline: "pipeline",
-        dataset_name: str,
+        pipeline: "Pipeline",
         *,
+        dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
         allow_flagging: Optional[str] = "auto",
         flagging_options: Optional[List[str]] = None,
         show_embedded_viewer: Optional[bool] = True,
+        **kwargs,
     ) -> gradio.Interface:
         """
         Parameters:
@@ -82,22 +86,16 @@ class GradioDataCollectorInterface(gradio.Interface):
         Return:
             an intialized GradioDataCollectorInterface
         """
-        cls._validate_flagging_options(
-            allow_flagging=allow_flagging, flagging_options=flagging_options
-        )
-        flagging_callback = cls._get_flagging_callback(
-            dataset_name=dataset_name, hf_token=hf_token, private=private
-        )
-        instance = super().from_pipeline(
-            pipeline=pipeline,
-            flagging_callback=flagging_callback,
+        return cls.from_interface(
+            interface=super().from_pipeline(pipeline=pipeline),
+            dataset_name=dataset_name or pipeline.task,
+            hf_token=hf_token,
+            private=private,
             allow_flagging=allow_flagging,
             flagging_options=flagging_options,
+            show_embedded_viewer=show_embedded_viewer,
+            **kwargs,
         )
-        instance = cls._add_html_component_with_viewer(
-            instance, flagging_callback, show_embedded_viewer
-        )
-        return instance
 
     @classmethod
     def from_interface(
@@ -110,6 +108,7 @@ class GradioDataCollectorInterface(gradio.Interface):
         allow_flagging: Optional[str] = "auto",
         flagging_options: Optional[List[str]] = None,
         show_embedded_viewer: Optional[bool] = True,
+        **kwargs,
     ) -> gradio.Interface:
         """
         Parameters:
@@ -123,9 +122,6 @@ class GradioDataCollectorInterface(gradio.Interface):
         Return:
             an intialized GradioDataCollectorInterface
         """
-        cls._validate_flagging_options(
-            allow_flagging=allow_flagging, flagging_options=flagging_options
-        )
         flagging_callback = cls._get_flagging_callback(
             dataset_name=dataset_name, hf_token=hf_token, private=private
         )
@@ -135,13 +131,11 @@ class GradioDataCollectorInterface(gradio.Interface):
                 "flagging_callback": flagging_callback,
                 "allow_flagging": allow_flagging,
                 "flagging_options": flagging_options,
+                "show_embedded_viewer": show_embedded_viewer,
             }
         )
-        instance = cls(**payload)
-        instance = cls._add_html_component_with_viewer(
-            instance, flagging_callback, show_embedded_viewer
-        )
-        return instance
+        payload.update(**kwargs)
+        return cls(**payload)
 
     @staticmethod
     def _validate_flagging_options(allow_flagging, flagging_options) -> None:

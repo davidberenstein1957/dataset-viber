@@ -11,6 +11,8 @@ I've cooked up Data Viber, a cool set of tools to make your life easier when dea
 
 Need any tweaks or want to hear more about a specific tool? Just open an issue or give me a shout!
 
+> Great AI engineer: "chickity-check yo' self before you wreck yo' self"
+
 ## Installation
 
 I have not published this yet on PyPi, but for now you can install it from the repo.
@@ -94,7 +96,7 @@ Annotate data for `text-classification`.
 ```python
 from data_viber import GradioAnnotatorInterFace
 
-text = ["I hate it!", "I love it!"]
+texts = ["I hate it!", "I love it!"]
 labels = ["positive", "negative"]
 
 interface = GradioAnnotatorInterFace.for_text_classification(
@@ -110,7 +112,7 @@ Annotate data for `token-classification`.
 ```python
 from data_viber import GradioAnnotatorInterFace
 
-text = ["Anthony Bourdain was an amazing chef in New York."]
+texts = ["Anthony Bourdain was an amazing chef in New York."]
 labels = ["NAME", "LOC"]
 
 interface = GradioAnnotatorInterFace.for_token_classification(

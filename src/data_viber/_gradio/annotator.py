@@ -16,7 +16,7 @@ from typing import List, Optional
 
 import gradio
 
-from data_viber._gradio.base import GradioDataCollectorInterface
+from data_viber._gradio.collector import GradioDataCollectorInterface
 
 _DEFAULT_COLORS = [
     "#a6cee3",
@@ -40,33 +40,26 @@ class GradioAnnotatorInterFace(GradioDataCollectorInterface):
         cls,
         texts: List[str],
         labels: List[str],
-        dataset_name: str,
         *,
+        dataset_name: str = "text-classification",
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
-    ):
-        flagging_callback = cls._get_flagging_callback(
-            dataset_name=dataset_name, hf_token=hf_token, private=private
-        )
-
+    ) -> "GradioAnnotatorInterFace":
         def next_text(_):
             return texts.pop()
 
         input_text = gradio.TextArea(value=texts.pop(), label="Annotate")
-        instance = cls(
+        return cls(
             fn=next_text,
             inputs=[input_text],
             outputs=[input_text],
-            flagging_callback=flagging_callback,
             flagging_options=labels,
             allow_flagging="manual",
             submit_btn="🗑️ discard",
             clear_btn=None,
-        )
-        return cls._add_html_component_with_viewer(
-            instance=instance,
-            flagging_callback=flagging_callback,
-            show_embedded_viewer=True,
+            dataset_name=dataset_name,
+            hf_token=hf_token,
+            private=private,
         )
 
     @classmethod
@@ -74,19 +67,22 @@ class GradioAnnotatorInterFace(GradioDataCollectorInterface):
         cls,
         texts: List[str],
         labels: List[str],
-        dataset_name: str,
         *,
+        dataset_name: str = "token-classification",
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
-    ):
+    ) -> "GradioAnnotatorInterFace":
         if isinstance(labels, list):
             labels = {label: color for label, color in zip(labels, _DEFAULT_COLORS)}
-        flagging_callback = cls._get_flagging_callback(
-            dataset_name=dataset_name, hf_token=hf_token, private=private
-        )
 
         def convert_to_tokens(text: str):
             return [(char, None) for char in text]
+
+        def next_input(_):
+            if len(texts):
+                return convert_to_tokens(texts.pop())
+            else:
+                raise gradio.Error("No data to annotate left")
 
         input_text = gradio.HighlightedText(
             value=convert_to_tokens(texts.pop()),
@@ -97,24 +93,14 @@ class GradioAnnotatorInterFace(GradioDataCollectorInterface):
             # combine_adjacent=True,
             adjacent_separator="",
         )
-
-        def next_input(_):
-            if len(texts):
-                return convert_to_tokens(texts.pop())
-            else:
-                raise gradio.Error("No data to annotate left")
-
-        instance = cls(
+        return cls(
             fn=next_input,
             inputs=[input_text],
             outputs=[input_text],
-            flagging_callback=flagging_callback,
             allow_flagging="auto",
-        )
-        return cls._add_html_component_with_viewer(
-            instance=instance,
-            flagging_callback=flagging_callback,
-            show_embedded_viewer=True,
+            dataset_name=dataset_name,
+            hf_token=hf_token,
+            private=private,
         )
 
     @classmethod
@@ -122,11 +108,11 @@ class GradioAnnotatorInterFace(GradioDataCollectorInterface):
         cls,
         questions: List[str],
         contexts: List[str],
-        dataset_name: str,
         *,
+        dataset_name: str = "question-answering",
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
-    ):
+    ) -> "GradioAnnotatorInterFace":
         raise NotImplementedError
 
     @classmethod
