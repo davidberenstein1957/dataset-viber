@@ -28,6 +28,7 @@ pip install git+https://github.com/davidberenstein1957/data-viber.git
 #### GradioDataCollectorInterface
 
 > Built on top of the `gr.Interface` and `gr.ChatInterface` to collect data and log it to the hub.
+> TODO: add a way to collect data from a gr.ChatInterface
 
 Collect data using the `GradioDataCollectorInterface`.
 
@@ -91,7 +92,7 @@ interface.launch()
 > Built on top of the `gr.GradioDataAnnotatorInterface` to collect and annotate data and log it to the Hub.
 > TODO: adding models to the loop (potentially using from_pipeline = interactive)
 
-Annotate data for `text-classification`.
+Annotate data for `text-classification` or `multi-label-text-classification`.
 
 ```python
 from data_viber import GradioAnnotatorInterFace
@@ -102,7 +103,8 @@ labels = ["positive", "negative"]
 interface = GradioAnnotatorInterFace.for_text_classification(
     texts=texts,
     labels=labels,
-    dataset_name="<my_hf_org>/<my_dataset>"
+    dataset_name="<my_hf_org>/<my_dataset>",
+    multi_label=False # set to True if you have multi-label data
 )
 interface.launch()
 ```
@@ -132,8 +134,8 @@ questions = ["Where was Anthony Bourdain located?"]
 contexts = ["Anthony Bourdain was an amazing chef in New York."]
 
 interface = GradioAnnotatorInterFace.for_question_answering(
-    texts=texts,
-    labels=labels,
+    questions=questions,
+    contexts=contexts,
     dataset_name="<my_hf_org>/<my_dataset>"
 )
 interface.launch()

@@ -31,8 +31,8 @@ class GradioDataCollectorInterface(gradio.Interface):
         fn: Callable,
         inputs: str | Component | Sequence[str | Component] | None,
         outputs: str | Component | Sequence[str | Component] | None,
-        dataset_name: str,
         *,
+        dataset_name: str = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
         allow_flagging: Optional[str] = "auto",
@@ -43,12 +43,14 @@ class GradioDataCollectorInterface(gradio.Interface):
         self._validate_flagging_options(
             allow_flagging=allow_flagging, flagging_options=flagging_options
         )
-        flagging_callback = kwargs.pop(
-            "flagging_callback",
-            self._get_flagging_callback(
-                dataset_name=dataset_name, hf_token=hf_token, private=private
-            ),
-        )
+        flagging_callback = None
+        if dataset_name is not None:
+            flagging_callback = kwargs.pop(
+                "flagging_callback",
+                self._get_flagging_callback(
+                    dataset_name=dataset_name, hf_token=hf_token, private=private
+                ),
+            )
         kwargs.update(
             {
                 "flagging_callback": flagging_callback,
@@ -101,8 +103,8 @@ class GradioDataCollectorInterface(gradio.Interface):
     def from_interface(
         cls,
         interface: gradio.Interface,
-        dataset_name: str,
         *,
+        dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
         allow_flagging: Optional[str] = "auto",
@@ -122,9 +124,11 @@ class GradioDataCollectorInterface(gradio.Interface):
         Return:
             an intialized GradioDataCollectorInterface
         """
-        flagging_callback = cls._get_flagging_callback(
-            dataset_name=dataset_name, hf_token=hf_token, private=private
-        )
+        flagging_callback = None
+        if dataset_name is not None:
+            flagging_callback = cls._get_flagging_callback(
+                dataset_name=dataset_name, hf_token=hf_token, private=private
+            )
         payload = _get_init_payload(interface)
         payload.update(
             {
@@ -141,7 +145,7 @@ class GradioDataCollectorInterface(gradio.Interface):
     def _validate_flagging_options(allow_flagging, flagging_options) -> None:
         if allow_flagging == "auto" and flagging_options:
             raise ValueError(
-                "automatic flagging cannot be combined with 'flagging_options'"
+                "automatic flagging cannot be combined with 'flagging_options', set `allow_flagging='manual'` instead"
             )
         if allow_flagging == "never":
             warnings.warn("You are using a datacollector but don't enable flagging")
@@ -187,18 +191,22 @@ class GradioDataCollectorInterface(gradio.Interface):
     def _add_html_component_with_viewer(
         cls,
         instance: gradio.Interface,
-        flagging_callback: gradio.HuggingFaceDatasetSaver,
+        flagging_callback: Optional[gradio.HuggingFaceDatasetSaver],
         show_embedded_viewer: bool,
     ):
-        repo_url = cls._get_repo_url(flagging_callback)
-        formatted_repo_url = (
-            f"Data is being written to a dataset on the Hub: {repo_url} "
-        )
-        with instance:
-            with gradio.Row(equal_height=False):
-                gradio.HTML(formatted_repo_url)
-            if show_embedded_viewer and not flagging_callback.dataset_private:
-                with gradio.Row():
-                    with gradio.Accordion("dataset viewer"):
-                        gradio.HTML(cls._get_embedded_dataset_viewer(repo_url))
+        if flagging_callback:
+            repo_url = cls._get_repo_url(flagging_callback)
+            formatted_repo_url = (
+                f"Data is being written to a dataset on the Hub: {repo_url} "
+            )
+            with instance:
+                with gradio.Row(equal_height=False):
+                    gradio.HTML(formatted_repo_url)
+                if show_embedded_viewer and not flagging_callback.dataset_private:
+                    with gradio.Row():
+                        with gradio.Accordion("dataset viewer", open=False):
+                            gradio.HTML(cls._get_embedded_dataset_viewer(repo_url))
+        else:
+            with instance:
+                gradio.Info("Data is stored locally in a CSV file")
         return instance
