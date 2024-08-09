@@ -91,13 +91,17 @@ interface.launch()
 
 > Built on top of the `gr.GradioDataAnnotatorInterface` to collect and annotate data and log it to the Hub.
 > TODO: adding models to the loop (potentially using from_pipeline = interactive)
+> TODO: add counters for the number of annotations
 
 Annotate data for `text-classification` or `multi-label-text-classification`.
 
 ```python
 from data_viber import GradioAnnotatorInterFace
 
-texts = ["I hate it!", "I love it!"]
+texts = [
+    "Anthony Bourdain was an amazing chef!",
+    "Anthony Bourdain was a terrible tv persona!"
+]
 labels = ["positive", "negative"]
 
 interface = GradioAnnotatorInterFace.for_text_classification(
@@ -125,7 +129,7 @@ interface = GradioAnnotatorInterFace.for_token_classification(
 interface.launch()
 ```
 
-Annotate data for `question-answering`. [WIP]
+Annotate data for `question-answering`.
 
 ```python
 from data_viber import GradioAnnotatorInterFace
@@ -141,9 +145,20 @@ interface = GradioAnnotatorInterFace.for_question_answering(
 interface.launch()
 ```
 
+Annotate data for `text-2-text`. [WIP]
+
+Annotate data for `image-classification`. [WIP]
+
+Annotate data for `image-2-text`. [WIP]
+
 Annotate data for `chat`. [WIP]
 
 Annotate data for `chat_preference`. [WIP]
+
+#### GradioDataExplorerInterface
+
+> Built on top of the `gr.ScatterPlot`, `gr.DataFrame`, `umap-learn`, and `sentence-transformers` to understand the data distribution and similarity.
+> TODO: everything
 
 ## Contribute and development setup
 

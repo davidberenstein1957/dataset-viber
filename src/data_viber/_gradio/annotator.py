@@ -63,7 +63,7 @@ class GradioAnnotatorInterFace(GradioDataCollectorInterface):
                 return (text, []) if multi_label else text
             else:
                 gradio.Info("No data to annotate left.")
-                return (None, []) if multi_label else None
+                return ("", []) if multi_label else ""
 
         inputs = gradio.TextArea(value=texts.pop(), label="text")
         if multi_label:
@@ -108,21 +108,25 @@ class GradioAnnotatorInterFace(GradioDataCollectorInterface):
                 )
                 return convert_to_tokens(texts.pop())
             else:
-                raise gradio.Error("No data to annotate left")
+                gradio.Info("No data to annotate left.")
+                return ""
 
         input_text = gradio.HighlightedText(
             value=convert_to_tokens(texts.pop()),
             color_map=labels,
-            label="Annotate",
+            label="spans",
             interactive=True,
             show_legend=False,
-            # combine_adjacent=True,
+            combine_adjacent=True,
             adjacent_separator="",
         )
         return cls(
             fn=next_input,
             inputs=[input_text],
             outputs=[input_text],
+            submit_btn=gradio.Button("✍🏼 submit", variant="primary", visible=False),
+            clear_btn=gradio.Button("🗑️ discard", variant="stop"),
+            flagging_options=[("✍🏼 submit", "")],
             allow_flagging="manual",
             dataset_name=dataset_name,
             hf_token=hf_token,
@@ -153,10 +157,10 @@ class GradioAnnotatorInterFace(GradioDataCollectorInterface):
                 gradio.Info("No data to annotate left")
                 return None, None
 
-        input_question = gradio.TextArea(value=questions.pop(), label="Question")
+        input_question = gradio.TextArea(value=questions.pop(), label="question")
         input_context = gradio.HighlightedText(
             value=contexts.pop(),
-            label="Context",
+            label="context",
             interactive=True,
             show_legend=False,
             adjacent_separator="",
@@ -166,8 +170,9 @@ class GradioAnnotatorInterFace(GradioDataCollectorInterface):
             inputs=[input_question, input_context],
             outputs=[input_question, input_context],
             allow_flagging="manual",
-            submit_btn="🗑️ discard",
-            clear_btn=None,
+            submit_btn=gradio.Button("✍🏼 submit", variant="primary", visible=False),
+            clear_btn=gradio.Button("🗑️ discard", variant="stop"),
+            flagging_options=[("✍🏼 submit", "")],
             dataset_name=dataset_name,
             hf_token=hf_token,
             private=private,
