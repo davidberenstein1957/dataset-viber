@@ -31,7 +31,10 @@ pip install git+https://github.com/davidberenstein1957/data-viber.git
 ### CollectorInterface
 
 > Built on top of the `gr.Interface` and `gr.ChatInterface` to lazily collect data for interactions automatically.
-> TODO: add a way to collect data from a gr.ChatInterface
+
+TODOs:
+
+- collect data from a gr.ChatInterface
 
 https://github.com/user-attachments/assets/4ddac8a1-62ab-4b3b-9254-f924f5898075
 
@@ -105,11 +108,13 @@ interface.launch()
 
 > Built on top of the `CollectorInterface` to collect and annotate data and log it to the Hub.
 
-> TODO: annotate - models to the loop (potentially using from_pipeline = interactive)
-> TODO: annotate - counters for the number of annotations
-> TODO: data - a state based on csv or remote dataset
-> TODO: data - local datasets saver / loader from csv
-> TODO: data - a way to show input-data and output-data in the interface
+TODOs:
+
+- annotate - models to the loop (potentially using from_pipeline = interactive)
+- annotate - counters for the number of annotations
+- data - a state based on csv or remote dataset
+- data - local datasets saver / loader from csv
+- data - a way to show input-data and output-data in the interface
 
 https://github.com/user-attachments/assets/57d89edf-ae40-4942-a20a-bf8443100b66
 
@@ -274,11 +279,63 @@ interface.launch()
 ### ExplorerInterface
 
 > Built on top of the `gr.ScatterPlot`, `gr.DataFrame`, `umap-learn`, and `sentence-transformers` to understand the data distribution and similarity.
-> TODO: create basic explorer for text data
-> TODO: add score representation
-> TODO: add filters for categories / scores
-> TODO: add image support
-> TODO: create label explorer
+
+TODOs:
+
+- create basic explorer for text data
+- add score representation
+- add filters for categories / scores
+- add image support
+- create label explorer
+
+### Utils
+
+<details>
+<summary>shuffle input data in the same order</summary>
+
+When working with multiple inputs, you might want to shuffle them in the same order.
+
+```python
+def shuffle_lists(*lists):
+    if not lists:
+        return []
+
+    # Get the length of the first list
+    length = len(lists[0])
+
+    # Check if all lists have the same length
+    if not all(len(lst) == length for lst in lists):
+        raise ValueError("All input lists must have the same length")
+
+    # Create a list of indices and shuffle it
+    indices = list(range(length))
+    random.shuffle(indices)
+
+    # Reorder each list based on the shuffled indices
+    return [
+        [lst[i] for i in indices]
+        for lst in lists
+    ]
+```
+
+</details>
+
+<details>
+<summary>Load remote image URLs from Hugging Face Hub</summary>
+
+When working with images, you might want to load remote URLs from the Hugging Face Hub.
+
+```python
+from datasets import Dataset, Image, load_dataset
+
+dataset = load_dataset(
+    "my_hf_org/my_image_dataset"
+).cast_column("my_image_column", Image(decode=False))
+dataset[0]["my_image_column"]
+# {'bytes': None, 'path': 'path_to_image.jpg'}
+```
+
+</details>
 
 ## Contribute and development setup
 
