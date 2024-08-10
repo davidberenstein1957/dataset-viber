@@ -257,7 +257,7 @@ images = [
     "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Anthony_Bourdain_Peabody_2014b.jpg/440px-Anthony_Bourdain_Peabody_2014b.jpg",
     "https://upload.wikimedia.org/wikipedia/commons/8/85/David_Chang_David_Shankbone_2010.jpg"
 ]
-questions = ["!ho is this?", "What is he wearing?"]
+questions = ["Who is this?", "What is he wearing?"]
 answers = ["Anthony Bourdain", "a suit"]
 
 interface = AnnotatorInterFace.for_image_question_answering(
