@@ -280,6 +280,8 @@ interface.launch()
 
 > Built on top of the `gr.ScatterPlot`, `gr.DataFrame`, `umap-learn`, and `sentence-transformers` to understand the data distribution and similarity.
 
+<img width="1090" alt="image" src="https://github.com/user-attachments/assets/bf189482-8eab-40f9-aee1-671f3dfa4ef4">
+
 TODOs:
 
 - create basic explorer for text data
