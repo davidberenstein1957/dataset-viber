@@ -103,6 +103,8 @@ interface.launch()
 > TODO: data - local datasets saver / loader from csv
 > TODO: data - a way to show input-data and output-data in the interface
 
+<center><video src="docs/assets/annotator.mp4" controls></video></center>
+
 #### Text
 
 <details open>

@@ -160,7 +160,7 @@ class GradioAnnotatorInterFace(GradioDataCollectorInterface):
                 gradio.Info("No data to annotate left")
                 return None, None
 
-        input_question = gradio.TextArea(
+        input_question = gradio.Textbox(
             value=questions.pop(_POP_INDEX), label="question"
         )
         input_context = gradio.HighlightedText(
@@ -296,7 +296,7 @@ class GradioAnnotatorInterFace(GradioDataCollectorInterface):
                 return None, ""
 
         inputs = gradio.Image(value=images.pop(_POP_INDEX), label="image", height=400)
-        outputs = gradio.TextArea(value=descriptions.pop(_POP_INDEX), label="text")
+        outputs = gradio.Textbox(value=descriptions.pop(_POP_INDEX), label="text")
         inputs = [inputs, outputs]
         return cls(
             fn=next_input,
@@ -348,7 +348,7 @@ class GradioAnnotatorInterFace(GradioDataCollectorInterface):
         inputs = gradio.Image(value=images.pop(_POP_INDEX), label="image", height=400)
         outputs = [
             gradio.Textbox(value=questions.pop(_POP_INDEX), label="question"),
-            gradio.TextArea(value=answers.pop(_POP_INDEX), label="answer"),
+            gradio.Textbox(value=answers.pop(_POP_INDEX), label="answer"),
         ]
         inputs = [inputs, *outputs]
         return cls(
