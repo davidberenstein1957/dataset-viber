@@ -19,6 +19,7 @@ import gradio
 import huggingface_hub
 from gradio.components import Component
 
+from data_viber._gradio.flagging import FixedHubDatasetSaver
 from data_viber._utils import _get_init_payload
 
 if TYPE_CHECKING:
@@ -156,12 +157,12 @@ class GradioDataCollectorInterface(gradio.Interface):
         hf_token: str,
         private: bool = False,
     ) -> gradio.HuggingFaceDatasetSaver:
-        return gradio.HuggingFaceDatasetSaver(
+        return FixedHubDatasetSaver(
             hf_token=hf_token,
             dataset_name=dataset_name,
             private=private,
             info_filename="dataset_info.json",
-            separate_dirs=False,
+            separate_dirs=True,
         )
 
     @staticmethod
