@@ -43,8 +43,8 @@ class GradioDataCollectorInterface(gradio.Interface):
         self._validate_flagging_options(
             allow_flagging=allow_flagging, flagging_options=flagging_options
         )
-        flagging_callback = None
-        if dataset_name is not None:
+        flagging_callback = None or kwargs.pop("flagging_callback", None)
+        if dataset_name is not None and flagging_callback is None:
             flagging_callback = kwargs.pop(
                 "flagging_callback",
                 self._get_flagging_callback(
@@ -89,8 +89,8 @@ class GradioDataCollectorInterface(gradio.Interface):
             an intialized GradioDataCollectorInterface
         """
         return cls.from_interface(
-            interface=super().from_pipeline(pipeline=pipeline),
-            dataset_name=dataset_name or pipeline.task,
+            interface=gradio.Interface.from_pipeline(pipeline=pipeline),
+            dataset_name=dataset_name,
             hf_token=hf_token,
             private=private,
             allow_flagging=allow_flagging,
@@ -124,12 +124,13 @@ class GradioDataCollectorInterface(gradio.Interface):
         Return:
             an intialized GradioDataCollectorInterface
         """
-        flagging_callback = None
-        if dataset_name is not None:
+        flagging_callback = None or kwargs.pop("flagging_callback", None)
+        if dataset_name and not flagging_callback:
             flagging_callback = cls._get_flagging_callback(
                 dataset_name=dataset_name, hf_token=hf_token, private=private
             )
         payload = _get_init_payload(interface)
+        payload.update(**kwargs)
         payload.update(
             {
                 "flagging_callback": flagging_callback,
@@ -138,7 +139,6 @@ class GradioDataCollectorInterface(gradio.Interface):
                 "show_embedded_viewer": show_embedded_viewer,
             }
         )
-        payload.update(**kwargs)
         return cls(**payload)
 
     @staticmethod
@@ -191,8 +191,8 @@ class GradioDataCollectorInterface(gradio.Interface):
     def _add_html_component_with_viewer(
         cls,
         instance: gradio.Interface,
-        flagging_callback: Optional[gradio.HuggingFaceDatasetSaver],
-        show_embedded_viewer: bool,
+        flagging_callback: Optional[gradio.HuggingFaceDatasetSaver] = None,
+        show_embedded_viewer: bool = True,
     ):
         if flagging_callback:
             repo_url = cls._get_repo_url(flagging_callback)
