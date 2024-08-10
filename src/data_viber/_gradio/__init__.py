@@ -13,4 +13,4 @@
 # limitations under the License.
 
 from data_viber._gradio.collector import CollectorInterface  # noqa
-from data_viber._gradio.annotator import GradioAnnotatorInterFace  # noqa
+from data_viber._gradio.annotator import AnnotatorInterFace  # noqa

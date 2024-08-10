@@ -25,7 +25,7 @@ pip install git+https://github.com/davidberenstein1957/data-viber.git
 
 ### CollectorInterface
 
-> Built on top of the `gr.Interface` and `gr.ChatInterface` to collect data and log it to the hub.
+> Built on top of the `gr.Interface` and `gr.ChatInterface` to lazily collect data for interactions automatically.
 > TODO: add a way to collect data from a gr.ChatInterface
 
 <details open>
@@ -94,9 +94,9 @@ interface.launch()
 
 </details>
 
-### GradioDataAnnotatorInterface
+### AnnotatorInterface
 
-> Built on top of the `gr.GradioDataAnnotatorInterface` to collect and annotate data and log it to the Hub.
+> Built on top of the `CollectorInterface` to collect and annotate data and log it to the Hub.
 > TODO: annotate - models to the loop (potentially using from_pipeline = interactive)
 > TODO: annotate - counters for the number of annotations
 > TODO: data - a state based on csv or remote dataset
@@ -111,7 +111,7 @@ https://github.com/user-attachments/assets/dd895768-cc9b-45ed-a1b2-b9493594d4a8
 <summary><code>text-classification</code> and <code>multi-label-text-classification</code></summary>
 
 ```python
-from data_viber import GradioAnnotatorInterFace
+from data_viber import AnnotatorInterFace
 
 texts = [
     "Anthony Bourdain was an amazing chef!",
@@ -119,7 +119,7 @@ texts = [
 ]
 labels = ["positive", "negative"]
 
-interface = GradioAnnotatorInterFace.for_text_classification(
+interface = AnnotatorInterFace.for_text_classification(
     texts=texts,
     labels=labels,
     dataset_name=None, # "<my_hf_org>/<my_dataset>" if you want to log to the hub
@@ -134,12 +134,12 @@ interface.launch()
 <summary><code>token-classification</code></summary>
 
 ```python
-from data_viber import GradioAnnotatorInterFace
+from data_viber import AnnotatorInterFace
 
 texts = ["Anthony Bourdain was an amazing chef in New York."]
 labels = ["NAME", "LOC"]
 
-interface = GradioAnnotatorInterFace.for_token_classification(
+interface = AnnotatorInterFace.for_token_classification(
     texts=texts,
     labels=labels,
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
@@ -153,12 +153,12 @@ interface.launch()
 <summary><code>extractive-question-answering</code></summary>
 
 ```python
-from data_viber import GradioAnnotatorInterFace
+from data_viber import AnnotatorInterFace
 
 questions = ["Where was Anthony Bourdain located?"]
 contexts = ["Anthony Bourdain was an amazing chef in New York."]
 
-interface = GradioAnnotatorInterFace.for_question_answering(
+interface = AnnotatorInterFace.for_question_answering(
     questions=questions,
     contexts=contexts,
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
@@ -172,12 +172,12 @@ interface.launch()
 <summary><code>text-generation</code> or <code>translation</code></summary>
 
 ```python
-from data_viber import GradioAnnotatorInterFace
+from data_viber import AnnotatorInterFace
 
 source = ["Tell me something about Anthony Bourdain."]
 target = ["Anthony Michael Bourdain was an American celebrity chef, author, and travel documentarian."]
 
-interface = GradioAnnotatorInterFace.for_text_generation(
+interface = AnnotatorInterFace.for_text_generation(
     source=source,
     target=target, # optional to show initial target
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
@@ -192,7 +192,7 @@ Annotate data for `chat`. [WIP]
 
 Annotate data for `chat_preference`. [WIP]
 
-#### Image
+#### Image and multi-modal
 
 I recommend uploading the files files to a cloud storage and using the remote URL to avoid any issues. This can be done [using Hugging Face Datasets](https://huggingface.co/docs/datasets/en/image_load#local-files).
 
@@ -200,7 +200,7 @@ I recommend uploading the files files to a cloud storage and using the remote UR
 <summary><code>image-classification</code> and <code>multi-label-text-classification</code></summary>
 
 ```python
-from data_viber import GradioAnnotatorInterFace
+from data_viber import AnnotatorInterFace
 
 images = [
     "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Anthony_Bourdain_Peabody_2014b.jpg/440px-Anthony_Bourdain_Peabody_2014b.jpg",
@@ -208,7 +208,7 @@ images = [
 ]
 labels = ["anthony-bourdain", "not-anthony-bourdain"]
 
-interface = GradioAnnotatorInterFace.for_image_classification(
+interface = AnnotatorInterFace.for_image_classification(
     images=images,
     labels=labels,
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
@@ -217,15 +217,11 @@ interface = GradioAnnotatorInterFace.for_image_classification(
 
 </details>
 
-#### Multi-Modal
-
-I recommend uploading the files files to a cloud storage and using the remote URL to avoid any issues. This can be done [using Hugging Face Datasets](https://huggingface.co/docs/datasets/en/image_load#local-files).
-
 <details>
 <summary><code>image-2-text</code> or <code>image-description</code></summary>
 
 ```python
-from data_viber import GradioAnnotatorInterFace
+from data_viber import AnnotatorInterFace
 
 images = [
     "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Anthony_Bourdain_Peabody_2014b.jpg/440px-Anthony_Bourdain_Peabody_2014b.jpg",
@@ -233,7 +229,7 @@ images = [
 ]
 description = ["Anthony Bourdain laughing", "David Chang wearing a suit"]
 
-interface = GradioAnnotatorInterFace.for_image_description(
+interface = AnnotatorInterFace.for_image_description(
     images=images,
     descriptions=descriptions, # optional to show initial descriptions
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
@@ -247,7 +243,7 @@ interface.launch()
 <summary><code>image-question-answering</code> or <code>visual-question-asnwering</code></summary>
 
 ```python
-from data_viber import GradioAnnotatorInterFace
+from data_viber import AnnotatorInterFace
 
 images = [
     "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Anthony_Bourdain_Peabody_2014b.jpg/440px-Anthony_Bourdain_Peabody_2014b.jpg",
@@ -256,7 +252,7 @@ images = [
 questions = ["!ho is this?", "What is he wearing?"]
 answers = ["Anthony Bourdain", "a suit"]
 
-interface = GradioAnnotatorInterFace.for_image_question_answering(
+interface = AnnotatorInterFace.for_image_question_answering(
     images=images,
     questions=questions, # optional to show initial questions
     answers=answers, # optional to show initial answers

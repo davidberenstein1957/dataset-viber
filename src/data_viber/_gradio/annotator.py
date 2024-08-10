@@ -44,7 +44,7 @@ _POP_INDEX = 0
 _MESSAGE_DONE_ANNOTATING = "No data left to annotate."
 
 
-class GradioAnnotatorInterFace(CollectorInterface):
+class AnnotatorInterFace(CollectorInterface):
     @classmethod
     def for_text_classification(
         cls,
@@ -55,7 +55,7 @@ class GradioAnnotatorInterFace(CollectorInterface):
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
         multi_label: Optional[bool] = False,
-    ) -> "GradioAnnotatorInterFace":
+    ) -> "AnnotatorInterFace":
         start = len(texts)
 
         def next_input(_text, _label):
@@ -96,7 +96,7 @@ class GradioAnnotatorInterFace(CollectorInterface):
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
-    ) -> "GradioAnnotatorInterFace":
+    ) -> "AnnotatorInterFace":
         if isinstance(labels, list):
             labels = {label: color for label, color in zip(labels, _DEFAULT_COLORS)}
 
@@ -146,7 +146,7 @@ class GradioAnnotatorInterFace(CollectorInterface):
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
-    ) -> "GradioAnnotatorInterFace":
+    ) -> "AnnotatorInterFace":
         if len(questions) != len(contexts):
             raise ValueError("Questions and contexts must be of the same length")
         start = len(questions)
@@ -193,7 +193,7 @@ class GradioAnnotatorInterFace(CollectorInterface):
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
-    ) -> "GradioAnnotatorInterFace":
+    ) -> "AnnotatorInterFace":
         if len(source) != len(target):
             raise ValueError(
                 "Source and target must be of the same length. You can add empty strings to match the lengths."
@@ -235,7 +235,7 @@ class GradioAnnotatorInterFace(CollectorInterface):
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
-    ) -> "GradioAnnotatorInterFace":
+    ) -> "AnnotatorInterFace":
         labels = [(label, label) for label in labels]
         start = len(images)
 
@@ -277,7 +277,7 @@ class GradioAnnotatorInterFace(CollectorInterface):
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
-    ) -> "GradioAnnotatorInterFace":
+    ) -> "AnnotatorInterFace":
         start = len(images)
         if descriptions is None:
             descriptions = ["" for _ in range(start)]
@@ -322,7 +322,7 @@ class GradioAnnotatorInterFace(CollectorInterface):
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
-    ) -> "GradioAnnotatorInterFace":
+    ) -> "AnnotatorInterFace":
         start = len(images)
         if questions is None:
             questions = ["" for _ in range(start)]
