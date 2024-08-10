@@ -263,7 +263,7 @@ interface.launch()
 
 </details>
 
-### GradioDataExplorerInterface
+### ExplorerInterface
 
 > Built on top of the `gr.ScatterPlot`, `gr.DataFrame`, `umap-learn`, and `sentence-transformers` to understand the data distribution and similarity.
 > TODO: create basic explorer for text data
