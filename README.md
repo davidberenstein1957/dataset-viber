@@ -7,15 +7,20 @@
 
 <h3 align="center">Avoid the hype, check the vibe!</h2>
 
-I've cooked up Data Viber, a cool set of tools to make your life easier when dealing with data for NLP and image models. Data Viber is all about making your data prep journey smooth and fun. It's **not production-ready** or trying to be all fancy and formal - just a bunch of cool **tools to help you collecting feedback and doing vibe-checks** for data for AI models. Want to see it in action? Just plug it in and start vibing with your data. It's that easy!
+I've cooked up Data Viber, a cool set of tools to make your life easier when dealing with data for NLP and image models. Data Viber is all about making your data prep journey smooth and fun. It's **not production-ready** or trying to be all fancy and formal - just a bunch of cool **tools to help you collecting feedback and doing vibe-checks** for data for AI models. Want to see it in action? Just plug it in and start vibing with your data. It's that easy! Vibing
+
+- **CollectorInterface**: Lazily collect data without human annotation.
+- **AnnotatorInterface**: Work through your data and annotate it with ease.
+- **ExplorerInterface**: Explore your data distribution and similarity.
 
 Need any tweaks or want to hear more about a specific tool? Just open an issue or give me a shout!
 
-> Great AI engineer: "chickity-check yo' self before you wreck yo' self"
+> [!TIP]
+> All tools also run in `.ipynb` notebooks!
 
 ## Installation
 
-I have not published this yet on PyPi, but for now you can install it from the repo.
+I have not published this yet on PyPi, but for now, you can install it from the repo.
 
 ```bash
 pip install git+https://github.com/davidberenstein1957/data-viber.git
@@ -28,7 +33,7 @@ pip install git+https://github.com/davidberenstein1957/data-viber.git
 > Built on top of the `gr.Interface` and `gr.ChatInterface` to lazily collect data for interactions automatically.
 > TODO: add a way to collect data from a gr.ChatInterface
 
-<details open>
+<details>
 <summary><code>CollectorInterface</code></summary>
 
 ```python
@@ -51,7 +56,7 @@ outputs = "number"
 interface = CollectorInterface(
     fn=calculator,
     inputs=inputs,
-    outputs=outputs
+    outputs=outputs,
     dataset_name="<my_hf_org>/<my_dataset>"
 )
 interface.launch()
@@ -97,6 +102,7 @@ interface.launch()
 ### AnnotatorInterface
 
 > Built on top of the `CollectorInterface` to collect and annotate data and log it to the Hub.
+
 > TODO: annotate - models to the loop (potentially using from_pipeline = interactive)
 > TODO: annotate - counters for the number of annotations
 > TODO: data - a state based on csv or remote dataset
@@ -107,7 +113,7 @@ https://github.com/user-attachments/assets/dd895768-cc9b-45ed-a1b2-b9493594d4a8
 
 #### Text
 
-<details open>
+<details>
 <summary><code>text-classification</code> and <code>multi-label-text-classification</code></summary>
 
 ```python
