@@ -14,3 +14,4 @@
 
 from data_viber._gradio.collector import CollectorInterface  # noqa
 from data_viber._gradio.annotator import AnnotatorInterFace  # noqa
+from data_viber._gradio.explorer import ExplorerInterface  # noqa

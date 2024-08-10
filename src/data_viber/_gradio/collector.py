@@ -19,7 +19,7 @@ import gradio
 import huggingface_hub
 from gradio.components import Component
 
-from data_viber._gradio.flagging import FixedHubDatasetSaver
+from data_viber._gradio._flagging import FixedHubDatasetSaver
 from data_viber._utils import _get_init_payload
 
 if TYPE_CHECKING:

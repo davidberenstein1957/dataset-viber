@@ -288,6 +288,37 @@ TODOs:
 - add image support
 - create label explorer
 
+<details>
+<summary><code>for_dataframe_visualization</code></summary>
+
+```python
+from data_viber import ExplorerInterface
+import pandas as pd
+
+df = pd.DataFrame({
+    'text': [
+        "The quick brown fox jumps over the lazy dog.",
+        "The quick brown fox jumps over the lazy dog.",
+        "A journey of a thousand miles begins with a single step.",
+        "To be or not to be, that is the question."
+    ],
+    'category': ['A', 'A', 'B', 'C'],
+    'length': [44, 44, 36, 35],
+    'score': [10, 20, 30, 40]  # This column will size the points
+})
+
+visualizer = ExplorerInterface.for_dataframe_visualization(
+    df,
+    text_column='text',
+    additional_columns=['category', 'length'],
+    label_column='category',
+    score_column='score'
+)
+visualizer.launch()
+```
+
+</details>
+
 ### Utils
 
 <details>
