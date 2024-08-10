@@ -33,6 +33,8 @@ pip install git+https://github.com/davidberenstein1957/data-viber.git
 > Built on top of the `gr.Interface` and `gr.ChatInterface` to lazily collect data for interactions automatically.
 > TODO: add a way to collect data from a gr.ChatInterface
 
+https://github.com/user-attachments/assets/c89fd967-f8e2-472e-8b53-165951ea2f82
+
 <details>
 <summary><code>CollectorInterface</code></summary>
 
