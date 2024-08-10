@@ -12,6 +12,22 @@ dependencies = [
     "gradio>=4.40.0",
 ]
 
+[project.optional-dependencies]
+"explorer" = [
+    "sentence-transformers>=3.0.1",
+    "umap-learn>=0.5.6",
+]
+
+[tool.pdm.dev-dependencies]
+dev = [
+    "pre-commit>=3.8.0",
+    "ruff>=0.5.6",
+    "pytest>=8.3.2",
+    "black>=24.8.0",
+    "transformers>=4.44.0",
+    "torch>=2.4.0",
+]
+
 [build-system]
 requires = ["pdm-backend"]
 build-backend = "pdm.backend"
@@ -25,12 +41,3 @@ line-length = 88
 [tool.pdm]
 distribution = true
 
-[tool.pdm.dev-dependencies]
-dev = [
-    "pre-commit>=3.8.0",
-    "ruff>=0.5.6",
-    "pytest>=8.3.2",
-    "black>=24.8.0",
-    "transformers>=4.44.0",
-    "torch>=2.4.0",
-]
