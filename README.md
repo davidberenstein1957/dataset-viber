@@ -103,7 +103,7 @@ interface.launch()
 > TODO: data - local datasets saver / loader from csv
 > TODO: data - a way to show input-data and output-data in the interface
 
-<center><video src="https://github.com/user-attachments/assets/4758e340-804c-4a33-b9a6-674a7a5cd1f9"</video></center>
+https://github.com/user-attachments/assets/dd895768-cc9b-45ed-a1b2-b9493594d4a8
 
 #### Text
 
