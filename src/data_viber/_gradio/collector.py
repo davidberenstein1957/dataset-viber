@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from transformers.pipelines import Pipeline
 
 
-class GradioDataCollectorInterface(gradio.Interface):
+class CollectorInterface(gradio.Interface):
     def __init__(
         self,
         fn: Callable,
@@ -87,7 +87,7 @@ class GradioDataCollectorInterface(gradio.Interface):
             flagging_options: If provided, allows user to select from the list of options when flagging. Only applies if allow_flagging is "manual". Can either be a list of tuples of the form (label, value), where label is the string that will be displayed on the button and value is the string that will be stored in the flagging CSV; or it can be a list of strings ["X", "Y"], in which case the values will be the list of strings and the labels will ["Flag as X", "Flag as Y"], etc.
 
         Return:
-            an intialized GradioDataCollectorInterface
+            an intialized CollectorInterface
         """
         return cls.from_interface(
             interface=gradio.Interface.from_pipeline(pipeline=pipeline),
@@ -123,7 +123,7 @@ class GradioDataCollectorInterface(gradio.Interface):
             flagging_options: If provided, allows user to select from the list of options when flagging. Only applies if allow_flagging is "manual". Can either be a list of tuples of the form (label, value), where label is the string that will be displayed on the button and value is the string that will be stored in the flagging CSV; or it can be a list of strings ["X", "Y"], in which case the values will be the list of strings and the labels will ["Flag as X", "Flag as Y"], etc.
 
         Return:
-            an intialized GradioDataCollectorInterface
+            an intialized CollectorInterface
         """
         flagging_callback = None or kwargs.pop("flagging_callback", None)
         if dataset_name and not flagging_callback:

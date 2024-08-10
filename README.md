@@ -23,17 +23,17 @@ pip install git+https://github.com/davidberenstein1957/data-viber.git
 
 ## How are we vibing?
 
-### GradioDataCollectorInterface
+### CollectorInterface
 
 > Built on top of the `gr.Interface` and `gr.ChatInterface` to collect data and log it to the hub.
 > TODO: add a way to collect data from a gr.ChatInterface
 
 <details open>
-<summary><code>GradioDataCollectorInterface</code></summary>
+<summary><code>CollectorInterface</code></summary>
 
 ```python
 import gradio as gr
-from data_viber import GradioDataCollectorInterface
+from data_viber import CollectorInterface
 
 def calculator(num1, operation, num2):
     if operation == "add":
@@ -48,7 +48,7 @@ def calculator(num1, operation, num2):
 inputs = ["number", gr.Radio(["add", "subtract", "multiply", "divide"]), "number"]
 outputs = "number"
 
-interface = GradioDataCollectorInterface(
+interface = CollectorInterface(
     fn=calculator,
     inputs=inputs,
     outputs=outputs
@@ -60,7 +60,7 @@ interface.launch()
 </details>
 
 <details>
-<summary><code>GradioDataCollectorInterface.from_interface</code></summary>
+<summary><code>CollectorInterface.from_interface</code></summary>
 
 ```python
 interface = gr.Interface(
@@ -68,7 +68,7 @@ interface = gr.Interface(
     inputs=inputs,
     outputs=outputs
 )
-interface = GradioDataCollectorInterface.from_interface(
+interface = CollectorInterface.from_interface(
    interface=interface,
    dataset_name="<my_hf_org>/<my_dataset>"
 )
@@ -78,14 +78,14 @@ interface.launch()
 </details>
 
 <details>
-<summary><code>GradioDataCollectorInterface.from_pipeline</code></summary>
+<summary><code>CollectorInterface.from_pipeline</code></summary>
 
 ```python
 from transformers import pipeline
-from data_viber import GradioDataCollectorInterface
+from data_viber import CollectorInterface
 
 pipeline = pipeline("text-classification", model="mrm8488/bert-tiny-finetuned-sms-spam-detection")
-interface = GradioDataCollectorInterface.from_pipeline(
+interface = CollectorInterface.from_pipeline(
     pipeline=pipeline,
     dataset_name="<my_hf_org>/<my_dataset>"
 )

@@ -24,7 +24,7 @@ from gradio.components import (
 from gradio.events import Dependency
 from gradio.flagging import FlagMethod
 
-from data_viber._gradio.collector import GradioDataCollectorInterface
+from data_viber._gradio.collector import CollectorInterface
 
 _DEFAULT_COLORS = [
     "#a6cee3",
@@ -44,7 +44,7 @@ _POP_INDEX = 0
 _MESSAGE_DONE_ANNOTATING = "No data left to annotate."
 
 
-class GradioAnnotatorInterFace(GradioDataCollectorInterface):
+class GradioAnnotatorInterFace(CollectorInterface):
     @classmethod
     def for_text_classification(
         cls,
