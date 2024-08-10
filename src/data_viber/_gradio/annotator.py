@@ -41,6 +41,7 @@ _DEFAULT_COLORS = [
     "#b15928",
 ]
 _POP_INDEX = 0
+_MESSAGE_DONE_ANNOTATING = "No data left to annotate."
 
 
 class GradioAnnotatorInterFace(GradioDataCollectorInterface):
@@ -65,7 +66,7 @@ class GradioAnnotatorInterFace(GradioDataCollectorInterface):
                 text = texts.pop(_POP_INDEX)
                 return (text, []) if multi_label else text
             else:
-                gradio.Info("No data to annotate left.")
+                gradio.Info(_MESSAGE_DONE_ANNOTATING)
                 return ("", []) if multi_label else ""
 
         inputs = gradio.TextArea(value=texts.pop(_POP_INDEX), label="text")
@@ -111,7 +112,7 @@ class GradioAnnotatorInterFace(GradioDataCollectorInterface):
                 )
                 return convert_to_tokens(texts.pop(_POP_INDEX))
             else:
-                gradio.Info("No data to annotate left.")
+                gradio.Info(_MESSAGE_DONE_ANNOTATING)
                 return ""
 
         input_text = gradio.HighlightedText(
@@ -246,7 +247,7 @@ class GradioAnnotatorInterFace(GradioDataCollectorInterface):
                 image = images.pop(_POP_INDEX)
                 return (image, []) if multi_label else image
             else:
-                gradio.Info("No data to annotate left.")
+                gradio.Info(_MESSAGE_DONE_ANNOTATING)
                 return (None, []) if multi_label else None
 
         inputs = gradio.Image(value=images.pop(_POP_INDEX), label="image", height=400)
@@ -292,7 +293,7 @@ class GradioAnnotatorInterFace(GradioDataCollectorInterface):
                 description = descriptions.pop(_POP_INDEX)
                 return img, description
             else:
-                gradio.Info("No data to annotate left.")
+                gradio.Info(_MESSAGE_DONE_ANNOTATING)
                 return None, ""
 
         inputs = gradio.Image(value=images.pop(_POP_INDEX), label="image", height=400)
@@ -342,7 +343,7 @@ class GradioAnnotatorInterFace(GradioDataCollectorInterface):
                 answer = answers.pop(_POP_INDEX)
                 return img, question, answer
             else:
-                gradio.Info("No data to annotate left.")
+                gradio.Info(_MESSAGE_DONE_ANNOTATING)
                 return None, "", ""
 
         inputs = gradio.Image(value=images.pop(_POP_INDEX), label="image", height=400)
