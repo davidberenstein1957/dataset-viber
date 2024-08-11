@@ -52,6 +52,7 @@ _CHATBOT_KWARGS = {
     "type": "messages",
     "label": "prompt",
     "show_copy_button": True,
+    "likable": True,
 }
 
 if TYPE_CHECKING:
