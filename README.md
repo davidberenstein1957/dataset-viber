@@ -109,7 +109,7 @@ interface.launch()
 #### Text
 
 <details>
-<summary><code>text-classification</code> and <code>multi-label-text-classification</code></summary>
+<summary><code>text-classification</code>/<code>multi-label-text-classification</code></summary>
 
 ```python
 from data_viber import AnnotatorInterFace
@@ -347,7 +347,7 @@ interface.launch()
 > I recommend uploading the files files to a cloud storage and using the remote URL to avoid any issues. This can be done [using Hugging Face Datasets](https://huggingface.co/docs/datasets/en/image_load#local-files). As shown in [utils](#utils).
 
 <details>
-<summary><code>image-classification</code> and <code>multi-label-text-classification</code></summary>
+<summary><code>image-classification</code>/<code>multi-label-image-classification</code></summary>
 
 ```python
 from data_viber import AnnotatorInterFace
@@ -392,7 +392,7 @@ interface.launch()
 </details>
 
 <details>
-<summary><code>image-question-answering</code>/<code>visual-question-asnwering</code></summary>
+<summary><code>image-question-answering</code>/<code>visual-question-answering</code></summary>
 
 ```python
 from data_viber import AnnotatorInterFace
