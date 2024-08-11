@@ -48,6 +48,11 @@ _HIGHLIGHT_TEXT_KWARGS = {
     "combine_adjacent": True,
     "adjacent_separator": "",
 }
+_CHATBOT_KWARGS = {
+    "type": "messages",
+    "label": "prompt",
+    "show_copy_button": True,
+}
 
 if TYPE_CHECKING:
     from transformers.pipelines import Pipeline
@@ -480,9 +485,7 @@ class AnnotatorInterFace(CollectorInterface):
             prompt = next_input(None, None)
         inputs = gradio.Chatbot(
             value=prompt,
-            label="prompt",
-            type="messages",
-            show_copy_button=True,
+            **_CHATBOT_KWARGS,
         )
         if multi_label or fn is not None:
             inputs = [inputs, check_box_group]
@@ -553,7 +556,10 @@ class AnnotatorInterFace(CollectorInterface):
 
         # UI Config
         prompt, completion = next_input(None, None)
-        input_prompt = gradio.Chatbot(value=prompt, label="prompt", type="messages")
+        input_prompt = gradio.Chatbot(
+            value=prompt,
+            **_CHATBOT_KWARGS,
+        )
         input_completion = gradio.Textbox(value=completion, label="completion")
         inputs = [input_prompt, input_completion]
         return cls(
@@ -625,7 +631,7 @@ class AnnotatorInterFace(CollectorInterface):
 
         # UI Config
         prompt, completion_a, completion_b = next_input(None, None, None)
-        input_prompt = gradio.Chatbot(value=prompt, label="prompt", type="messages")
+        input_prompt = gradio.Chatbot(value=prompt, **_CHATBOT_KWARGS)
         input_completion_a = gradio.Textbox(value=completion_a, label="👆 completion A")
         input_completion_b = gradio.Textbox(value=completion_b, label="👇 completion B")
         inputs = [input_prompt, input_completion_a, input_completion_b]
