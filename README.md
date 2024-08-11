@@ -459,7 +459,7 @@ interface.launch()
 ### Utils
 
 <details>
-<summary>shuffle inputs in the same order</summary>
+<summary>Shuffle inputs in the same order</summary>
 
 When working with multiple inputs, you might want to shuffle them in the same order.
 
@@ -489,7 +489,7 @@ def shuffle_lists(*lists):
 </details>
 
 <details>
-<summary>random swap to randomize completions</summary>
+<summary>Random swap to randomize completions</summary>
 
 When working with multiple completions, you might want to swap out the completions at the same index, where each completion index x is swapped with a random completion at the same index. This is useful for preference learning.
 
