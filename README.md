@@ -547,6 +547,7 @@ Follow this [guide on making first contributions](https://github.com/firstcontri
 
 #### AnnotatorInterface
 
+- add buttons to sort on embeddings similarity and sort on random
 - models to the loop (potentially using from_pipeline = interactive)
 - counters for the number of annotations
 - data state based on csv or remote dataset (not redo on restart)
