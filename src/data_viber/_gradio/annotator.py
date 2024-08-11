@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Optional, Union, override
+from typing import Dict, List, Optional, Union, override
 
 import gradio
 import numpy as np
@@ -69,7 +69,7 @@ class AnnotatorInterFace(CollectorInterface):
                 gradio.Info(_MESSAGE_DONE_ANNOTATING)
                 return ("", []) if multi_label else ""
 
-        inputs = gradio.TextArea(value=texts.pop(_POP_INDEX), label="text")
+        inputs = gradio.Textbox(value=texts.pop(_POP_INDEX), label="text")
         if multi_label:
             inputs = [inputs, gradio.CheckboxGroup(labels, label="label")]
         return cls(
@@ -152,13 +152,13 @@ class AnnotatorInterFace(CollectorInterface):
         start = len(questions)
 
         def next_input(_question, _context):
-            try:
+            if questions:
                 gradio.Info(
                     f"{(len(questions) / start) * 100:.2f}% done {len(questions)} left."
                 )
                 return questions.pop(_POP_INDEX), contexts.pop(_POP_INDEX)
-            except IndexError:
-                gradio.Info("No data to annotate left")
+            else:
+                gradio.Info(_MESSAGE_DONE_ANNOTATING)
                 return None, None
 
         input_question = gradio.Textbox(
@@ -187,39 +187,327 @@ class AnnotatorInterFace(CollectorInterface):
     @classmethod
     def for_text_generation(
         cls,
-        source: List[str],
-        target: List[str],
+        prompts: List[str],
+        *,
+        completions: Optional[List[str]] = None,
+        dataset_name: Optional[str] = None,
+        hf_token: Optional[str] = None,
+        private: Optional[bool] = False,
+    ) -> "AnnotatorInterFace":
+        if completions is None:
+            completions = ["" for _ in range(len(prompts))]
+        if len(prompts) != len(completions):
+            raise ValueError(
+                "Source and target must be of the same length. You can add empty strings to match the lengths."
+            )
+
+        start = len(prompts)
+
+        def next_input(_prompt, _completion):
+            if prompts:
+                gradio.Info(
+                    f"{(len(prompts) / start) * 100:.2f}% done {len(prompts)} left."
+                )
+                return prompts.pop(_POP_INDEX), completions.pop(_POP_INDEX)
+            else:
+                gradio.Info(_MESSAGE_DONE_ANNOTATING)
+                return None, None
+
+        input_prompt = gradio.Textbox(value=prompts.pop(_POP_INDEX), label="prompt")
+        input_completion = gradio.Textbox(
+            value=completions.pop(_POP_INDEX), label="completion"
+        )
+        inputs = [input_prompt, input_completion]
+        return cls(
+            fn=next_input,
+            inputs=inputs,
+            outputs=inputs,
+            allow_flagging="manual",
+            submit_btn=gradio.Button("✍🏼 submit", variant="primary", visible=False),
+            clear_btn=gradio.Button("🗑️ discard", variant="stop"),
+            flagging_options=[("✍🏼 submit", "")],
+            dataset_name=dataset_name,
+            hf_token=hf_token,
+            private=private,
+        )
+
+    @classmethod
+    def for_text_generation_preference(
+        cls,
+        prompts: List[str],
+        completions_a: List[str],
+        completions_b: List[str],
         *,
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
     ) -> "AnnotatorInterFace":
-        if len(source) != len(target):
+        if len(prompts) != len(completions_a) != len(completions_b):
+            raise ValueError("Prompts and completions must be of the same length")
+
+        start = len(prompts)
+
+        def next_input(_prompt, _completion_a, _completion_b):
+            if prompts:
+                gradio.Info(
+                    f"{(len(prompts) / start) * 100:.2f}% done {len(prompts)} left."
+                )
+                return (
+                    prompts.pop(_POP_INDEX),
+                    completions_a.pop(_POP_INDEX),
+                    completions_b.pop(_POP_INDEX),
+                )
+            else:
+                gradio.Info(_MESSAGE_DONE_ANNOTATING)
+                return None, None, None
+
+        input_prompt = gradio.Textbox(value=prompts.pop(_POP_INDEX), label="prompt")
+        input_completion_a = gradio.Textbox(
+            value=completions_a.pop(_POP_INDEX), label="👆 completion A"
+        )
+        input_completion_b = gradio.Textbox(
+            value=completions_b.pop(_POP_INDEX), label="👇 completion B"
+        )
+        inputs = [input_prompt, input_completion_a, input_completion_b]
+        return cls(
+            fn=next_input,
+            inputs=inputs,
+            outputs=inputs,
+            allow_flagging="manual",
+            submit_btn=gradio.Button("✍🏼 submit", variant="primary", visible=False),
+            flagging_options=[("👆 A is better", ""), ("👇 B is better", "")],
+            clear_btn=gradio.Button("🗑️ discard", variant="stop"),
+            dataset_name=dataset_name,
+            hf_token=hf_token,
+            private=private,
+        )
+
+    @classmethod
+    def for_chat_classification(
+        cls,
+        prompts: List[List[Dict[str, str]]],
+        labels: List[str],
+        *,
+        multi_label: Optional[bool] = False,
+        dataset_name: Optional[str] = None,
+        hf_token: Optional[str] = None,
+        private: Optional[bool] = False,
+    ) -> "AnnotatorInterFace":
+        if multi_label:
+            labels = [(label, label) for label in labels]
+
+        start = len(prompts)
+        # convert to gradio.ChatMessage
+        if isinstance(prompts[0][0], dict):
+            prompts = [
+                [gradio.ChatMessage(**msg) for msg in prompt] for prompt in prompts
+            ]
+
+        def next_input(_prompt, _label):
+            if prompts:
+                gradio.Info(
+                    f"{(len(prompts) / start) * 100:.2f}% done {len(prompts)} left."
+                )
+                return prompts.pop(_POP_INDEX), []
+            else:
+                gradio.Info(_MESSAGE_DONE_ANNOTATING)
+                return None, []
+
+        inputs = gradio.Chatbot(
+            value=prompts.pop(_POP_INDEX),
+            label="prompt",
+            type="messages",
+            show_copy_button=True,
+        )
+        if multi_label:
+            inputs = [inputs, gradio.CheckboxGroup(labels, label="label")]
+        return cls(
+            fn=next_input,
+            inputs=inputs,
+            outputs=inputs,
+            flagging_options=[("✍🏼 submit", "")]
+            if multi_label
+            else [(lab, lab) for lab in labels],
+            allow_flagging="manual",
+            submit_btn=gradio.Button("✍🏼 submit", variant="primary", visible=False),
+            clear_btn=gradio.Button("🗑️ discard", variant="stop"),
+            dataset_name=dataset_name,
+            hf_token=hf_token,
+            private=private,
+        )
+
+    @classmethod
+    def for_chat_generation(
+        cls,
+        prompts: Union[List[List[Dict[str, str]]], List[List[gradio.ChatMessage]]],
+        *,
+        completions: Optional[List[str]] = None,
+        dataset_name: Optional[str] = None,
+        hf_token: Optional[str] = None,
+        private: Optional[bool] = False,
+    ) -> "AnnotatorInterFace":
+        if completions is None:
+            completions = ["" for _ in range(len(prompts))]
+        if len(prompts) != len(completions):
             raise ValueError(
                 "Source and target must be of the same length. You can add empty strings to match the lengths."
             )
-        start = len(source)
 
-        def next_input(_source, _target):
-            try:
+        start = len(prompts)
+        # convert to gradio.ChatMessage
+        if isinstance(prompts[0][0], dict):
+            prompts = [
+                [gradio.ChatMessage(**msg) for msg in prompt] for prompt in prompts
+            ]
+        for prompt in prompts:
+            assert (
+                prompt[-1].role == "user"
+            ), "Last message role should be user to have a completion."
+
+        def next_input(_prompt, _completion):
+            if prompts:
                 gradio.Info(
-                    f"{(len(source) / start) * 100:.2f}% done {len(source)} left."
+                    f"{(len(prompts) / start) * 100:.2f}% done {len(prompts)} left."
                 )
-                return source.pop(_POP_INDEX), target.pop(_POP_INDEX)
-            except IndexError:
-                gradio.Info("No data to annotate left")
+                return prompts.pop(_POP_INDEX), completions.pop(_POP_INDEX)
+            else:
+                gradio.Info(_MESSAGE_DONE_ANNOTATING)
                 return None, None
 
-        input_source = gradio.TextArea(value=source.pop(_POP_INDEX), label="source")
-        input_target = gradio.TextArea(value=target.pop(_POP_INDEX), label="target")
+        input_prompt = gradio.Chatbot(
+            value=prompts.pop(_POP_INDEX), label="prompt", type="messages"
+        )
+        input_completion = gradio.Textbox(
+            value=completions.pop(_POP_INDEX), label="completion"
+        )
+        inputs = [input_prompt, input_completion]
         return cls(
             fn=next_input,
-            inputs=[input_source, input_target],
-            outputs=[input_source, input_target],
+            inputs=inputs,
+            outputs=inputs,
             allow_flagging="manual",
             submit_btn=gradio.Button("✍🏼 submit", variant="primary", visible=False),
             clear_btn=gradio.Button("🗑️ discard", variant="stop"),
             flagging_options=[("✍🏼 submit", "")],
+            dataset_name=dataset_name,
+            hf_token=hf_token,
+            private=private,
+        )
+
+    @classmethod
+    def for_chat_generation_preference(
+        cls,
+        prompts: Union[List[List[Dict[str, str]]], List[List[gradio.ChatMessage]]],
+        completions_a: List[str],
+        completions_b: List[str],
+        *,
+        dataset_name: Optional[str] = None,
+        hf_token: Optional[str] = None,
+        private: Optional[bool] = False,
+    ) -> "AnnotatorInterFace":
+        if len(prompts) != len(completions_a) != len(completions_b):
+            raise ValueError("Prompts and completions must be of the same length")
+
+        start = len(prompts)
+        # convert to gradio.ChatMessage
+        if isinstance(prompts[0][0], dict):
+            prompts = [
+                [gradio.ChatMessage(**msg) for msg in prompt] for prompt in prompts
+            ]
+        # assert last message role is user
+        for prompt in prompts:
+            assert (
+                prompt[-1].role == "user"
+            ), "Last message role should be user to have a completion."
+
+        def next_input(_prompt, _completion_a, _completion_b):
+            if prompts:
+                gradio.Info(
+                    f"{(len(prompts) / start) * 100:.2f}% done {len(prompts)} left."
+                )
+                return (
+                    prompts.pop(_POP_INDEX),
+                    completions_a.pop(_POP_INDEX),
+                    completions_b.pop(_POP_INDEX),
+                )
+            else:
+                gradio.Info(_MESSAGE_DONE_ANNOTATING)
+                return None, None, None
+
+        input_prompt = gradio.Chatbot(
+            value=prompts.pop(_POP_INDEX), label="prompt", type="messages"
+        )
+        input_completion_a = gradio.Textbox(
+            value=completions_a.pop(_POP_INDEX), label="👆 completion A"
+        )
+        input_completion_b = gradio.Textbox(
+            value=completions_b.pop(_POP_INDEX), label="👇 completion B"
+        )
+        inputs = [input_prompt, input_completion_a, input_completion_b]
+        return cls(
+            fn=next_input,
+            inputs=inputs,
+            outputs=inputs,
+            allow_flagging="manual",
+            submit_btn=gradio.Button("✍🏼 submit", variant="primary", visible=False),
+            flagging_options=[("👆 A is better", ""), ("👇 B is better", "")],
+            clear_btn=gradio.Button("🗑️ discard", variant="stop"),
+            dataset_name=dataset_name,
+            hf_token=hf_token,
+            private=private,
+        )
+
+    @classmethod
+    def for_chat_generation_message_classification(cls):
+        raise NotImplementedError
+
+    @classmethod
+    def for_image_generation_preference(
+        cls,
+        prompts: List[str],
+        completions_a: List[Union[np.array, PIL.Image.Image, str]],
+        completions_b: List[Union[np.array, PIL.Image.Image, str]],
+        *,
+        dataset_name: Optional[str] = None,
+        hf_token: Optional[str] = None,
+        private: Optional[bool] = False,
+    ) -> "AnnotatorInterFace":
+        if len(prompts) != len(completions_a) != len(completions_b):
+            raise ValueError("Prompts and completions must be of the same length")
+
+        start = len(prompts)
+
+        def next_input(_prompt, _completion_a, _completion_b):
+            if prompts:
+                gradio.Info(
+                    f"{(len(prompts) / start) * 100:.2f}% done {len(prompts)} left."
+                )
+                return (
+                    prompts.pop(_POP_INDEX),
+                    completions_a.pop(_POP_INDEX),
+                    completions_b.pop(_POP_INDEX),
+                )
+            else:
+                gradio.Info(_MESSAGE_DONE_ANNOTATING)
+                return None, None, None
+
+        input_prompt = gradio.Textbox(value=prompts.pop(_POP_INDEX), label="prompt")
+        input_completion_a = gradio.Image(
+            value=completions_a.pop(_POP_INDEX), label="👆 completion A", height=400
+        )
+        input_completion_b = gradio.Image(
+            value=completions_b.pop(_POP_INDEX), label="👇 completion B", height=400
+        )
+        inputs = [input_prompt, input_completion_a, input_completion_b]
+
+        return cls(
+            fn=next_input,
+            inputs=inputs,
+            outputs=inputs,
+            allow_flagging="manual",
+            submit_btn=gradio.Button("✍🏼 submit", variant="primary", visible=False),
+            flagging_options=[("👆 A is better", ""), ("👇 B is better", "")],
+            clear_btn=gradio.Button("🗑️ discard", variant="stop"),
             dataset_name=dataset_name,
             hf_token=hf_token,
             private=private,
@@ -364,10 +652,6 @@ class AnnotatorInterFace(CollectorInterface):
             hf_token=hf_token,
             private=private,
         )
-
-    @classmethod
-    def for_chat_preference(cls):
-        raise NotImplementedError
 
     @override
     def attach_flagging_events(

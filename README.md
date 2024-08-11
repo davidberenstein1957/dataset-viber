@@ -36,7 +36,7 @@ TODOs:
 
 - collect data from a gr.ChatInterface
 
-https://github.com/user-attachments/assets/4ddac8a1-62ab-4b3b-9254-f924f5898075
+<https://github.com/user-attachments/assets/4ddac8a1-62ab-4b3b-9254-f924f5898075>
 
 <details>
 <summary><code>CollectorInterface</code></summary>
@@ -115,8 +115,10 @@ TODOs:
 - data - a state based on csv or remote dataset
 - data - local datasets saver / loader from csv
 - data - a way to show input-data and output-data in the interface
+- data - import data from the hub with oauth
+- data - import data from excel/csv with oauth
 
-https://github.com/user-attachments/assets/57d89edf-ae40-4942-a20a-bf8443100b66
+<https://github.com/user-attachments/assets/57d89edf-ae40-4942-a20a-bf8443100b66>
 
 #### Text
 
@@ -182,32 +184,137 @@ interface.launch()
 </details>
 
 <details>
-<summary><code>text-generation</code> or <code>translation</code></summary>
+<summary><code>text-generation</code> or <code>translation</code>or <code>completion</code></summary>
 
 ```python
 from data_viber import AnnotatorInterFace
 
-source = ["Tell me something about Anthony Bourdain."]
-target = ["Anthony Michael Bourdain was an American celebrity chef, author, and travel documentarian."]
+prompts = ["Tell me something about Anthony Bourdain."]
+completions = ["Anthony Michael Bourdain was an American celebrity chef, author, and travel documentarian."]
 
 interface = AnnotatorInterFace.for_text_generation(
-    source=source,
-    target=target, # optional to show initial target
+    prompts=prompts, # source
+    completions=completions, # optional to show initial completion / target
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
 
 ```
+
 </details>
 
-#### Chat
+<details>
+<summary><code>text-generation-preference</code></summary>
 
-Annotate data for `chat`. [WIP]
+```python
+from data_viber import AnnotatorInterFace
 
-Annotate data for `chat_preference`. [WIP]
+prompts = ["Tell me something about Anthony Bourdain."]
+completions_a = ["Anthony Michael Bourdain was an American celebrity chef, author, and travel documentarian."]
+completions_b = ["Anthony Michael Bourdain was an cool guy that knew how to cook."]
+
+interface = AnnotatorInterFace.for_text_generation(
+    prompts=prompts,
+    completions_a=completions_a,
+    completions_b=completions_b,
+    dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
+)
+```
+
+</details>
+
+#### Chat and multi-modal chat
+
+> [!TIP] I recommend uploading the files files to a cloud storage and using the remote URL to avoid any issues. This can be done [using Hugging Face Datasets](https://huggingface.co/docs/datasets/en/image_load#local-files). As shown in [utils](#utils). Additionally [GradioChatbot](https://www.gradio.app/docs/gradio/chatbot#behavior) shows how to use the chatbot interface for multi-modal.
+
+<details>
+<summary><code>chat-classification</code></summary>
+
+```python
+from data_viber import AnnotatorInterFace
+
+prompts = [
+    [
+        {
+            "role": "user",
+            "content": "Tell me something about Anthony Bourdain."
+        },
+        {
+            "role": "assistant",
+            "content": "Anthony Michael Bourdain was an American celebrity chef, author, and travel documentarian."
+        }
+    ]
+]
+
+interface = AnnotatorInterFace.for_chat_classification(
+    prompts=prompts,
+    labels=["toxic", "non-toxic"],
+    dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
+)
+interface.launch()
+```
+
+<details>
+<summary><code>chat-generation</code></summary>
+
+```python
+from data_viber import AnnotatorInterFace
+
+prompts = [
+    [
+        {
+            "role": "user",
+            "content": "Tell me something about Anthony Bourdain."
+        }
+    ]
+]
+
+interface = AnnotatorInterFace.for_chat_generation(
+    prompts=prompts,
+    dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
+)
+interface.launch()
+```
+
+</details>
+
+<details>
+<summary><code>chat-generation-preference</code></summary>
+
+```python
+from data_viber import AnnotatorInterFace
+
+prompts = [
+    [
+        {
+            "role": "user",
+            "text": "Tell me something about Anthony Bourdain."
+        }
+    ]
+]
+completions_a = [
+    "Anthony Michael Bourdain was an American celebrity chef, author, and travel documentarian.",
+]
+completions_b = [
+    "Anthony Michael Bourdain was an cool guy that knew how to cook."
+]
+
+interface = AnnotatorInterFace.for_chat_generation_preference(
+    prompts=prompts,
+    completions_a=completions_a,
+    completions_b=completions_b,
+    dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
+)
+interface.launch()
+```
+
+</details>
+
+Annotate data for `chat-generation-message-classification`. [WIP]
 
 #### Image and multi-modal
 
-I recommend uploading the files files to a cloud storage and using the remote URL to avoid any issues. This can be done [using Hugging Face Datasets](https://huggingface.co/docs/datasets/en/image_load#local-files).
+> [!TIP]
+> I recommend uploading the files files to a cloud storage and using the remote URL to avoid any issues. This can be done [using Hugging Face Datasets](https://huggingface.co/docs/datasets/en/image_load#local-files). As shown in [utils](#utils).
 
 <details>
 <summary><code>image-classification</code> and <code>multi-label-text-classification</code></summary>
@@ -226,12 +333,13 @@ interface = AnnotatorInterFace.for_image_classification(
     labels=labels,
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
+interface.launch()
 ```
 
 </details>
 
 <details>
-<summary><code>image-2-text</code> or <code>image-description</code></summary>
+<summary><code>image-description</code></summary>
 
 ```python
 from data_viber import AnnotatorInterFace
@@ -249,7 +357,6 @@ interface = AnnotatorInterFace.for_image_description(
 )
 interface.launch()
 ```
-
 </details>
 
 <details>
@@ -276,6 +383,37 @@ interface.launch()
 
 </details>
 
+<details>
+<summary><code>image-generation-preference</code></summary>
+
+```python
+from data_viber import AnnotatorInterFace
+
+prompts = [
+    "Anthony Bourdain laughing",
+    "David Chang wearing a suit"
+]
+
+images_a = [
+    "https://upload.wikimedia.org/wikipedia/commons/8/85/David_Chang_David_Shankbone_2010.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Anthony_Bourdain_Peabody_2014b.jpg/440px-Anthony_Bourdain_Peabody_2014b.jpg",
+]
+
+images_b = [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Anthony_Bourdain_Peabody_2014b.jpg/440px-Anthony_Bourdain_Peabody_2014b.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/8/85/David_Chang_David_Shankbone_2010.jpg"
+]
+
+interface = AnnotatorInterFace.for_image_generation_preference(
+    prompts=prompts,
+    completions_a=images_a,
+    completions_b=images_b,
+    dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
+)
+interface.launch()
+```
+
+
 ### ExplorerInterface
 
 > Built on top of the `gr.ScatterPlot`, `gr.DataFrame`, `umap-learn`, and `sentence-transformers` to understand the data distribution and similarity.
@@ -284,14 +422,13 @@ interface.launch()
 
 TODOs:
 
-- create basic explorer for text data
-- add score representation
+- add more  subtle embedding support
 - add filters for categories / scores
-- add image support
+- validate image support
 - create label explorer
 
 <details>
-<summary><code>for_dataframe_visualization</code></summary>
+<summary><code>for_text_visualization</code></summary>
 
 ```python
 from data_viber import ExplorerInterface
@@ -309,14 +446,14 @@ df = pd.DataFrame({
     'score': [10, 20, 30, 40]  # This column will size the points
 })
 
-visualizer = ExplorerInterface.for_dataframe_visualization(
+interface = ExplorerInterface.for_text_visualization(
     df,
     text_column='text',
     additional_columns=['category', 'length'],
     label_column='category',
     score_column='score'
 )
-visualizer.launch()
+interface.launch()
 ```
 
 </details>
@@ -324,7 +461,7 @@ visualizer.launch()
 ### Utils
 
 <details>
-<summary>shuffle input data in the same order</summary>
+<summary>shuffle inputs in the same order</summary>
 
 When working with multiple inputs, you might want to shuffle them in the same order.
 
@@ -349,6 +486,40 @@ def shuffle_lists(*lists):
         [lst[i] for i in indices]
         for lst in lists
     ]
+```
+
+</details>
+
+<details>
+<summary>random swap to randomize completions</summary>
+
+When working with multiple completions, you might want to swap out the completions at the same index, where each completion index x is swapped with a random completion at the same index. This is useful for preference learning.
+
+```python
+def swap_completions(*lists):
+    # Assuming all lists are of the same length
+    length = len(lists[0])
+
+    # Check if all lists have the same length
+    if not all(len(lst) == length for lst in lists):
+        raise ValueError("All input lists must have the same length")
+
+    # Convert the input lists (which are tuples) to a list of lists
+    lists = [list(lst) for lst in lists]
+
+    # Iterate over each index
+    for i in range(length):
+        # Get the elements at index i from all lists
+        elements = [lst[i] for lst in lists]
+
+        # Randomly shuffle the elements
+        random.shuffle(elements)
+
+        # Assign the shuffled elements back to the lists
+        for j, lst in enumerate(lists):
+            lst[i] = elements[j]
+
+    return lists
 ```
 
 </details>
@@ -396,7 +567,7 @@ Follow this [guide on making first contributions](https://github.com/firstcontri
 
 ### Inspirations
 
-- https://huggingface.co/spaces/davidberenstein1957/llm-human-feedback-collector-chat-interface-dpo
-- https://huggingface.co/spaces/davidberenstein1957/llm-human-feedback-collector-chat-interface-kto
-- https://medium.com/@oxenai/collecting-data-from-human-feedback-for-generative-ai-ec9e20bf01b9
-- https://hamel.dev/notes/llm/finetuning/04_data_cleaning.html
+- <https://huggingface.co/spaces/davidberenstein1957/llm-human-feedback-collector-chat-interface-dpo>
+- <https://huggingface.co/spaces/davidberenstein1957/llm-human-feedback-collector-chat-interface-kto>
+- <https://medium.com/@oxenai/collecting-data-from-human-feedback-for-generative-ai-ec9e20bf01b9>
+- <https://hamel.dev/notes/llm/finetuning/04_data_cleaning.html>

@@ -12,126 +12,144 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import TYPE_CHECKING, Optional, Union
+
 import altair as alt
+import gradio
 import gradio as gr
 import pandas as pd
 import umap
-from sentence_transformers import SentenceTransformer
+
+if TYPE_CHECKING:
+    from sentence_transformers import SentenceTransformer
 
 
-class ExplorerInterface(gr.Interface):
+class ExplorerInterface(gradio.Interface):
     """
     https://altair-viz.github.io/gallery/scatter_linked_table.html
     https://altair-viz.github.io/gallery/scatter_href.html
+    https://altair-viz.github.io/user_guide/interactions.html#selection-targets
     """
 
     def __init__(self, fn, inputs, outputs, **kwargs):
         super().__init__(fn, inputs, outputs, **kwargs)
 
+    def _set_embedding_model(self, embedding_model: str):
+        import torch
+        from sentence_transformers import SentenceTransformer
+
+        if isinstance(embedding_model, SentenceTransformer):
+            self.embedding_model = embedding_model
+        elif isinstance(embedding_model, str):
+            device = "cpu"
+            if torch.backends.mps.is_available():
+                device = "mps"
+            elif torch.cuda.is_available():
+                device = "cuda"
+            self.embedding_model = SentenceTransformer(
+                model_name_or_path=embedding_model, device=device
+            )
+        else:
+            raise ValueError(
+                "Embedding model should be of type `str` or `SentenceTransformer`"
+            )
+
     @classmethod
-    def for_dataframe_visualization(
+    def for_text_visualization(
         cls,
         dataframe: pd.DataFrame,
         text_column: str,
-        additional_columns: list = None,
+        *,
         label_column: str = None,
         score_column: str = None,
-        umap_n_components: int = 2,
-        n_neighbors: int = 15,
-        min_dist: float = 0.1,
-        model_name: str = "all-MiniLM-L6-v2",
+        embedding_model: Optional[
+            Union["SentenceTransformer", str]
+        ] = "all-MiniLM-L6-v2",
+        umap_kwargs: dict = {},
     ):
-        if additional_columns is None:
-            additional_columns = []
-
         # Extract texts
         texts = dataframe[text_column].tolist()
 
-        # Embed the texts using sentence-transformers
-        model = SentenceTransformer(model_name)
-        embeddings = model.encode(texts, convert_to_numpy=True)
-
-        # Apply UMAP for dimensionality reduction
-        reducer = umap.UMAP(
-            n_components=umap_n_components, n_neighbors=n_neighbors, min_dist=min_dist
-        )
-        umap_embeddings = reducer.fit_transform(embeddings)
-
-        # Create a DataFrame for plotting
-        umap_df = pd.DataFrame(
-            umap_embeddings,
-            columns=[f"Component_{i+1}" for i in range(umap_n_components)],
-        )
-        umap_df[text_column] = texts
-        umap_df["Index"] = dataframe.index
+        # Apply embedding reduction
+        component_columns: list[str] = ["x", "y"]
+        if all([col in dataframe.columns for col in component_columns]):
+            umap_df = dataframe[component_columns]
+        else:
+            cls._set_embedding_model(cls, embedding_model)
+            embeddings = cls.embedding_model.encode(texts, convert_to_numpy=True)
+            reducer = umap.UMAP(n_components=2, **umap_kwargs)
+            umap_embeddings = reducer.fit_transform(embeddings)
+            # Create a DataFrame for plotting
+            umap_df = pd.DataFrame(
+                umap_embeddings,
+                columns=component_columns,
+            )
 
         # Include additional columns
-        for col in additional_columns:
-            if col in dataframe.columns:
-                umap_df[col] = dataframe[col]
-
-        if label_column and label_column in dataframe.columns:
-            umap_df[label_column] = dataframe[label_column]
-
+        umap_df["Index"] = dataframe.index
+        for col in dataframe.columns:
+            umap_df[col] = dataframe[col]
         if score_column and score_column in dataframe.columns:
-            umap_df[score_column] = dataframe[score_column]
             umap_df["Size"] = umap_df[score_column].div(umap_df[score_column].mean())
 
-        # Brush for selection
-        brush = alt.selection_interval()
-
         # Scatter Plot with color change on hover
+        brush = alt.selection_interval()
+        if label_column and label_column in dataframe.columns:
+            color = alt.condition(
+                brush,
+                alt.Color(f"{label_column}:N", scale=alt.Scale(scheme="category10")),
+                alt.value("grey"),
+            )
+        else:
+            color = alt.condition(brush, alt.value("steelblue"), alt.value("grey"))
+        if score_column and score_column in dataframe.columns:
+            size = alt.Size(
+                "Size:Q",
+                scale=alt.Scale(domain=[umap_df["Size"].min(), umap_df["Size"].max()]),
+            )
+            encode_kwargs = {"size": size}
+        else:
+            encode_kwargs = {}
+
+        size_kwargs = {"width": 600, "height": 600}
+        size_kwargs = {}
         points = (
-            alt.Chart(umap_df)
-            .mark_point()
+            alt.Chart(umap_df, **size_kwargs)
+            .mark_circle(size=60)
             .encode(
-                x=alt.X("Component_1:Q"),
-                y=alt.Y("Component_2:Q"),
-                color=alt.condition(
-                    brush,
-                    alt.Color(
-                        f"{label_column}:N", scale=alt.Scale(scheme="category10")
-                    ),
-                    alt.value("grey"),
-                ),
-                size=alt.Size(
-                    "Size:Q",
-                    scale=alt.Scale(
-                        domain=[umap_df["Size"].min(), umap_df["Size"].max()]
-                    ),
-                )
-                if score_column
-                else None,
-                tooltip=[text_column + ":N"]
-                + [f"{col}:N" for col in additional_columns],
+                x=alt.X("x:Q"),
+                y=alt.Y("y:Q"),
+                tooltip=[
+                    f"{col}:N"
+                    for col in dataframe.columns
+                    if col not in component_columns + ["Index" + "Size"]
+                ],
+                color=color,
+                **encode_kwargs,
             )
             .add_params(brush)
         )
+        if label_column and label_column in dataframe.columns:
+            points.add_params(alt.selection_point(fields=[label_column], bind="legend"))
 
         # Data Tables
         ranked_text = (
-            alt.Chart(umap_df)
+            alt.Chart(umap_df, **size_kwargs)
             .mark_text(align="left")
             .encode(y=alt.Y("row_number:O").axis(None))
             .transform_filter(brush)
             .transform_window(row_number="row_number()")
-            .transform_filter(alt.datum.row_number < 15)
+            .transform_filter(alt.datum.row_number < 25)
         )
-
-        text_charts = [
-            ranked_text.encode(text=text_column + ":N").properties(
-                title=alt.Title(text=text_column, align="left")
-            )
-        ]
-
-        for col in additional_columns:
+        text_charts = []
+        for col in dataframe.columns:
+            if col in component_columns + ["Index" + "Size"]:
+                continue
             text_charts.append(
                 ranked_text.encode(text=f"{col}:N").properties(
                     title=alt.Title(text=col, align="left")
                 )
             )
-
-        # Combine data tables horizontally
         text = alt.hconcat(*text_charts)
 
         # Build chart
@@ -143,38 +161,12 @@ class ExplorerInterface(gr.Interface):
         )
 
         # Gradio inputs and outputs
-        inputs = gr.Plot(plot)
+        gr_dataframe = gr.Dataframe(umap_df, visible=False)
+        gr_plot = gr.Plot(plot)
+        inputs = [gr_dataframe, gr_plot]
 
-        def _test(x):
-            print(x)
-            return x
+        # Logic update function
+        def _test(_gr_dataframe, _gr_plot):
+            return _gr_dataframe, _gr_plot
 
-        # Return an instance of the class
         return cls(fn=_test, inputs=inputs, outputs=inputs)
-
-
-# Example usage:
-if __name__ == "__main__":
-    # Example DataFrame with text, label, and score columns
-    df = pd.DataFrame(
-        {
-            "text": [
-                "The quick brown fox jumps over the lazy dog.",
-                "The quick brown fox jumps over the lazy dog.",
-                "A journey of a thousand miles begins with a single step.",
-                "To be or not to be, that is the question.",
-            ],
-            "category": ["A", "A", "B", "C"],
-            "length": [44, 44, 36, 35],
-            "score": [10, 20, 30, 40],  # This column will size the points
-        }
-    )
-
-    visualizer = ExplorerInterface.for_dataframe_visualization(
-        df,
-        text_column="text",
-        additional_columns=["category", "length"],
-        label_column="category",
-        score_column="score",
-    )
-    visualizer.launch()
