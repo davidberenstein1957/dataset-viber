@@ -48,12 +48,7 @@ _HIGHLIGHT_TEXT_KWARGS = {
     "combine_adjacent": True,
     "adjacent_separator": "",
 }
-_CHATBOT_KWARGS = {
-    "type": "messages",
-    "label": "prompt",
-    "show_copy_button": True,
-    "likable": True,
-}
+_CHATBOT_KWARGS = {"type": "messages", "label": "prompt", "show_copy_button": True}
 
 if TYPE_CHECKING:
     from transformers.pipelines import Pipeline
@@ -448,7 +443,7 @@ class AnnotatorInterFace(CollectorInterface):
         """
         # Input validation
         start = len(prompts)
-        cls._convert_to_chat_message(prompts)
+        prompts = cls._convert_to_chat_message(prompts)
 
         # Process function
         def next_input(_prompt, _label):
@@ -500,6 +495,59 @@ class AnnotatorInterFace(CollectorInterface):
             allow_flagging="manual",
             submit_btn=gradio.Button("✍🏼 submit", variant="primary", visible=False),
             clear_btn=gradio.Button("🗑️ discard", variant="stop"),
+            dataset_name=dataset_name,
+            hf_token=hf_token,
+            private=private,
+        )
+
+    @classmethod
+    def for_chat_classification_per_message(
+        cls,
+        prompts: List[List[Dict[str, str]]],
+        labels: List[str],
+        *,
+        fn: Optional[Union["Pipeline", callable]] = None,
+        dataset_name: Optional[str] = None,
+        hf_token: Optional[str] = None,
+        private: Optional[bool] = False,
+    ) -> "AnnotatorInterFace":
+        if fn is not None:
+            raise NotImplementedError(
+                "fn is not supported for chat message classification."
+            )
+        # Input validation
+        start = len(prompts)
+        prompts = cls._convert_to_chat_message(prompts, with_turn=True)
+
+        # Process function
+        def next_input(_prompt, *args):
+            if prompts:
+                cls._update_message(prompts, start)
+                prompt = prompts.pop(_POP_INDEX)
+                return prompt, *[""] * len(labels)
+            else:
+                cls._done_message()
+                return "", *[""] * len(labels)
+
+        # UI Config
+        prompt, *args = next_input(None, None)
+        chatbot = gradio.Chatbot(
+            value=prompt,
+            **_CHATBOT_KWARGS,
+        )
+        inputs = [
+            gradio.Dropdown(choices=range(100), label=label, multiselect=True)
+            for label in labels
+        ]
+        inputs = [chatbot] + inputs
+        return cls(
+            fn=next_input,
+            inputs=inputs,
+            outputs=inputs,
+            allow_flagging="manual",
+            submit_btn=gradio.Button("✍🏼 submit", variant="primary", visible=False),
+            clear_btn=gradio.Button("🗑️ discard", variant="stop"),
+            flagging_options=[("✍🏼 submit", "")],
             dataset_name=dataset_name,
             hf_token=hf_token,
             private=private,
@@ -960,15 +1008,31 @@ class AnnotatorInterFace(CollectorInterface):
 
     @staticmethod
     def _convert_to_chat_message(
-        messages: List[List[Dict[str, str]]],
+        messages: Union[List[List[Dict[str, str]]], List[List[gradio.ChatMessage]]],
+        with_turn=False,
     ) -> List[List[gradio.ChatMessage]]:
-        messages = [
-            [gradio.ChatMessage(**msg) for msg in prompt] for prompt in messages
-        ]
-        for prompt in messages:
-            assert (
-                prompt[-1].role == "user"
-            ), "Last message role should be user to have a completion."
+        if not isinstance(messages[0][0], gradio.ChatMessage):
+            messages = [
+                [gradio.ChatMessage(**msg) for msg in prompt] for prompt in messages
+            ]
+        if with_turn:
+            messages = [
+                [
+                    gradio.ChatMessage(
+                        role=msg.role,
+                        content=msg.content,
+                        metadata={
+                            "title": f"Turn {idx} - role: {msg.role} - length {len(msg.content)}"
+                        },
+                    )
+                    for idx, msg in enumerate(prompt)
+                ]
+                for prompt in messages
+            ]
+        # for prompt in messages:
+        #     assert (
+        #         prompt[-1].role == "user"
+        #     ), "Last message role should be user to have a completion."
         return messages
 
     @staticmethod
