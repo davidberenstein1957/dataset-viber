@@ -173,7 +173,7 @@ interface.launch()
 </details>
 
 <details>
-<summary><code>text-generation</code> or <code>translation</code>or <code>completion</code></summary>
+<summary><code>text-generation</code>/<code>translation</code>/<code>completion</code></summary>
 
 ```python
 from data_viber import AnnotatorInterFace
@@ -392,7 +392,7 @@ interface.launch()
 </details>
 
 <details>
-<summary><code>image-question-answering</code> or <code>visual-question-asnwering</code></summary>
+<summary><code>image-question-answering</code>/<code>visual-question-asnwering</code></summary>
 
 ```python
 from data_viber import AnnotatorInterFace
@@ -456,7 +456,7 @@ interface.launch()
 <img width="1090" alt="image" src="https://github.com/user-attachments/assets/bf189482-8eab-40f9-aee1-671f3dfa4ef4">
 
 <details>
-<summary><code>for_text_visualization</code></summary>
+<summary><code>text-visualization</code></summary>
 
 ```python
 from data_viber import ExplorerInterface
