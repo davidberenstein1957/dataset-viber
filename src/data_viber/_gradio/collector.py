@@ -41,6 +41,22 @@ class CollectorInterface(gradio.Interface):
         show_embedded_viewer: Optional[bool] = True,
         **kwargs,
     ):
+        """
+        Load a CollectorInterface with data logging capabilities.
+
+        Args:
+            fn: the function to run
+            inputs: the input component(s)
+            outputs: the output component(s)
+            dataset_name: the "org/dataset" to which the data needs to be logged
+            hf_token: optional token to pass, otherwise will default to env var HF_TOKEN
+            private: whether or not to create a private repo
+            allow_flagging: One of "never", "auto", or "manual". If "never" or "auto", users will not see a button to flag an input and output. If "manual", users will see a button to flag. If "auto", every input the user submits will be automatically flagged, along with the generated output. If "manual", both the input and outputs are flagged when the user clicks flag button. This parameter can be set with environmental variable GRADIO_ALLOW_FLAGGING; otherwise defaults to "manual".
+            flagging_options: If provided, allows user to select from the list of options when flagging. Only applies if allow_flagging is "manual". Can either be a list of tuples of the form (label, value), where label is the string that will be displayed on the button and value is the string that will be stored in the flagging CSV; or it can be a list of strings ["X", "Y"], in which case the values will be the list of strings and the labels will ["Flag as X", "Flag as Y"], etc.
+
+        Return:
+            an intialized CollectorInterface
+        """
         self._validate_flagging_options(
             allow_flagging=allow_flagging, flagging_options=flagging_options
         )
@@ -78,6 +94,8 @@ class CollectorInterface(gradio.Interface):
         **kwargs,
     ) -> gradio.Interface:
         """
+        Load an existing transformers.pipeline into a CollectorInterface with data logging capabilities.
+
         Parameters:
             pipeline: an initialized the transformers.pipeline
             dataset_name: the "org/dataset" to which the data needs to be logged
@@ -114,6 +132,8 @@ class CollectorInterface(gradio.Interface):
         **kwargs,
     ) -> gradio.Interface:
         """
+        Load an existing gradio.Interface into a CollectorInterface with data logging capabilities.
+
         Parameters:
             interface: any initialized gradio.Interface
             dataset_name: the "org/dataset" to which the data needs to be logged

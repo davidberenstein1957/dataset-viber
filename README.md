@@ -9,9 +9,9 @@
 
 I've cooked up Data Viber, a cool set of tools to make your life easier when dealing with data for NLP and image models. Data Viber is all about making your data prep journey smooth and fun. It's **not production-ready** or trying to be all fancy and formal - just a bunch of cool **tools to help you collect feedback and do vibe-checks** for data for AI models. Want to see it in action? Just plug it in and start vibing with your data. It's that easy! Vibing
 
-- **CollectorInterface**: Lazily collect data without human annotation.
-- **AnnotatorInterface**: Work through your data and annotate it with ease.
-- **ExplorerInterface**: Explore your data distribution and similarity.
+- **CollectorInterface**: Lazily collect data of interactions without human annotation.
+- **AnnotatorInterface**: Walkt through your data and annotate it with ease.
+- **ExplorerInterface**: Explore your data distribution.
 
 Need any tweaks or want to hear more about a specific tool? Just open an issue or give me a shout!
 
@@ -123,6 +123,7 @@ labels = ["positive", "negative"]
 interface = AnnotatorInterFace.for_text_classification(
     texts=texts,
     labels=labels,
+    fn=None, # a callable e.g. (function or transformers pipelines) that returns [{"label": str, "score": float}]
     dataset_name=None, # "<my_hf_org>/<my_dataset>" if you want to log to the hub
     multi_label=False # True if you have multi-label data
 )
@@ -142,7 +143,8 @@ labels = ["NAME", "LOC"]
 
 interface = AnnotatorInterFace.for_token_classification(
     texts=texts,
-    labels=labels,
+    labels=labels,(
+    fn=None, # a callable e.g. (function or transformers pipelines) that returns [("text", "label")]
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
 interface.launch()
@@ -162,6 +164,7 @@ contexts = ["Anthony Bourdain was an amazing chef in New York."]
 interface = AnnotatorInterFace.for_question_answering(
     questions=questions,
     contexts=contexts,
+    fn=None, # a callable e.g. (function or transformers pipelines) that returns [("text", "label")]
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
 interface.launch()
@@ -181,6 +184,7 @@ completions = ["Anthony Michael Bourdain was an American celebrity chef, author,
 interface = AnnotatorInterFace.for_text_generation(
     prompts=prompts, # source
     completions=completions, # optional to show initial completion / target
+    fn=None, # a callable e.g. (function or transformers pipelines) that returns `str`
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
 
@@ -202,6 +206,7 @@ interface = AnnotatorInterFace.for_text_generation(
     prompts=prompts,
     completions_a=completions_a,
     completions_b=completions_b,
+    fn=None, # a callable e.g. (function or transformers pipelines) that returns `str`
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
 ```
@@ -235,6 +240,7 @@ prompts = [
 interface = AnnotatorInterFace.for_chat_classification(
     prompts=prompts,
     labels=["toxic", "non-toxic"],
+    fn=None, # a callable e.g. (function or transformers pipelines) that returns [{"label": str, "score": float}]
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
 interface.launch()
@@ -257,8 +263,14 @@ prompts = [
     ]
 ]
 
+completions = [
+    "Anthony Michael Bourdain was an American celebrity chef, author, and travel documentarian.",
+]
+
 interface = AnnotatorInterFace.for_chat_generation(
     prompts=prompts,
+    completions=completions,
+    fn=None, # a callable e.g. (function or transformers pipelines) that returns `str`
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
 interface.launch()
@@ -291,6 +303,7 @@ interface = AnnotatorInterFace.for_chat_generation_preference(
     prompts=prompts,
     completions_a=completions_a,
     completions_b=completions_b,
+    fn=None, # a callable e.g. (function or transformers pipelines) that returns `str`
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
 interface.launch()
@@ -318,6 +331,7 @@ labels = ["anthony-bourdain", "not-anthony-bourdain"]
 interface = AnnotatorInterFace.for_image_classification(
     images=images,
     labels=labels,
+    fn=None, # NotImplementedError("Not implemented yet")
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
 interface.launch()
@@ -340,6 +354,7 @@ description = ["Anthony Bourdain laughing", "David Chang wearing a suit"]
 interface = AnnotatorInterFace.for_image_description(
     images=images,
     descriptions=descriptions, # optional to show initial descriptions
+    fn=None, # NotImplementedError("Not implemented yet")
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
 interface.launch()
@@ -363,6 +378,7 @@ interface = AnnotatorInterFace.for_image_question_answering(
     images=images,
     questions=questions, # optional to show initial questions
     answers=answers, # optional to show initial answers
+    fn=None, # NotImplementedError("Not implemented yet")
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
 interface.launch()
@@ -395,6 +411,7 @@ interface = AnnotatorInterFace.for_image_generation_preference(
     prompts=prompts,
     completions_a=images_a,
     completions_b=images_b,
+    fn=None, # NotImplementedError("Not implemented yet")
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
 interface.launch()
@@ -404,7 +421,7 @@ interface.launch()
 
 ### ExplorerInterface
 
-> Built on top of the `gr.ScatterPlot`, `gr.DataFrame`, `umap-learn`, and `sentence-transformers` to understand the data distribution and similarity.
+> Built on top of the `gr.ScatterPlot`, `gr.DataFrame`, `umap-learn`, and `sentence-transformers` to understand your dataset distribution.
 
 <img width="1090" alt="image" src="https://github.com/user-attachments/assets/bf189482-8eab-40f9-aee1-671f3dfa4ef4">
 
@@ -548,8 +565,8 @@ Follow this [guide on making first contributions](https://github.com/firstcontri
 
 #### ideas AnnotatorInterface
 
+- continuous chat preference
 - add buttons to sort on embeddings similarity and sort on random
-- models to the loop (potentially using from_pipeline = interactive)
 - counters for the number of annotations
 - data state based on csv or remote dataset (not redo on restart)
 - show input-data and output-data in the interface

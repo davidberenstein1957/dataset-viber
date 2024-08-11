@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict, List, Optional, Union, override
+from typing import TYPE_CHECKING, Dict, List, Optional, Union, override
 
 import gradio
 import numpy as np
@@ -26,7 +26,7 @@ from gradio.flagging import FlagMethod
 
 from data_viber._gradio.collector import CollectorInterface
 
-_DEFAULT_COLORS = [
+__HIGHLIGHT_TEXT_COLORS = [
     "#a6cee3",
     "#1f78b4",
     "#b2df8a",
@@ -42,6 +42,15 @@ _DEFAULT_COLORS = [
 ]
 _POP_INDEX = 0
 _MESSAGE_DONE_ANNOTATING = "No data left to annotate."
+_HIGHLIGHT_TEXT_KWARGS = {
+    "interactive": True,
+    "show_legend": False,
+    "combine_adjacent": True,
+    "adjacent_separator": "",
+}
+
+if TYPE_CHECKING:
+    from transformers.pipelines import Pipeline
 
 
 class AnnotatorInterFace(CollectorInterface):
@@ -51,34 +60,72 @@ class AnnotatorInterFace(CollectorInterface):
         texts: List[str],
         labels: List[str],
         *,
+        multi_label: Optional[bool] = False,
+        fn: Optional[Union["Pipeline", callable]] = None,
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
-        multi_label: Optional[bool] = False,
     ) -> "AnnotatorInterFace":
+        """
+        Annotator Interface for text classification tasks.
+
+        Args:
+            texts (List[str]): List of texts to annotate.
+            labels (List[str]): List of labels to choose from.
+            multi_label (Optional[bool], optional): Whether to allow multiple labels. Defaults to False.
+            fn (Optional[Union["Pipeline", callable]], optional): Prediction function to apply to the text before annotating.
+                Expecting it takes a `str` and returns [{"label": str, "score": float}].
+                Defaults to None.
+            dataset_name (Optional[str], optional): Name of the dataset to save the annotations. Defaults to None.
+            hf_token (Optional[str], optional): Hugging Face API token to save the annotations. Defaults to None.
+            private (Optional[bool], optional): Whether to save the annotations as private. Defaults to False.
+
+        Returns:
+            AnnotatorInterFace: An instance of AnnotatorInterFace
+        """
+        # Process function
         start = len(texts)
 
         def next_input(_text, _label):
             if texts:
-                gradio.Info(
-                    f"{(len(texts) / start) * 100:.2f}% done {len(texts)} left."
-                )
+                cls._update_message(texts, start)
                 text = texts.pop(_POP_INDEX)
-                return (text, []) if multi_label else text
+                label = [] if fn is None else fn(text)
+                if multi_label:
+                    label = [lab["label"] for lab in label if lab["score"] > 0.5]
+                    return (text, label)
+                elif not multi_label and fn is not None:
+                    return (text, label[0]["label"])
+                else:
+                    return text
             else:
-                gradio.Info(_MESSAGE_DONE_ANNOTATING)
-                return ("", []) if multi_label else ""
+                cls._done_message()
+                return ("", []) if multi_label or fn is not None else ""
 
-        inputs = gradio.Textbox(value=texts.pop(_POP_INDEX), label="text")
-        if multi_label:
-            inputs = [inputs, gradio.CheckboxGroup(labels, label="label")]
+        if multi_label or fn is not None:
+            text, label = next_input(None, None)
+            if multi_label:
+                check_box_group = gradio.CheckboxGroup(
+                    labels, value=label, label="label"
+                )
+            else:
+                check_box_group = gradio.Radio(labels, value=label, label="label")
+        else:
+            text = next_input(None, None)
+
+        # UI Config
+        inputs = gradio.Textbox(value=text, label="text")
+        if multi_label or fn is not None:
+            inputs = [inputs, check_box_group]
         return cls(
             fn=next_input,
             inputs=inputs,
             outputs=inputs,
-            flagging_options=[("✍🏼 submit", "")]
-            if multi_label
-            else [(lab, lab) for lab in labels],
+            flagging_options=(
+                [("✍🏼 submit", "")]
+                if multi_label or fn is not None
+                else [(lab, lab) for lab in labels]
+            ),
             allow_flagging="manual",
             submit_btn=gradio.Button("✍🏼 submit", variant="primary", visible=False),
             clear_btn=gradio.Button("🗑️ discard", variant="stop"),
@@ -93,36 +140,51 @@ class AnnotatorInterFace(CollectorInterface):
         texts: List[str],
         labels: List[str],
         *,
+        fn: Optional[Union["Pipeline", callable]] = None,
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
     ) -> "AnnotatorInterFace":
-        if isinstance(labels, list):
-            labels = {label: color for label, color in zip(labels, _DEFAULT_COLORS)}
+        """
+        Annotator Interface for token classification tasks.
 
-        def convert_to_tokens(text: str):
-            return [(char, None) for char in text]
+        Args:
+            texts (List[str]): List of texts to annotate.
+            labels (List[str]): List of labels to choose from.
+            fn (Optional[Union["Pipeline", callable]], optional): Prediction function to apply to the text before annotating.
+                Expecting it takes a `str` and returns List[Tuple[str, str]] [("text","label")].
+                Defaults to None.
+            dataset_name (Optional[str], optional): Name of the dataset to save the annotations. Defaults to None.
+            hf_token (Optional[str], optional): Hugging Face API token to save the annotations. Defaults to None.
+            private (Optional[bool], optional): Whether to save the annotations as private. Defaults to False.
 
+        Returns:
+            AnnotatorInterFace: An instance of AnnotatorInterFace
+        """
+        # Process function
         start = len(texts)
 
         def next_input(_spans):
             if texts:
-                gradio.Info(
-                    f"{(len(texts) / start) * 100:.2f}% done {len(texts)} left."
-                )
-                return convert_to_tokens(texts.pop(_POP_INDEX))
+                cls._update_message(texts, start)
+                text = texts.pop(_POP_INDEX)
+                text = cls._convert_to_tokens(text) if fn is None else fn(text)
+                return text
             else:
-                gradio.Info(_MESSAGE_DONE_ANNOTATING)
-                return ""
+                cls._done_message()
+                return cls._convert_to_tokens(" ")
 
+        # UI Config
+        if isinstance(labels, list):
+            labels = {
+                label: color for label, color in zip(labels, __HIGHLIGHT_TEXT_COLORS)
+            }
+        text = next_input(None)
         input_text = gradio.HighlightedText(
-            value=convert_to_tokens(texts.pop(_POP_INDEX)),
+            value=text,
             color_map=labels,
             label="spans",
-            interactive=True,
-            show_legend=False,
-            combine_adjacent=True,
-            adjacent_separator="",
+            **_HIGHLIGHT_TEXT_KWARGS,
         )
         return cls(
             fn=next_input,
@@ -143,32 +205,57 @@ class AnnotatorInterFace(CollectorInterface):
         questions: List[str],
         contexts: List[str],
         *,
+        fn: Optional[Union["Pipeline", callable]] = None,
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
     ) -> "AnnotatorInterFace":
-        if len(questions) != len(contexts):
-            raise ValueError("Questions and contexts must be of the same length")
-        start = len(questions)
+        """
+        Annotator Interface for question answering tasks.
 
+        Args:
+            questions (List[str]): List of questions to annotate.
+            contexts (List[str]): List of contexts to annotate.
+            fn (Optional[Union["Pipeline", callable]], optional): Prediction function to apply to the context before annotating.
+                Expecting it takes a `str` and returns [{"label": str, "score": float}].
+                Defaults to None.
+            dataset_name (Optional[str], optional): Name of the dataset to save the annotations. Defaults to None.
+            hf_token (Optional[str], optional): Hugging Face API token to save the annotations. Defaults to None.
+            private (Optional[bool], optional): Whether to save the annotations as private. Defaults to False.
+
+        Returns:
+            AnnotatorInterFace: An instance of AnnotatorInterFace
+        """
+        # Input validation
+        start = len(questions)
+        if len(questions) != len(contexts):
+            raise ValueError("Questions and contexts must be of the same length.")
+
+        # Process function
         def next_input(_question, _context):
             if questions:
-                gradio.Info(
-                    f"{(len(questions) / start) * 100:.2f}% done {len(questions)} left."
+                cls._update_message(questions, start)
+                question = questions.pop(_POP_INDEX)
+                context = contexts.pop(_POP_INDEX)
+                context = (
+                    cls._convert_to_tokens(context)
+                    if fn is None
+                    else fn(question, context)
                 )
-                return questions.pop(_POP_INDEX), contexts.pop(_POP_INDEX)
+                return question, context
             else:
-                gradio.Info(_MESSAGE_DONE_ANNOTATING)
-                return None, None
+                cls._done_message()
+                return None, []
 
-        input_question = gradio.Textbox(
-            value=questions.pop(_POP_INDEX), label="question"
-        )
+        # UI Config
+        question, context = next_input(None, None)
+        input_question = gradio.Textbox(value=question, label="question")
         input_context = gradio.HighlightedText(
-            value=contexts.pop(_POP_INDEX),
+            value=context,
             label="context",
             interactive=True,
             show_legend=False,
+            combine_adjacent=True,
             adjacent_separator="",
         )
         return cls(
@@ -190,33 +277,54 @@ class AnnotatorInterFace(CollectorInterface):
         prompts: List[str],
         *,
         completions: Optional[List[str]] = None,
+        fn: Optional[Union["Pipeline", callable]] = None,
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
     ) -> "AnnotatorInterFace":
+        """
+        Annotator Interface for text generation tasks.
+
+        Args:
+            prompts (List[str]): List of prompts to annotate.
+            completions (Optional[List[str]], optional): List of completions to annotate. Defaults to None.
+            fn (Optional[Union["Pipeline", callable]], optional): Prediction function to apply to the prompt before annotating.
+                Expecting it takes a `str` and returns `str`.
+                Defaults to None.
+            dataset_name (Optional[str], optional): Name of the dataset to save the annotations. Defaults to None.
+            hf_token (Optional[str], optional): Hugging Face API token to save the annotations. Defaults to None.
+            private (Optional[bool], optional): Whether to save the annotations as private. Defaults to False.
+
+        Returns:
+            AnnotatorInterFace: An instance of AnnotatorInterFace
+        """
+        # Input validation
         if completions is None:
             completions = ["" for _ in range(len(prompts))]
+        elif fn is not None:
+            raise ValueError("fn should be None when completions are provided.")
         if len(prompts) != len(completions):
             raise ValueError(
                 "Source and target must be of the same length. You can add empty strings to match the lengths."
             )
 
+        # Process function
         start = len(prompts)
 
         def next_input(_prompt, _completion):
             if prompts:
-                gradio.Info(
-                    f"{(len(prompts) / start) * 100:.2f}% done {len(prompts)} left."
-                )
-                return prompts.pop(_POP_INDEX), completions.pop(_POP_INDEX)
+                cls._update_message(prompts, start)
+                prompt = prompts.pop(_POP_INDEX)
+                completion = completions.pop(_POP_INDEX) if fn is None else fn(prompt)
+                return prompt, completion
             else:
-                gradio.Info(_MESSAGE_DONE_ANNOTATING)
+                cls._done_message()
                 return None, None
 
-        input_prompt = gradio.Textbox(value=prompts.pop(_POP_INDEX), label="prompt")
-        input_completion = gradio.Textbox(
-            value=completions.pop(_POP_INDEX), label="completion"
-        )
+        # UI Config
+        prompt, completion = next_input(None, None)
+        input_prompt = gradio.Textbox(value=prompt, label="prompt")
+        input_completion = gradio.Textbox(value=completion, label="completion")
         inputs = [input_prompt, input_completion]
         return cls(
             fn=next_input,
@@ -235,39 +343,60 @@ class AnnotatorInterFace(CollectorInterface):
     def for_text_generation_preference(
         cls,
         prompts: List[str],
-        completions_a: List[str],
-        completions_b: List[str],
         *,
+        completions_a: Optional[List[str]] = None,
+        completions_b: Optional[List[str]] = None,
+        fn: Optional[Union["Pipeline", callable]] = None,
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
     ) -> "AnnotatorInterFace":
-        if len(prompts) != len(completions_a) != len(completions_b):
-            raise ValueError("Prompts and completions must be of the same length")
+        """
+        Annotator Interface for text generation preference tasks.
 
+        Args:
+            prompts (List[str]): List of prompts to annotate.
+            completions_a (Optional[List[str]], optional): List of completions to annotate for option A. Defaults to None.
+            completions_b (Optional[List[str]], optional): List of completions to annotate for option B. Defaults to None.
+            fn (Optional[Union["Pipeline", callable]], optional): Prediction function to apply to the prompt before annotating.
+                Expecting it takes a `str` and returns `str`.
+                Defaults to None.
+            dataset_name (Optional[str], optional): Name of the dataset to save the annotations. Defaults to None.
+            hf_token (Optional[str], optional): Hugging Face API token to save the annotations. Defaults to None.
+            private (Optional[bool], optional): Whether to save the annotations as private. Defaults to False.
+
+        Returns:
+            AnnotatorInterFace: An instance of AnnotatorInterFace
+        """
+        # Input validation
         start = len(prompts)
+        prompts, completions_a, completions_b = cls._validate_preference(
+            cls, fn, prompts, completions_a, completions_b
+        )
 
+        # Process function
         def next_input(_prompt, _completion_a, _completion_b):
             if prompts:
-                gradio.Info(
-                    f"{(len(prompts) / start) * 100:.2f}% done {len(prompts)} left."
+                cls._update_message(prompts, start)
+                prompt = prompts.pop(_POP_INDEX)
+                completion_a = completions_a.pop(_POP_INDEX)
+                completion_a = (
+                    completion_a if fn is None or completion_a != "" else fn(prompt)
                 )
-                return (
-                    prompts.pop(_POP_INDEX),
-                    completions_a.pop(_POP_INDEX),
-                    completions_b.pop(_POP_INDEX),
+                completion_b = completions_b.pop(_POP_INDEX)
+                completion_b = (
+                    completions_b if fn is None or completion_b != "" else fn(prompt)
                 )
+                return prompt, completion_a, completion_b
             else:
-                gradio.Info(_MESSAGE_DONE_ANNOTATING)
+                cls._done_message()
                 return None, None, None
 
-        input_prompt = gradio.Textbox(value=prompts.pop(_POP_INDEX), label="prompt")
-        input_completion_a = gradio.Textbox(
-            value=completions_a.pop(_POP_INDEX), label="👆 completion A"
-        )
-        input_completion_b = gradio.Textbox(
-            value=completions_b.pop(_POP_INDEX), label="👇 completion B"
-        )
+        # UI Config
+        prompt, completion_a, completion_b = next_input(None, None, None)
+        input_prompt = gradio.Textbox(value=prompt, label="prompt")
+        input_completion_a = gradio.Textbox(value=completion_a, label="👆 completion A")
+        input_completion_b = gradio.Textbox(value=completion_b, label="👇 completion B")
         inputs = [input_prompt, input_completion_a, input_completion_b]
         return cls(
             fn=next_input,
@@ -289,45 +418,81 @@ class AnnotatorInterFace(CollectorInterface):
         labels: List[str],
         *,
         multi_label: Optional[bool] = False,
+        fn: Optional[Union["Pipeline", callable]] = None,
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
     ) -> "AnnotatorInterFace":
-        if multi_label:
-            labels = [(label, label) for label in labels]
+        """
+        Annotator Interface for chat classification tasks.
 
+        Args:
+            prompts (List[List[Dict[str, str]]): List of chat messages to annotate.
+            labels (List[str]): List of labels to choose from.
+            multi_label (Optional[bool], optional): Whether to allow multiple labels. Defaults to False.
+            fn (Optional[Union["Pipeline", callable]], optional): Prediction function to apply to the chat messages before annotating.
+                Expecting it takes a `str` and returns [{"label": str, "score": float}].
+                Defaults to None.
+            dataset_name (Optional[str], optional): Name of the dataset to save the annotations. Defaults to None.
+            hf_token (Optional[str], optional): Hugging Face API token to save the annotations. Defaults to None.
+            private (Optional[bool], optional): Whether to save the annotations as private. Defaults to False.
+
+        Returns:
+            AnnotatorInterFace: An instance of AnnotatorInterFace
+        """
+        # Input validation
         start = len(prompts)
-        # convert to gradio.ChatMessage
-        if isinstance(prompts[0][0], dict):
-            prompts = [
-                [gradio.ChatMessage(**msg) for msg in prompt] for prompt in prompts
-            ]
+        cls._convert_to_chat_message(prompts)
 
+        # Process function
         def next_input(_prompt, _label):
             if prompts:
-                gradio.Info(
-                    f"{(len(prompts) / start) * 100:.2f}% done {len(prompts)} left."
+                cls._update_message(prompts, start)
+                prompt = prompts.pop(_POP_INDEX)
+                label = (
+                    [] if fn is None else fn("\n".join([msg.content for msg in prompt]))
                 )
-                return prompts.pop(_POP_INDEX), []
+                if multi_label:
+                    return (
+                        prompt,
+                        [lab["label"] for lab in label if label["score"] > 0.5],
+                    )
+                elif not multi_label and fn is not None:
+                    return (prompt, label[0]["label"])
+                else:
+                    return prompt
             else:
-                gradio.Info(_MESSAGE_DONE_ANNOTATING)
-                return None, []
+                cls._done_message()
+                return ([], []) if multi_label or fn is not None else []
 
+        # UI Config
+        if multi_label:
+            labels = [(label, label) for label in labels]
+        if multi_label or fn is not None:
+            prompt, label = next_input(None, None)
+            if multi_label:
+                check_box_group = gradio.CheckboxGroup(
+                    labels, value=label, label="label"
+                )
+            else:
+                check_box_group = gradio.Radio(labels, value=label, label="label")
+        else:
+            prompt = next_input(None, None)
         inputs = gradio.Chatbot(
-            value=prompts.pop(_POP_INDEX),
+            value=prompt,
             label="prompt",
             type="messages",
             show_copy_button=True,
         )
-        if multi_label:
-            inputs = [inputs, gradio.CheckboxGroup(labels, label="label")]
+        if multi_label or fn is not None:
+            inputs = [inputs, check_box_group]
         return cls(
             fn=next_input,
             inputs=inputs,
             outputs=inputs,
-            flagging_options=[("✍🏼 submit", "")]
-            if multi_label
-            else [(lab, lab) for lab in labels],
+            flagging_options=(
+                [("✍🏼 submit", "")] if multi_label else [(lab, lab) for lab in labels]
+            ),
             allow_flagging="manual",
             submit_btn=gradio.Button("✍🏼 submit", variant="primary", visible=False),
             clear_btn=gradio.Button("🗑️ discard", variant="stop"),
@@ -342,44 +507,54 @@ class AnnotatorInterFace(CollectorInterface):
         prompts: Union[List[List[Dict[str, str]]], List[List[gradio.ChatMessage]]],
         *,
         completions: Optional[List[str]] = None,
+        fn: Optional[Union["Pipeline", callable]] = None,
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
     ) -> "AnnotatorInterFace":
+        """
+        Annotator Interface for chat generation tasks.
+
+        Args:
+            prompts (Union[List[List[Dict[str, str]]], List[List[gradio.ChatMessage]]): List of chat messages to annotate.
+            completions (Optional[List[str]], optional): List of completions to annotate. Defaults to None.
+            fn (Optional[Union["Pipeline", callable]], optional): Prediction function to apply to the chat messages before annotating.
+                Expecting it takes a `List[gradio.ChatMessage]` and returns `str`.
+                Defaults to None.
+            dataset_name (Optional[str], optional): Name of the dataset to save the annotations. Defaults to None.
+            hf_token (Optional[str], optional): Hugging Face API token to save the annotations. Defaults to None.
+            private (Optional[bool], optional): Whether to save the annotations as private. Defaults to False.
+
+        Returns:
+            AnnotatorInterFace: An instance of AnnotatorInterFace
+        """
+        # Input validation
+        start = len(prompts)
         if completions is None:
             completions = ["" for _ in range(len(prompts))]
+        elif fn is not None:
+            raise ValueError("fn should be None when completions are provided.")
         if len(prompts) != len(completions):
             raise ValueError(
                 "Source and target must be of the same length. You can add empty strings to match the lengths."
             )
+        prompts = cls._convert_to_chat_message(prompts)
 
-        start = len(prompts)
-        # convert to gradio.ChatMessage
-        if isinstance(prompts[0][0], dict):
-            prompts = [
-                [gradio.ChatMessage(**msg) for msg in prompt] for prompt in prompts
-            ]
-        for prompt in prompts:
-            assert (
-                prompt[-1].role == "user"
-            ), "Last message role should be user to have a completion."
-
+        # Process function
         def next_input(_prompt, _completion):
             if prompts:
-                gradio.Info(
-                    f"{(len(prompts) / start) * 100:.2f}% done {len(prompts)} left."
-                )
-                return prompts.pop(_POP_INDEX), completions.pop(_POP_INDEX)
+                cls._update_message(prompts, start)
+                prompt = prompts.pop(_POP_INDEX)
+                completion = completions.pop(_POP_INDEX) if fn is None else fn(prompt)
+                return prompt, completion
             else:
-                gradio.Info(_MESSAGE_DONE_ANNOTATING)
-                return None, None
+                cls._done_message()
+                return [], None
 
-        input_prompt = gradio.Chatbot(
-            value=prompts.pop(_POP_INDEX), label="prompt", type="messages"
-        )
-        input_completion = gradio.Textbox(
-            value=completions.pop(_POP_INDEX), label="completion"
-        )
+        # UI Config
+        prompt, completion = next_input(None, None)
+        input_prompt = gradio.Chatbot(value=prompt, label="prompt", type="messages")
+        input_completion = gradio.Textbox(value=completion, label="completion")
         inputs = [input_prompt, input_completion]
         return cls(
             fn=next_input,
@@ -398,51 +573,61 @@ class AnnotatorInterFace(CollectorInterface):
     def for_chat_generation_preference(
         cls,
         prompts: Union[List[List[Dict[str, str]]], List[List[gradio.ChatMessage]]],
-        completions_a: List[str],
-        completions_b: List[str],
         *,
+        completions_a: Optional[List[str]],
+        completions_b: Optional[List[str]],
+        fn: Optional[Union["Pipeline", callable]] = None,
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
     ) -> "AnnotatorInterFace":
-        if len(prompts) != len(completions_a) != len(completions_b):
-            raise ValueError("Prompts and completions must be of the same length")
+        """
+        Annotator Interface for chat generation preference tasks.
 
+        Args:
+            prompts (Union[List[List[Dict[str, str]]], List[List[gradio.ChatMessage]]): List of chat messages to annotate.
+            completions_a (Optional[List[str]]): List of completions to annotate for option A.
+            completions_b (Optional[List[str]]): List of completions to annotate for option B.
+            fn (Optional[Union["Pipeline", callable]], optional): Prediction function to apply to the chat messages before annotating.
+                Expecting it takes a `List[gradio.ChatMessage]` and returns `str`.
+                Defaults to None.
+            dataset_name (Optional[str], optional): Name of the dataset to save the annotations. Defaults to None.
+            hf_token (Optional[str], optional): Hugging Face API token to save the annotations. Defaults to None.
+            private (Optional[bool], optional): Whether to save the annotations as private. Defaults to False.
+
+        Returns:
+            AnnotatorInterFace: An instance of AnnotatorInterFace
+        """
+        # Input validation
         start = len(prompts)
-        # convert to gradio.ChatMessage
-        if isinstance(prompts[0][0], dict):
-            prompts = [
-                [gradio.ChatMessage(**msg) for msg in prompt] for prompt in prompts
-            ]
-        # assert last message role is user
-        for prompt in prompts:
-            assert (
-                prompt[-1].role == "user"
-            ), "Last message role should be user to have a completion."
+        prompts, completions_a, completions_b = cls._validate_preference(
+            fn, prompts, completions_a, completions_b
+        )
+        prompts = cls._convert_to_chat_message(prompts)
 
+        # Process function
         def next_input(_prompt, _completion_a, _completion_b):
             if prompts:
-                gradio.Info(
-                    f"{(len(prompts) / start) * 100:.2f}% done {len(prompts)} left."
+                cls._update_message(prompts, start)
+                prompt = prompts.pop(_POP_INDEX)
+                completion_a = completions_a.pop(_POP_INDEX)
+                completion_a = (
+                    completion_a if fn is None or completion_a != "" else fn(prompt)
                 )
-                return (
-                    prompts.pop(_POP_INDEX),
-                    completions_a.pop(_POP_INDEX),
-                    completions_b.pop(_POP_INDEX),
+                completion_b = completions_b.pop(_POP_INDEX)
+                completion_b = (
+                    completions_b if fn is None or completion_b != "" else fn(prompt)
                 )
+                return prompt, completion_a, completion_b
             else:
-                gradio.Info(_MESSAGE_DONE_ANNOTATING)
-                return None, None, None
+                cls._done_message()
+                return [], None, None
 
-        input_prompt = gradio.Chatbot(
-            value=prompts.pop(_POP_INDEX), label="prompt", type="messages"
-        )
-        input_completion_a = gradio.Textbox(
-            value=completions_a.pop(_POP_INDEX), label="👆 completion A"
-        )
-        input_completion_b = gradio.Textbox(
-            value=completions_b.pop(_POP_INDEX), label="👇 completion B"
-        )
+        # UI Config
+        prompt, completion_a, completion_b = next_input(None, None, None)
+        input_prompt = gradio.Chatbot(value=prompt, label="prompt", type="messages")
+        input_completion_a = gradio.Textbox(value=completion_a, label="👆 completion A")
+        input_completion_b = gradio.Textbox(value=completion_b, label="👇 completion B")
         inputs = [input_prompt, input_completion_a, input_completion_b]
         return cls(
             fn=next_input,
@@ -458,48 +643,61 @@ class AnnotatorInterFace(CollectorInterface):
         )
 
     @classmethod
-    def for_chat_generation_message_classification(cls):
-        raise NotImplementedError
-
-    @classmethod
     def for_image_generation_preference(
         cls,
         prompts: List[str],
         completions_a: List[Union[np.array, PIL.Image.Image, str]],
         completions_b: List[Union[np.array, PIL.Image.Image, str]],
         *,
+        fn: Optional[Union["Pipeline", callable]] = None,
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
     ) -> "AnnotatorInterFace":
+        """
+        Annotator Interface for image generation preference tasks.
+
+        Args:
+            prompts (List[str]): List of prompts to annotate.
+            completions_a (List[Union[np.array, PIL.Image.Image, str]]): List of completions to annotate for option A.
+            completions_b (List[Union[np.array, PIL.Image.Image, str]]): List of completions to annotate for option B.
+            fn (Optional[Union["Pipeline", callable]], optional): NotImplementedError. Defaults to None.
+            dataset_name (Optional[str], optional): Name of the dataset to save the annotations. Defaults to None.
+            hf_token (Optional[str], optional): Hugging Face API token to save the annotations. Defaults to None.
+            private (Optional[bool], optional): Whether to save the annotations as private. Defaults to False.
+        """
+        # Input validation
+        start = len(prompts)
+        if fn is not None:
+            raise NotImplementedError(
+                "fn is not supported for image generation preference."
+            )
         if len(prompts) != len(completions_a) != len(completions_b):
             raise ValueError("Prompts and completions must be of the same length")
 
-        start = len(prompts)
-
+        # Process function
         def next_input(_prompt, _completion_a, _completion_b):
             if prompts:
-                gradio.Info(
-                    f"{(len(prompts) / start) * 100:.2f}% done {len(prompts)} left."
-                )
+                cls._update_message(prompts, start)
                 return (
                     prompts.pop(_POP_INDEX),
                     completions_a.pop(_POP_INDEX),
                     completions_b.pop(_POP_INDEX),
                 )
             else:
-                gradio.Info(_MESSAGE_DONE_ANNOTATING)
+                cls._done_message()
                 return None, None, None
 
-        input_prompt = gradio.Textbox(value=prompts.pop(_POP_INDEX), label="prompt")
+        # UI Config
+        prompt, completion_a, completion_b = next_input(None, None, None)
+        input_prompt = gradio.Textbox(value=prompt, label="prompt")
         input_completion_a = gradio.Image(
-            value=completions_a.pop(_POP_INDEX), label="👆 completion A", height=400
+            value=completion_a, label="👆 completion A", height=400
         )
         input_completion_b = gradio.Image(
-            value=completions_b.pop(_POP_INDEX), label="👇 completion B", height=400
+            value=completion_b, label="👇 completion B", height=400
         )
         inputs = [input_prompt, input_completion_a, input_completion_b]
-
         return cls(
             fn=next_input,
             inputs=inputs,
@@ -520,24 +718,43 @@ class AnnotatorInterFace(CollectorInterface):
         labels: List[str],
         *,
         multi_label: Optional[bool] = False,
+        fn: Optional[Union["Pipeline", callable]] = None,
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
     ) -> "AnnotatorInterFace":
-        labels = [(label, label) for label in labels]
-        start = len(images)
+        """
+        Annotator Interface for image classification tasks.
 
+        Args:
+            images (List[Union[np.array, PIL.Image.Image, str]]): List of images to annotate.
+            labels (List[str]): List of labels to choose from.
+            multi_label (Optional[bool], optional): Whether to allow multiple labels. Defaults to False.
+            fn (Optional[Union["Pipeline", callable]], optional): NotImplementedError. Defaults to None.
+            dataset_name (Optional[str], optional): Name of the dataset to save the annotations. Defaults to None.
+            hf_token (Optional[str], optional): Hugging Face API token to save the annotations. Defaults to None.
+            private (Optional[bool], optional): Whether to save the annotations as private. Defaults to False.
+
+        Returns:
+            AnnotatorInterFace: An instance of AnnotatorInterFace
+        """
+        # Input validation
+        start = len(images)
+        if fn is not None:
+            raise NotImplementedError("fn is not supported for image classification.")
+
+        # Process function
         def next_input(_image, _label):
             if images:
-                gradio.Info(
-                    f"{(len(images) / start) * 100:.2f}% done {len(images)} left."
-                )
+                cls._update_message(images, start)
                 image = images.pop(_POP_INDEX)
                 return (image, []) if multi_label else image
             else:
-                gradio.Info(_MESSAGE_DONE_ANNOTATING)
+                cls._done_message()
                 return (None, []) if multi_label else None
 
+        # UI Config
+        labels = [(label, label) for label in labels]
         inputs = gradio.Image(value=images.pop(_POP_INDEX), label="image", height=400)
         if multi_label:
             inputs = [inputs, gradio.CheckboxGroup(labels, label="label")]
@@ -545,9 +762,9 @@ class AnnotatorInterFace(CollectorInterface):
             fn=next_input,
             inputs=inputs,
             outputs=inputs,
-            flagging_options=[("✍🏼 submit", "")]
-            if multi_label
-            else [(lab, lab) for lab in labels],
+            flagging_options=(
+                [("✍🏼 submit", "")] if multi_label else [(lab, lab) for lab in labels]
+            ),
             allow_flagging="manual",
             submit_btn=gradio.Button("✍🏼 submit", variant="primary", visible=False),
             clear_btn=gradio.Button("🗑️ discard", variant="stop"),
@@ -562,28 +779,46 @@ class AnnotatorInterFace(CollectorInterface):
         images: List[Union[np.array, PIL.Image.Image, str]],
         *,
         descriptions: Optional[List[str]] = None,
+        fn: Optional[Union["Pipeline", callable]] = None,
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
     ) -> "AnnotatorInterFace":
-        start = len(images)
-        if descriptions is None:
-            descriptions = ["" for _ in range(start)]
-        else:
-            assert len(descriptions) == start
+        """
+        Annotator Interface for image description tasks.
 
+        Args:
+            images (List[Union[np.array, PIL.Image.Image, str]]): List of images to annotate.
+            descriptions (Optional[List[str]], optional): List of descriptions to annotate. Defaults to None.
+            fn (Optional[Union["Pipeline", callable]], optional): NotImplementedError. Defaults to None.
+            dataset_name (Optional[str], optional): Name of the dataset to save the annotations. Defaults to None.
+            hf_token (Optional[str], optional): Hugging Face API token to save the annotations. Defaults to None.
+            private (Optional[bool], optional): Whether to save the annotations as private. Defaults to False.
+
+        Returns:
+            AnnotatorInterFace: An instance of AnnotatorInterFace
+        """
+        # Input validation
+        start = len(images)
+        if fn is not None:
+            raise NotImplementedError("fn is not supported for image description.")
+        if descriptions is None:
+            descriptions = ["" for _ in range(len(images))]
+        else:
+            assert len(descriptions) == len(images)
+
+        # Process function
         def next_input(_image, _description):
             if images:
-                gradio.Info(
-                    f"{(len(images) / start) * 100:.2f}% done {len(images)} left."
-                )
+                cls._update_message(images, start)
                 img = images.pop(_POP_INDEX)
                 description = descriptions.pop(_POP_INDEX)
                 return img, description
             else:
-                gradio.Info(_MESSAGE_DONE_ANNOTATING)
+                cls._done_message()
                 return None, ""
 
+        # UI Config
         inputs = gradio.Image(value=images.pop(_POP_INDEX), label="image", height=400)
         outputs = gradio.Textbox(value=descriptions.pop(_POP_INDEX), label="text")
         inputs = [inputs, outputs]
@@ -607,11 +842,31 @@ class AnnotatorInterFace(CollectorInterface):
         *,
         questions: Optional[List[str]] = None,
         answers: Optional[List[str]] = None,
+        fn: Optional[Union["Pipeline", callable]] = None,
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
     ) -> "AnnotatorInterFace":
+        """
+        Annotator Interface for image question answering tasks.
+
+        Args:
+            images (List[Union[np.array, PIL.Image.Image, str]]): List of images to annotate.
+            questions (Optional[List[str]], optional): List of questions to annotate. Defaults to None.
+            answers (Optional[List[str]], optional): List of answers to annotate. Defaults to None.
+            fn (Optional[Union["Pipeline", callable]], optional): NotImplementedError. Defaults to None.
+            dataset_name (Optional[str], optional): Name of the dataset to save the annotations. Defaults to None.
+            hf_token (Optional[str], optional): Hugging Face API token to save the annotations. Defaults to None.
+            private (Optional[bool], optional): Whether to save the annotations as private. Defaults to False.
+
+        Returns:
+            AnnotatorInterFace: An instance of AnnotatorInterFace
+        """
         start = len(images)
+        if fn is not None:
+            raise NotImplementedError(
+                "fn is not supported for image question answering."
+            )
         if questions is None:
             questions = ["" for _ in range(start)]
         else:
@@ -621,19 +876,19 @@ class AnnotatorInterFace(CollectorInterface):
         else:
             assert len(answers) == start
 
+        # Process function
         def next_input(_image, _question, _answer):
             if images:
-                gradio.Info(
-                    f"{(len(images) / start) * 100:.2f}% done {len(images)} left."
-                )
+                cls._update_message(images, start)
                 img = images.pop(_POP_INDEX)
                 question = questions.pop(_POP_INDEX)
                 answer = answers.pop(_POP_INDEX)
                 return img, question, answer
             else:
-                gradio.Info(_MESSAGE_DONE_ANNOTATING)
+                cls._done_message()
                 return None, "", ""
 
+        # UI Config
         inputs = gradio.Image(value=images.pop(_POP_INDEX), label="image", height=400)
         outputs = [
             gradio.Textbox(value=questions.pop(_POP_INDEX), label="question"),
@@ -659,7 +914,7 @@ class AnnotatorInterFace(CollectorInterface):
         flag_btns: list[Button, gradio.CheckboxGroup] | None,
         _clear_btn: ClearButton,
         _submit_event: Dependency,
-    ):
+    ) -> None:
         # before the flaffing because otherwise input is reset
         self.attach_submit_events(_submit_btn=_clear_btn, _stop_btn=None)
         super().attach_flagging_events(flag_btns, _clear_btn, _submit_event)
@@ -683,3 +938,40 @@ class AnnotatorInterFace(CollectorInterface):
     @override
     def render_flag_btns(self) -> list[Button]:
         return [Button(label, variant="primary") for label, _ in self.flagging_options]
+
+    @staticmethod
+    def _update_message(items: list, start: int) -> None:
+        gradio.Info(f"{(len(items) / start) * 100:.2f}% done {len(items)} left.")
+
+    @staticmethod
+    def _done_message() -> None:
+        gradio.Info(_MESSAGE_DONE_ANNOTATING)
+
+    @staticmethod
+    def _convert_to_tokens(text: str) -> List[tuple[str, None]]:
+        return [(char, None) for char in text]
+
+    @staticmethod
+    def _convert_to_chat_message(
+        messages: List[List[Dict[str, str]]],
+    ) -> List[List[gradio.ChatMessage]]:
+        messages = [
+            [gradio.ChatMessage(**msg) for msg in prompt] for prompt in messages
+        ]
+        for prompt in messages:
+            assert (
+                prompt[-1].role == "user"
+            ), "Last message role should be user to have a completion."
+        return messages
+
+    @staticmethod
+    def _validate_preference(fn, prompts, completions_a, completions_b):
+        if fn is not None and (completions_a is not None and completions_b is not None):
+            raise ValueError("fn should be None when completions are provided.")
+        if completions_a is None:
+            completions_a = ["" for _ in range(len(prompts))]
+        if completions_b is None:
+            completions_b = ["" for _ in range(len(prompts))]
+        if len(prompts) != len(completions_a) != len(completions_b):
+            raise ValueError("Prompts and completions must be of the same length")
+        return prompts, completions_a, completions_b
