@@ -32,10 +32,6 @@ pip install git+https://github.com/davidberenstein1957/data-viber.git
 
 > Built on top of the `gr.Interface` and `gr.ChatInterface` to lazily collect data for interactions automatically.
 
-TODOs:
-
-- collect data from a gr.ChatInterface
-
 <https://github.com/user-attachments/assets/4ddac8a1-62ab-4b3b-9254-f924f5898075>
 
 <details>
@@ -107,16 +103,6 @@ interface.launch()
 ### AnnotatorInterface
 
 > Built on top of the `CollectorInterface` to collect and annotate data and log it to the Hub.
-
-TODOs:
-
-- annotate - models to the loop (potentially using from_pipeline = interactive)
-- annotate - counters for the number of annotations
-- data - a state based on csv or remote dataset
-- data - local datasets saver / loader from csv
-- data - a way to show input-data and output-data in the interface
-- data - import data from the hub with oauth
-- data - import data from excel/csv with oauth
 
 <https://github.com/user-attachments/assets/57d89edf-ae40-4942-a20a-bf8443100b66>
 
@@ -224,7 +210,8 @@ interface = AnnotatorInterFace.for_text_generation(
 
 #### Chat and multi-modal chat
 
-> [!TIP] I recommend uploading the files files to a cloud storage and using the remote URL to avoid any issues. This can be done [using Hugging Face Datasets](https://huggingface.co/docs/datasets/en/image_load#local-files). As shown in [utils](#utils). Additionally [GradioChatbot](https://www.gradio.app/docs/gradio/chatbot#behavior) shows how to use the chatbot interface for multi-modal.
+> [!TIP]
+> I recommend uploading the files files to a cloud storage and using the remote URL to avoid any issues. This can be done [using Hugging Face Datasets](https://huggingface.co/docs/datasets/en/image_load#local-files). As shown in [utils](#utils). Additionally [GradioChatbot](https://www.gradio.app/docs/gradio/chatbot#behavior) shows how to use the chatbot interface for multi-modal.
 
 <details>
 <summary><code>chat-classification</code></summary>
@@ -420,13 +407,6 @@ interface.launch()
 
 <img width="1090" alt="image" src="https://github.com/user-attachments/assets/bf189482-8eab-40f9-aee1-671f3dfa4ef4">
 
-TODOs:
-
-- add more  subtle embedding support
-- add filters for categories / scores
-- validate image support
-- create label explorer
-
 <details>
 <summary><code>for_text_visualization</code></summary>
 
@@ -558,6 +538,27 @@ pre-commit install
 ```
 
 Follow this [guide on making first contributions](https://github.com/firstcontributions/first-contributions?tab=readme-ov-file#first-contributions).
+
+### TODOs and ideas
+
+#### CollectorInterface
+
+- collect data from a gr.ChatInterface
+
+#### AnnotatorInterface
+
+- models to the loop (potentially using from_pipeline = interactive)
+- counters for the number of annotations
+- data state based on csv or remote dataset (not redo on restart)
+- show input-data and output-data in the interface
+- import data from the hub with oauth
+- import data from excel/csv with oauth
+
+#### ExplorerInterface
+
+- add onnx embedding support (https://www.philschmid.de/optimize-sentence-transformers)
+- add image support
+- labeller support based on [lasso selection ](https://matplotlib.org/stable/gallery/widgets/lasso_selector_demo_sgskip.html)
 
 ## References
 
