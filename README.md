@@ -240,6 +240,8 @@ interface = AnnotatorInterFace.for_chat_classification(
 interface.launch()
 ```
 
+</details>
+
 <details>
 <summary><code>chat-generation</code></summary>
 
@@ -295,8 +297,6 @@ interface.launch()
 ```
 
 </details>
-
-Annotate data for `chat-generation-message-classification`. [WIP]
 
 #### Image and multi-modal
 
@@ -400,6 +400,7 @@ interface = AnnotatorInterFace.for_image_generation_preference(
 interface.launch()
 ```
 
+</details>
 
 ### ExplorerInterface
 
@@ -539,13 +540,13 @@ pre-commit install
 
 Follow this [guide on making first contributions](https://github.com/firstcontributions/first-contributions?tab=readme-ov-file#first-contributions).
 
-### TODOs and ideas
+### ideas
 
-#### CollectorInterface
+#### ideas CollectorInterface
 
 - collect data from a gr.ChatInterface
 
-#### AnnotatorInterface
+#### ideas AnnotatorInterface
 
 - add buttons to sort on embeddings similarity and sort on random
 - models to the loop (potentially using from_pipeline = interactive)
@@ -555,7 +556,7 @@ Follow this [guide on making first contributions](https://github.com/firstcontri
 - import data from the hub with oauth
 - import data from excel/csv with oauth
 
-#### ExplorerInterface
+#### ideas ExplorerInterface
 
 - add onnx embedding support (https://www.philschmid.de/optimize-sentence-transformers)
 - add image support
