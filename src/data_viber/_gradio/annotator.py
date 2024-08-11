@@ -49,6 +49,10 @@ _HIGHLIGHT_TEXT_KWARGS = {
     "adjacent_separator": "",
 }
 _CHATBOT_KWARGS = {"type": "messages", "label": "prompt", "show_copy_button": True}
+_SUBMIT_BTN = gradio.Button("✍🏼 submit", variant="primary", visible=False)
+_CLEAR_BTN = gradio.Button("🗑️ discard", variant="stop")
+_PREFERENCE_OPTIONS = [("👆 A is better", ""), ("👇 B is better", "")]
+_SUBMIT_OPTIONS = [("✍🏼 submit", "")]
 
 if TYPE_CHECKING:
     from transformers.pipelines import Pipeline
@@ -123,13 +127,13 @@ class AnnotatorInterFace(CollectorInterface):
             inputs=inputs,
             outputs=inputs,
             flagging_options=(
-                [("✍🏼 submit", "")]
+                _SUBMIT_OPTIONS
                 if multi_label or fn is not None
                 else [(lab, lab) for lab in labels]
             ),
             allow_flagging="manual",
-            submit_btn=gradio.Button("✍🏼 submit", variant="primary", visible=False),
-            clear_btn=gradio.Button("🗑️ discard", variant="stop"),
+            submit_btn=_SUBMIT_BTN,
+            clear_btn=_CLEAR_BTN,
             dataset_name=dataset_name,
             hf_token=hf_token,
             private=private,
@@ -181,19 +185,22 @@ class AnnotatorInterFace(CollectorInterface):
                 label: color for label, color in zip(labels, __HIGHLIGHT_TEXT_COLORS)
             }
         text = next_input(None)
-        input_text = gradio.HighlightedText(
-            value=text,
-            color_map=labels,
-            label="spans",
-            **_HIGHLIGHT_TEXT_KWARGS,
-        )
+        inputs = [
+            gradio.HighlightedText(
+                value=text,
+                color_map=labels,
+                label="spans",
+                **_HIGHLIGHT_TEXT_KWARGS,
+            )
+        ]
+
         return cls(
             fn=next_input,
-            inputs=[input_text],
-            outputs=[input_text],
-            submit_btn=gradio.Button("✍🏼 submit", variant="primary", visible=False),
-            clear_btn=gradio.Button("🗑️ discard", variant="stop"),
-            flagging_options=[("✍🏼 submit", "")],
+            inputs=inputs,
+            outputs=inputs,
+            submit_btn=_SUBMIT_BTN,
+            clear_btn=_CLEAR_BTN,
+            flagging_options=_SUBMIT_OPTIONS,
             allow_flagging="manual",
             dataset_name=dataset_name,
             hf_token=hf_token,
@@ -259,14 +266,15 @@ class AnnotatorInterFace(CollectorInterface):
             combine_adjacent=True,
             adjacent_separator="",
         )
+        inputs = [input_question, input_context]
         return cls(
             fn=next_input,
-            inputs=[input_question, input_context],
-            outputs=[input_question, input_context],
+            inputs=inputs,
+            outputs=inputs,
             allow_flagging="manual",
-            submit_btn=gradio.Button("✍🏼 submit", variant="primary", visible=False),
-            clear_btn=gradio.Button("🗑️ discard", variant="stop"),
-            flagging_options=[("✍🏼 submit", "")],
+            submit_btn=_SUBMIT_BTN,
+            clear_btn=_CLEAR_BTN,
+            flagging_options=_SUBMIT_OPTIONS,
             dataset_name=dataset_name,
             hf_token=hf_token,
             private=private,
@@ -332,9 +340,9 @@ class AnnotatorInterFace(CollectorInterface):
             inputs=inputs,
             outputs=inputs,
             allow_flagging="manual",
-            submit_btn=gradio.Button("✍🏼 submit", variant="primary", visible=False),
-            clear_btn=gradio.Button("🗑️ discard", variant="stop"),
-            flagging_options=[("✍🏼 submit", "")],
+            submit_btn=_SUBMIT_BTN,
+            clear_btn=_CLEAR_BTN,
+            flagging_options=_SUBMIT_OPTIONS,
             dataset_name=dataset_name,
             hf_token=hf_token,
             private=private,
@@ -404,9 +412,9 @@ class AnnotatorInterFace(CollectorInterface):
             inputs=inputs,
             outputs=inputs,
             allow_flagging="manual",
-            submit_btn=gradio.Button("✍🏼 submit", variant="primary", visible=False),
-            flagging_options=[("👆 A is better", ""), ("👇 B is better", "")],
-            clear_btn=gradio.Button("🗑️ discard", variant="stop"),
+            submit_btn=_SUBMIT_BTN,
+            flagging_options=_PREFERENCE_OPTIONS,
+            clear_btn=_CLEAR_BTN,
             dataset_name=dataset_name,
             hf_token=hf_token,
             private=private,
@@ -490,11 +498,11 @@ class AnnotatorInterFace(CollectorInterface):
             inputs=inputs,
             outputs=inputs,
             flagging_options=(
-                [("✍🏼 submit", "")] if multi_label else [(lab, lab) for lab in labels]
+                _SUBMIT_OPTIONS if multi_label else [(lab, lab) for lab in labels]
             ),
             allow_flagging="manual",
-            submit_btn=gradio.Button("✍🏼 submit", variant="primary", visible=False),
-            clear_btn=gradio.Button("🗑️ discard", variant="stop"),
+            submit_btn=_SUBMIT_BTN,
+            clear_btn=_CLEAR_BTN,
             dataset_name=dataset_name,
             hf_token=hf_token,
             private=private,
@@ -545,9 +553,9 @@ class AnnotatorInterFace(CollectorInterface):
             inputs=inputs,
             outputs=inputs,
             allow_flagging="manual",
-            submit_btn=gradio.Button("✍🏼 submit", variant="primary", visible=False),
-            clear_btn=gradio.Button("🗑️ discard", variant="stop"),
-            flagging_options=[("✍🏼 submit", "")],
+            submit_btn=_SUBMIT_BTN,
+            clear_btn=_CLEAR_BTN,
+            flagging_options=_SUBMIT_OPTIONS,
             dataset_name=dataset_name,
             hf_token=hf_token,
             private=private,
@@ -584,8 +592,6 @@ class AnnotatorInterFace(CollectorInterface):
         start = len(prompts)
         if completions is None:
             completions = ["" for _ in range(len(prompts))]
-        elif fn is not None:
-            raise ValueError("fn should be None when completions are provided.")
         if len(prompts) != len(completions):
             raise ValueError(
                 "Source and target must be of the same length. You can add empty strings to match the lengths."
@@ -594,10 +600,30 @@ class AnnotatorInterFace(CollectorInterface):
 
         # Process function
         def next_input(_prompt, _completion):
+            def _last_is_user(_prompt):
+                return _prompt[-1].role == "user"
+
             if prompts:
-                cls._update_message(prompts, start)
-                prompt = prompts.pop(_POP_INDEX)
-                completion = completions.pop(_POP_INDEX) if fn is None else fn(prompt)
+                if _prompt and False:
+                    _prompt.append(
+                        gradio.ChatMessage(
+                            role="assistant" if _last_is_user(_prompt) else "user",
+                            content=_completion,
+                        )
+                    )
+                    prompt = _prompt
+                    completion = ""
+                    if _last_is_user(prompt):
+                        completion = "" if fn is None else fn(prompt)
+                else:
+                    cls._update_message(prompts, start)
+                    prompt = prompts.pop(_POP_INDEX)
+                    completion = completions.pop(_POP_INDEX)
+                    completion = (
+                        completion
+                        if (fn is None or completion != "") and _last_is_user(prompt)
+                        else fn(prompt)
+                    )
                 return prompt, completion
             else:
                 cls._done_message()
@@ -616,9 +642,9 @@ class AnnotatorInterFace(CollectorInterface):
             inputs=inputs,
             outputs=inputs,
             allow_flagging="manual",
-            submit_btn=gradio.Button("✍🏼 submit", variant="primary", visible=False),
-            clear_btn=gradio.Button("🗑️ discard", variant="stop"),
-            flagging_options=[("✍🏼 submit", "")],
+            submit_btn=_SUBMIT_BTN,
+            clear_btn=_CLEAR_BTN,
+            flagging_options=_SUBMIT_OPTIONS,
             dataset_name=dataset_name,
             hf_token=hf_token,
             private=private,
@@ -689,9 +715,9 @@ class AnnotatorInterFace(CollectorInterface):
             inputs=inputs,
             outputs=inputs,
             allow_flagging="manual",
-            submit_btn=gradio.Button("✍🏼 submit", variant="primary", visible=False),
-            flagging_options=[("👆 A is better", ""), ("👇 B is better", "")],
-            clear_btn=gradio.Button("🗑️ discard", variant="stop"),
+            submit_btn=_SUBMIT_BTN,
+            flagging_options=_PREFERENCE_OPTIONS,
+            clear_btn=_CLEAR_BTN,
             dataset_name=dataset_name,
             hf_token=hf_token,
             private=private,
@@ -758,9 +784,9 @@ class AnnotatorInterFace(CollectorInterface):
             inputs=inputs,
             outputs=inputs,
             allow_flagging="manual",
-            submit_btn=gradio.Button("✍🏼 submit", variant="primary", visible=False),
-            flagging_options=[("👆 A is better", ""), ("👇 B is better", "")],
-            clear_btn=gradio.Button("🗑️ discard", variant="stop"),
+            submit_btn=_SUBMIT_BTN,
+            flagging_options=_PREFERENCE_OPTIONS,
+            clear_btn=_CLEAR_BTN,
             dataset_name=dataset_name,
             hf_token=hf_token,
             private=private,
@@ -818,11 +844,11 @@ class AnnotatorInterFace(CollectorInterface):
             inputs=inputs,
             outputs=inputs,
             flagging_options=(
-                [("✍🏼 submit", "")] if multi_label else [(lab, lab) for lab in labels]
+                _SUBMIT_OPTIONS if multi_label else [(lab, lab) for lab in labels]
             ),
             allow_flagging="manual",
-            submit_btn=gradio.Button("✍🏼 submit", variant="primary", visible=False),
-            clear_btn=gradio.Button("🗑️ discard", variant="stop"),
+            submit_btn=_SUBMIT_BTN,
+            clear_btn=_CLEAR_BTN,
             dataset_name=dataset_name,
             hf_token=hf_token,
             private=private,
@@ -881,10 +907,10 @@ class AnnotatorInterFace(CollectorInterface):
             fn=next_input,
             inputs=inputs,
             outputs=inputs,
-            flagging_options=[("✍🏼 submit", "")],
+            flagging_options=_SUBMIT_OPTIONS,
             allow_flagging="manual",
-            submit_btn=gradio.Button("✍🏼 submit", variant="primary", visible=False),
-            clear_btn=gradio.Button("🗑️ discard", variant="stop"),
+            submit_btn=_SUBMIT_BTN,
+            clear_btn=_CLEAR_BTN,
             dataset_name=dataset_name,
             hf_token=hf_token,
             private=private,
@@ -954,10 +980,10 @@ class AnnotatorInterFace(CollectorInterface):
             fn=next_input,
             inputs=inputs,
             outputs=inputs,
-            flagging_options=[("✍🏼 submit", "")],
+            flagging_options=_SUBMIT_OPTIONS,
             allow_flagging="manual",
-            submit_btn=gradio.Button("✍🏼 submit", variant="primary", visible=False),
-            clear_btn=gradio.Button("🗑️ discard", variant="stop"),
+            submit_btn=_SUBMIT_BTN,
+            clear_btn=_CLEAR_BTN,
             dataset_name=dataset_name,
             hf_token=hf_token,
             private=private,
@@ -977,18 +1003,18 @@ class AnnotatorInterFace(CollectorInterface):
             for flag_btn in flag_btns:
                 if flag_btn.label != "✍🏼 submit":
                     self.attach_submit_events(_submit_btn=flag_btn, _stop_btn=None)
-            if flag_btn.label == "✍🏼 submit":
-                flag_method = FlagMethod(
-                    self.flagging_callback, "", "", visual_feedback=False
-                )
-                flag_btn.click(
-                    flag_method,
-                    inputs=self.input_components + self.output_components,
-                    outputs=None,
-                    preprocess=False,
-                    queue=False,
-                    show_api=False,
-                )
+                if flag_btn.label == "✍🏼 submit":
+                    flag_method = FlagMethod(
+                        self.flagging_callback, "", "", visual_feedback=False
+                    )
+                    flag_btn.click(
+                        flag_method,
+                        inputs=self.input_components + self.output_components,
+                        outputs=None,
+                        preprocess=False,
+                        queue=False,
+                        show_api=False,
+                    )
 
     @override
     def render_flag_btns(self) -> list[Button]:
@@ -1010,6 +1036,7 @@ class AnnotatorInterFace(CollectorInterface):
     def _convert_to_chat_message(
         messages: Union[List[List[Dict[str, str]]], List[List[gradio.ChatMessage]]],
         with_turn=False,
+        last_role=None,
     ) -> List[List[gradio.ChatMessage]]:
         if not isinstance(messages[0][0], gradio.ChatMessage):
             messages = [
@@ -1029,10 +1056,11 @@ class AnnotatorInterFace(CollectorInterface):
                 ]
                 for prompt in messages
             ]
-        # for prompt in messages:
-        #     assert (
-        #         prompt[-1].role == "user"
-        #     ), "Last message role should be user to have a completion."
+        if last_role is not None:
+            for prompt in messages:
+                assert (
+                    prompt[-1].role == last_role
+                ), f"Last message role should be {last_role}."
         return messages
 
     @staticmethod

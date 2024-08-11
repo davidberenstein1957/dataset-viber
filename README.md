@@ -274,7 +274,7 @@ interface = AnnotatorInterFace.for_chat_classification_per_message(
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
 interface.launch()
-````
+```
 
 </details>
 
