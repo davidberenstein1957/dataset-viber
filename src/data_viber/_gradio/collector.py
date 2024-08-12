@@ -199,7 +199,7 @@ class CollectorInterface(gradio.Interface):
 
     @staticmethod
     def _get_embedded_dataset_viewer(repo_url: str) -> str:
-        return f"""
+        return f"""You can submit an empty search to refresh the data.
 <iframe
   src="{repo_url}/embed/viewer/default/train"
   frameborder="0"
@@ -218,7 +218,7 @@ class CollectorInterface(gradio.Interface):
         if flagging_callback:
             repo_url = cls._get_repo_url(flagging_callback)
             formatted_repo_url = (
-                f"Data is being written to a dataset on the Hub: {repo_url} "
+                f"Data is being written to [a dataset on the Hub]({repo_url})."
             )
             with instance:
                 with gradio.Row(equal_height=False):
