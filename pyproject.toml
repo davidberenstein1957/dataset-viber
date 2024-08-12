@@ -9,29 +9,29 @@ requires-python = ">=3.9,<3.13"
 readme = "README.md"
 license = {text = "Apache 2.0"}
 dependencies = [
-    "gradio[oauth]>=4.41.0",
-    "datasets>=2.20.0",
+    "gradio[oauth]>=4.3,<5",
+    "datasets>=2,<3",
 ]
 
 [project.optional-dependencies]
 "explorer" = [
-    "sentence-transformers>=3.0.1",
-    "umap-learn>=0.5.6",
-    "altair>=5.3.0",
+    "sentence-transformers>=3",
+    "umap-learn>=0.5,<1",
+    "altair>=5,<6",
 ]
 
 [tool.pdm.dev-dependencies]
 dev = [
     "pre-commit>=3.8.0",
-    "ruff>=0.5.6",
-    "pytest>=8.3.2",
-    "black>=24.8.0",
-    "transformers>=4.44.0",
-    "torch>=2.4.0",
-    "bokeh>=3.4.3",
-    "plotly>=5.23.0",
-    "dash>=2.17.1",
-    "openpyxl>=3.1.5",
+    "ruff>=0.5,<1",
+    "pytest>=8,<9",
+    "black>=24,<25",
+    "transformers>=4",
+    "torch>=2",
+    "bokeh>=3,<4",
+    "plotly>=5,<6",
+    "dash>=2.11,<3",
+    "openpyxl>=3,<4",
 ]
 
 [build-system]
