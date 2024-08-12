@@ -220,8 +220,7 @@ interface = AnnotatorInterFace.for_text_generation(
 
 #### Chat and multi-modal chat
 
-
-https://github.com/user-attachments/assets/09b675e3-8ee2-43ac-9a65-5e95772a4667
+https://github.com/user-attachments/assets/fe7f0139-95a3-40e8-bc03-e37667d4f7a9
 
 [Hub dataset](https://huggingface.co/datasets/davidberenstein1957/data-viber-chat-generation-preference)
 
