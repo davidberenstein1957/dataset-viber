@@ -104,7 +104,6 @@ interface.launch()
 
 > Built on top of the `CollectorInterface` to collect and annotate data and log it to the Hub.
 
-<https://github.com/user-attachments/assets/57d89edf-ae40-4942-a20a-bf8443100b66>
 
 #### Text
 
@@ -342,6 +341,8 @@ interface.launch()
 </details>
 
 #### Image and multi-modal
+
+<https://github.com/user-attachments/assets/57d89edf-ae40-4942-a20a-bf8443100b66>
 
 > [!TIP]
 > I recommend uploading the files files to a cloud storage and using the remote URL to avoid any issues. This can be done [using Hugging Face Datasets](https://huggingface.co/docs/datasets/en/image_load#local-files). As shown in [utils](#utils).
@@ -607,7 +608,7 @@ Follow this [guide on making first contributions](https://github.com/firstcontri
 
 - add onnx embedding support (https://www.philschmid.de/optimize-sentence-transformers)
 - add image support
-- labeller support based on [lasso selection ](https://matplotlib.org/stable/gallery/widgets/lasso_selector_demo_sgskip.html)
+- labeller support based on lasso selection - [plotly/dash](https://dash.plotly.com/interactive-graphing) seems a nice options that also runs in notebooks
 
 ## References
 
