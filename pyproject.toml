@@ -10,7 +10,7 @@ readme = "README.md"
 license = {text = "Apache 2.0"}
 dependencies = [
     "gradio[oauth]>=4.41.0",
-    "openpyxl>=3.1.5",
+    "datasets>=2.20.0",
 ]
 
 [project.optional-dependencies]
@@ -28,6 +28,10 @@ dev = [
     "black>=24.8.0",
     "transformers>=4.44.0",
     "torch>=2.4.0",
+    "bokeh>=3.4.3",
+    "plotly>=5.23.0",
+    "dash>=2.17.1",
+    "openpyxl>=3.1.5",
 ]
 
 [build-system]
