@@ -593,6 +593,8 @@ Follow this [guide on making first contributions](https://github.com/firstcontri
 
 ### ideas
 
+- add dataset task info tags
+
 #### ideas CollectorInterface
 
 - collect data from a gr.ChatInterface
@@ -601,11 +603,10 @@ Follow this [guide on making first contributions](https://github.com/firstcontri
 
 - continuous chat preference
 - add buttons to sort on embeddings similarity and sort on random
-- counters for the number of annotations
 - data state based on csv or remote dataset (not redo on restart)
 - show input-data and output-data in the interface
 - import data from the hub with oauth
-- import data from excel/csv with oauth
+- import data from excel/csv
 
 #### ideas ExplorerInterface
 
