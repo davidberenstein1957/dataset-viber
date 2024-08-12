@@ -17,7 +17,7 @@ Need any tweaks or want to hear more about a specific tool? Just open an issue o
 
 > [!NOTE]
 > - Data is logged to a CSV or directly to the Hugging Face Hub.
-> - All tools also run in `.ipynb` notebooks!
+> - All tools also run in `.ipynb` notebooks.
 > - You can use models in the loop.
 > - It supports `chat`, `text` and `image`.
 
