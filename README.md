@@ -469,7 +469,7 @@ interface.launch()
 
 > Built on top of the `Dash`, `plotly-express`, `umap-learn`, and `sentence-transformers` to understand and label your dataset distribution.
 
-https://github.com/user-attachments/assets/144bd6c1-1090-48c8-b65d-864ed4e2e18f
+https://github.com/user-attachments/assets/5e96c06d-e37f-45a0-9633-1a8e714d71ed
 
 [Hub dataset](https://huggingface.co/datasets/SetFit/ag_news)
 
