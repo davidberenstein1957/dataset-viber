@@ -95,6 +95,7 @@ class ExplorerInterface(gradio.Interface):
         # Scatter Plot with color change on hover
         brush = alt.selection_interval()
         if label_column and label_column in dataframe.columns:
+            umap_df[label_column] = dataframe[label_column]
             color = alt.condition(
                 brush,
                 alt.Color(f"{label_column}:N", scale=alt.Scale(scheme="category10")),
@@ -129,8 +130,6 @@ class ExplorerInterface(gradio.Interface):
             )
             .add_params(brush)
         )
-        if label_column and label_column in dataframe.columns:
-            points.add_params(alt.selection_point(fields=[label_column], bind="legend"))
 
         # Data Tables
         ranked_text = (
@@ -145,8 +144,9 @@ class ExplorerInterface(gradio.Interface):
         for col in dataframe.columns:
             if col in component_columns + ["Index" + "Size"]:
                 continue
+            umap_df[f"{col}_short"] = umap_df[col].str.slice(0, 100)
             text_charts.append(
-                ranked_text.encode(text=f"{col}:N").properties(
+                ranked_text.encode(text=f"{col}_short:N").properties(
                     title=alt.Title(text=col, align="left")
                 )
             )
@@ -161,12 +161,11 @@ class ExplorerInterface(gradio.Interface):
         )
 
         # Gradio inputs and outputs
-        gr_dataframe = gr.Dataframe(umap_df, visible=False)
         gr_plot = gr.Plot(plot)
-        inputs = [gr_dataframe, gr_plot]
+        inputs = [gr_plot]
 
         # Logic update function
-        def _test(_gr_dataframe, _gr_plot):
-            return _gr_dataframe, _gr_plot
+        def _test(_gr_plot):
+            return _gr_plot
 
         return cls(fn=_test, inputs=inputs, outputs=inputs)
