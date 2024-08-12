@@ -394,7 +394,7 @@ class AnnotatorInterFace(CollectorInterface):
                 )
                 completion_b = completions_b.pop(_POP_INDEX)
                 completion_b = (
-                    completions_b if fn is None or completion_b != "" else fn(prompt)
+                    completion_b if fn is None or completion_b != "" else fn(prompt)
                 )
                 return prompt, completion_a, completion_b
             else:
@@ -693,11 +693,11 @@ class AnnotatorInterFace(CollectorInterface):
                 prompt = prompts.pop(_POP_INDEX)
                 completion_a = completions_a.pop(_POP_INDEX)
                 completion_a = (
-                    completion_a if fn is None or completion_a != "" else fn(prompt)
+                    completion_a if fn is None or completion_a else fn(prompt)
                 )
                 completion_b = completions_b.pop(_POP_INDEX)
                 completion_b = (
-                    completions_b if fn is None or completion_b != "" else fn(prompt)
+                    completion_b if fn is None or completion_b else fn(prompt)
                 )
                 return prompt, completion_a, completion_b
             else:
@@ -1071,6 +1071,8 @@ class AnnotatorInterFace(CollectorInterface):
             completions_a = ["" for _ in range(len(prompts))]
         if completions_b is None:
             completions_b = ["" for _ in range(len(prompts))]
-        if len(prompts) != len(completions_a) != len(completions_b):
+        if any(
+            [len(prompts) != len(completions_a), len(prompts) != len(completions_b)]
+        ):
             raise ValueError("Prompts and completions must be of the same length")
         return prompts, completions_a, completions_b
