@@ -11,7 +11,7 @@ I've cooked up Data Viber, a cool set of tools to make your life easier when dea
 
 - **CollectorInterface**: Lazily collect data of interactions without human annotation.
 - **AnnotatorInterface**: Walk through your data and annotate it with models in the loop.
-- **ExplorerInterface**: Explore your data distribution.
+- **ExplorerInterface**: Explore your data distribution and annotate in bulk.
 
 Need any tweaks or want to hear more about a specific tool? Just open an issue or give me a shout!
 
@@ -467,7 +467,7 @@ interface.launch()
 
 ### ExplorerInterface
 
-> Built on top of the `gr.ScatterPlot`, `gr.DataFrame`, `umap-learn`, and `sentence-transformers` to understand your dataset distribution.
+> Built on top of the `Dash`, `plotly-express`, `umap-learn`, and `sentence-transformers` to understand and label your dataset distribution.
 
 https://github.com/user-attachments/assets/144bd6c1-1090-48c8-b65d-864ed4e2e18f
 
@@ -486,6 +486,27 @@ interface: ExplorerInterface = ExplorerInterface.for_text_visualization(
     ds.to_pandas()[["text", "label_text"]],
     text_column='text',
     label_column='label_text',
+)
+interface.launch()
+```
+
+</details>
+
+<details>
+<summary><code>text-classification</code></summary>
+
+```python
+from data_viber import ExplorerInterface
+from datasets import load_dataset
+
+ds = load_dataset("SetFit/ag_news", split="train[:2000]")
+df = ds.to_pandas()[["text", "label_text"]]
+
+interface: ExplorerInterface = ExplorerInterface.for_text_classification(
+    df,
+    text_column='text',
+    label_column='label_text',
+    label_names=df['label_text'].unique().tolist()
 )
 interface.launch()
 ```
