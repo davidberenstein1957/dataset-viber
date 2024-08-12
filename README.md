@@ -15,14 +15,11 @@ I've cooked up Data Viber, a cool set of tools to make your life easier when dea
 
 Need any tweaks or want to hear more about a specific tool? Just open an issue or give me a shout!
 
-> [!TIP]
-> Data is logged to a CSV or directly to the Hugging Face Hub.
-> 
-> All tools also run in `.ipynb` notebooks!
->
-> You can use models in the loop.
->
-> It supports `chat`, `text` and `image`.
+> [!NOTE]
+> - Data is logged to a CSV or directly to the Hugging Face Hub.
+> - All tools also run in `.ipynb` notebooks!
+> - You can use models in the loop.
+> - It supports `chat`, `text` and `image`.
 
 ## Installation
 
