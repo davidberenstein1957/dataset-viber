@@ -34,6 +34,8 @@ pip install git+https://github.com/davidberenstein1957/data-viber.git
 
 <https://github.com/user-attachments/assets/4ddac8a1-62ab-4b3b-9254-f924f5898075>
 
+[Hub dataset](https://huggingface.co/datasets/davidberenstein1957/data-viber-token-classification)
+
 <details>
 <summary><code>CollectorInterface</code></summary>
 
@@ -106,6 +108,10 @@ interface.launch()
 
 
 #### Text
+
+https://github.com/user-attachments/assets/d1abda66-9972-4c60-89d2-7626f5654f15
+
+[Hub dataset](https://huggingface.co/datasets/davidberenstein1957/data-viber-text-classification)
 
 <details>
 <summary><code>text-classification</code>/<code>multi-label-text-classification</code></summary>
@@ -214,6 +220,11 @@ interface = AnnotatorInterFace.for_text_generation(
 
 #### Chat and multi-modal chat
 
+
+https://github.com/user-attachments/assets/09b675e3-8ee2-43ac-9a65-5e95772a4667
+
+[Hub dataset](https://huggingface.co/datasets/davidberenstein1957/data-viber-chat-generation-preference)
+
 > [!TIP]
 > I recommend uploading the files files to a cloud storage and using the remote URL to avoid any issues. This can be done [using Hugging Face Datasets](https://huggingface.co/docs/datasets/en/image_load#local-files). As shown in [utils](#utils). Additionally [GradioChatbot](https://www.gradio.app/docs/gradio/chatbot#behavior) shows how to use the chatbot interface for multi-modal.
 
@@ -317,7 +328,7 @@ prompts = [
     [
         {
             "role": "user",
-            "text": "Tell me something about Anthony Bourdain."
+            "content": "Tell me something about Anthony Bourdain."
         }
     ]
 ]
@@ -343,6 +354,8 @@ interface.launch()
 #### Image and multi-modal
 
 <https://github.com/user-attachments/assets/57d89edf-ae40-4942-a20a-bf8443100b66>
+
+[Hub dataset](https://huggingface.co/datasets/davidberenstein1957/data-viber-image-question-answering)
 
 > [!TIP]
 > I recommend uploading the files files to a cloud storage and using the remote URL to avoid any issues. This can be done [using Hugging Face Datasets](https://huggingface.co/docs/datasets/en/image_load#local-files). As shown in [utils](#utils).
@@ -454,33 +467,23 @@ interface.launch()
 
 > Built on top of the `gr.ScatterPlot`, `gr.DataFrame`, `umap-learn`, and `sentence-transformers` to understand your dataset distribution.
 
-<img width="1090" alt="image" src="https://github.com/user-attachments/assets/bf189482-8eab-40f9-aee1-671f3dfa4ef4">
+https://github.com/user-attachments/assets/144bd6c1-1090-48c8-b65d-864ed4e2e18f
+
+[Hub dataset](https://huggingface.co/datasets/SetFit/ag_news)
 
 <details>
 <summary><code>text-visualization</code></summary>
 
 ```python
 from data_viber import ExplorerInterface
-import pandas as pd
+from datasets import load_dataset
 
-df = pd.DataFrame({
-    'text': [
-        "The quick brown fox jumps over the lazy dog.",
-        "The quick brown fox jumps over the lazy dog.",
-        "A journey of a thousand miles begins with a single step.",
-        "To be or not to be, that is the question."
-    ],
-    'category': ['A', 'A', 'B', 'C'],
-    'length': [44, 44, 36, 35],
-    'score': [10, 20, 30, 40]  # This column will size the points
-})
+ds = load_dataset("SetFit/ag_news", split="train[:2000]")
 
-interface = ExplorerInterface.for_text_visualization(
-    df,
+interface: ExplorerInterface = ExplorerInterface.for_text_visualization(
+    ds.to_pandas()[["text", "label_text"]],
     text_column='text',
-    additional_columns=['category', 'length'],
-    label_column='category',
-    score_column='score'
+    label_column='label_text',
 )
 interface.launch()
 ```
