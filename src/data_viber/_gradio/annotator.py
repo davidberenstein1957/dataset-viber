@@ -51,7 +51,7 @@ _HIGHLIGHT_TEXT_KWARGS = {
 _CHATBOT_KWARGS = {"type": "messages", "label": "prompt", "show_copy_button": True}
 _SUBMIT_BTN = gradio.Button("✍🏼 submit", variant="primary", visible=False)
 _CLEAR_BTN = gradio.Button("🗑️ discard", variant="stop")
-_PREFERENCE_OPTIONS = [("👆 A is better", ""), ("👇 B is better", "")]
+_PREFERENCE_OPTIONS = [("👆 A is better", "A"), ("👇 B is better", "B")]
 _SUBMIT_OPTIONS = [("✍🏼 submit", "")]
 
 if TYPE_CHECKING:
