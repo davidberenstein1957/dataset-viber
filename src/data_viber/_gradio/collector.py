@@ -199,7 +199,7 @@ class CollectorInterface(gradio.Interface):
 
     @staticmethod
     def _get_embedded_dataset_viewer(repo_url: str) -> str:
-        return f"""You can submit an empty search to refresh the data.
+        return f"""
 <iframe
   src="{repo_url}/embed/viewer/default/train"
   frameborder="0"
@@ -222,10 +222,13 @@ class CollectorInterface(gradio.Interface):
             )
             with instance:
                 with gradio.Row(equal_height=False):
-                    gradio.HTML(formatted_repo_url)
+                    gradio.Markdown(formatted_repo_url)
                 if show_embedded_viewer and not flagging_callback.dataset_private:
                     with gradio.Row():
-                        with gradio.Accordion("dataset viewer", open=False):
+                        with gradio.Accordion(
+                            "dataset viewer - do an (empty) search to refresh",
+                            open=False,
+                        ):
                             gradio.HTML(cls._get_embedded_dataset_viewer(repo_url))
         else:
             with instance:
