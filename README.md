@@ -502,11 +502,11 @@ from datasets import load_dataset
 ds = load_dataset("SetFit/ag_news", split="train[:2000]")
 df = ds.to_pandas()[["text", "label_text"]]
 
-interface: ExplorerInterface = ExplorerInterface.for_text_classification(
-    df,
+interface = ExplorerInterface.for_text_classification(
+    dataframe=df,
     text_column='text',
     label_column='label_text',
-    label_names=df['label_text'].unique().tolist()
+    labels=df['label_text'].unique().tolist()
 )
 interface.launch()
 ```
@@ -616,7 +616,7 @@ Follow this [guide on making first contributions](https://github.com/firstcontri
 
 ### ideas
 
-- add dataset task info tags
+- add dataset task info tags for Argila.from_hub compatibility
 
 #### ideas CollectorInterface
 
@@ -625,17 +625,20 @@ Follow this [guide on making first contributions](https://github.com/firstcontri
 #### ideas AnnotatorInterface
 
 - continuous chat preference
-- add buttons to sort on embeddings similarity and sort on random
-- data state based on csv or remote dataset (not redo on restart)
+
+WIP PR [here](https://github.com/davidberenstein1957/data-viber/pull/2)
+
 - show input-data and output-data in the interface
 - import data from the hub with oauth
 - import data from excel/csv
+- add buttons to sort on embeddings similarity and sort on random
+- data state based on csv or remote dataset (not redo on restart)
 
 #### ideas ExplorerInterface
 
-- add onnx embedding support (https://www.philschmid.de/optimize-sentence-transformers)
-- add image support
-- labeller support based on lasso selection - [plotly/dash](https://dash.plotly.com/interactive-graphing) seems a nice options that also runs in notebooks
+- onnx embedding support (https://www.philschmid.de/optimize-sentence-transformers) - probably separate in module or package
+- image support
+- file upload support
 
 ## References
 

@@ -20,16 +20,14 @@ dependencies = [
     "plotly>=5,<6",
     "dash>=2.11,<3",
 ]
-
-[tool.pdm.dev-dependencies]
-dev = [
-    "pre-commit>=3.8.0",
-    "ruff>=0.5,<1",
-    "pytest>=8,<9",
-    "black>=24,<25",
+"transformers" = [
     "transformers>=4",
     "torch>=2",
-    "openpyxl>=3,<4",
+]
+"onnx" = [
+    "transformers>=4",
+    "torch>=2",
+    "optimum[onnxruntime]>=1.21.3",
 ]
 
 [build-system]
@@ -44,4 +42,12 @@ line-length = 88
 
 [tool.pdm]
 distribution = true
+[tool.pdm.dev-dependencies]
+dev = [
+    "pre-commit>=3.8.0",
+    "ruff>=0.5,<1",
+    "pytest>=8,<9",
+    "black>=24,<25",
+    "openpyxl>=3,<4",
+]
 

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import importlib
 from collections import defaultdict
 from typing import TYPE_CHECKING, Literal, Optional, Union
 
@@ -54,7 +55,7 @@ class ExplorerInterface:
         score_column: str = None,
         embedding_model: Optional[
             Union["SentenceTransformer", str]
-        ] = "all-MiniLM-L6-v2",
+        ] = "sentence-transformers/all-MiniLM-L6-v2",
         umap_kwargs: dict = {},
         labels: list[str] = None,
         dataset_name: Optional[str] = None,
@@ -200,7 +201,6 @@ class ExplorerInterface:
 
     def _set_embedding_model(self, embedding_model: str):
         import torch
-        from sentence_transformers import SentenceTransformer
 
         if isinstance(embedding_model, SentenceTransformer):
             self.embedding_model = embedding_model
@@ -210,9 +210,14 @@ class ExplorerInterface:
                 device = "mps"
             elif torch.cuda.is_available():
                 device = "cuda"
-            self.embedding_model = SentenceTransformer(
-                model_name_or_path=embedding_model, device=device
-            )
+            if importlib.util.find_spec("onnxruntime") is not None:
+                from data_viber.embedder import Embedder
+
+                self.embedding_model = Embedder(model_id=embedding_model, device=device)
+            else:
+                self.embedding_model = SentenceTransformer(
+                    model_name_or_path=embedding_model, device=device
+                )
         else:
             raise ValueError(
                 "Embedding model should be of type `str` or `SentenceTransformer`"
