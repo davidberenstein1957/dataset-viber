@@ -635,6 +635,7 @@ Follow this [guide on making first contributions](https://github.com/firstcontri
 
 - add onnx embedding support (https://www.philschmid.de/optimize-sentence-transformers)
 - add image support
+- add chat support
 - labeller support based on lasso selection - [plotly/dash](https://dash.plotly.com/interactive-graphing) seems a nice options that also runs in notebooks
 
 ## References
