@@ -42,8 +42,11 @@ class Embedder:
         self.load_model()
         self.save_model()
         self.create_pipeline()
+        print(f"Model loaded on {self.device}")
         if self.use_onnx:
+            print("Optimizing and quantizing model...")
             self.optimize_model()
+            print("Optimization complete.")
             self.load_optimized_model()
             self.quantize_model()
             self.print_model_sizes()
@@ -103,7 +106,7 @@ class Embedder:
     def encode(self, text, convert_to_numpy=False):
         prediction = self.pipeline(text)
         if convert_to_numpy:
-            return prediction.cpu().detach().numpy()
+            return [pred.cpu().detach().numpy()[0] for pred in prediction]
         else:
             return prediction
 
@@ -179,7 +182,3 @@ class Embedder:
         print(f"Model file size: {size:.2f} MB")
         print(f"Optimized Model file size: {optimized_size:.2f} MB")
         print(f"Quantized Model file size: {quantized_size:.2f} MB")
-
-
-# Usage example:
-st = Embedder(use_onnx=True)

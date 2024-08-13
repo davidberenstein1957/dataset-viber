@@ -22,8 +22,9 @@ import plotly.express as px
 import umap
 from dash import dash_table, dcc, html
 from dash.dependencies import Input, Output, State
-from data_viber._constants import DEFAULT_EMBEDDING_MODEL
 from plotly.graph_objs._figure import Figure
+
+from data_viber._constants import DEFAULT_EMBEDDING_MODEL
 
 if TYPE_CHECKING:
     from sentence_transformers import SentenceTransformer
@@ -48,7 +49,9 @@ class ExplorerInterface:
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
+        data_format: Optional[str] = "text",
     ):
+        self.data_format = data_format
         self.text_column = text_column
         self.label_column = label_column
         self.labels = labels
@@ -101,31 +104,37 @@ class ExplorerInterface:
                 ctx = dash.callback_context
                 if not ctx.triggered or new_label is None:
                     return current_figure, self.umap_df.to_dict("records")
+
+                hidden_traces = []
+                for trace in figure["data"]:
+                    if trace["visible"] == "legendonly":
+                        hidden_traces.append(trace)
+
                 if selectedData and selectedData["points"]:
                     selected_indices = [
                         point["customdata"][0] for point in selectedData["points"]
                     ]
                     self.umap_df.loc[selected_indices, self.label_column] = new_label
-                    print(self.umap_df)
                     updated_traces = []
                     points_to_move = defaultdict(list)
                     for trace in current_figure["data"]:
-                        if new_label != trace["name"]:
-                            points_to_keep = defaultdict(list)
-                            for idx, point in enumerate(trace["customdata"]):
-                                if point[0] not in selected_indices:
-                                    points_to_keep["customdata"].append(point)
-                                    points_to_keep["x"].append(trace["x"][idx])
-                                    points_to_keep["y"].append(trace["y"][idx])
-                                else:
-                                    points_to_move["customdata"].append(point)
-                                    points_to_move["x"].append(trace["x"][idx])
-                                    points_to_move["y"].append(trace["y"][idx])
-                            trace["customdata"] = points_to_keep["customdata"]
-                            trace["x"] = points_to_keep["x"]
-                            trace["y"] = points_to_keep["y"]
-                            trace["selectedpoints"] = []
-                            updated_traces.append(trace)
+                        if trace not in hidden_traces:
+                            if new_label != trace["name"]:
+                                points_to_keep = defaultdict(list)
+                                for idx, point in enumerate(trace["customdata"]):
+                                    if point[0] not in selected_indices:
+                                        points_to_keep["customdata"].append(point)
+                                        points_to_keep["x"].append(trace["x"][idx])
+                                        points_to_keep["y"].append(trace["y"][idx])
+                                    else:
+                                        points_to_move["customdata"].append(point)
+                                        points_to_move["x"].append(trace["x"][idx])
+                                        points_to_move["y"].append(trace["y"][idx])
+                                trace["customdata"] = points_to_keep["customdata"]
+                                trace["x"] = points_to_keep["x"]
+                                trace["y"] = points_to_keep["y"]
+                                trace["selectedpoints"] = []
+                                updated_traces.append(trace)
                     for trace in current_figure["data"]:
                         if trace["name"] == new_label:
                             trace["customdata"] += points_to_move["customdata"]
@@ -134,7 +143,6 @@ class ExplorerInterface:
                             trace["selectedpoints"] = []
                             updated_traces.append(trace)
                     current_figure["data"] = updated_traces
-                    print(self.umap_df)
                     return current_figure, self.umap_df.to_dict("records")
 
                 return current_figure, self.umap_df.to_dict("records")
@@ -175,12 +183,24 @@ class ExplorerInterface:
             if not ctx.triggered:
                 return figure, self.umap_df.to_dict("records")
 
+            hidden_traces = []
+            for trace in figure["data"]:
+                if trace.get("visible") == "legendonly":
+                    hidden_traces.append(trace)
+
             if selectedData and selectedData["points"]:
-                selected_indices = [p["pointIndex"] for p in selectedData["points"]]
+                selected_indices = [
+                    point["customdata"][0] for point in selectedData["points"]
+                ]
                 filtered_df = self.umap_df.iloc[selected_indices]
             else:
                 filtered_df = self.umap_df
                 selected_indices = None
+
+            if hidden_traces:
+                filtered_df = filtered_df[
+                    ~filtered_df[self.label_column].isin(hidden_traces)
+                ]
 
             return figure, filtered_df.to_dict("records")
 
@@ -188,6 +208,7 @@ class ExplorerInterface:
 
     def _set_embedding_model(self, embedding_model: str):
         import torch
+        from sentence_transformers import SentenceTransformer
 
         if isinstance(embedding_model, SentenceTransformer):
             self.embedding_model = embedding_model
@@ -220,7 +241,7 @@ class ExplorerInterface:
         score_column: str = None,
         embedding_model: Optional[
             Union["SentenceTransformer", str]
-        ] = "all-MiniLM-L6-v2",
+        ] = DEFAULT_EMBEDDING_MODEL,
         umap_kwargs: dict = {},
     ):
         return cls(
@@ -230,6 +251,7 @@ class ExplorerInterface:
             score_column=score_column,
             embedding_model=embedding_model,
             umap_kwargs=umap_kwargs,
+            data_format="text",
         )
 
     @classmethod
@@ -243,7 +265,7 @@ class ExplorerInterface:
         score_column: str = None,
         embedding_model: Optional[
             Union["SentenceTransformer", str]
-        ] = "all-MiniLM-L6-v2",
+        ] = DEFAULT_EMBEDDING_MODEL,
         umap_kwargs: dict = {},
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
@@ -263,6 +285,7 @@ class ExplorerInterface:
             dataset_name=dataset_name,
             hf_token=hf_token,
             private=private,
+            data_format="text",
         )
 
     def launch(self, **kwargs):
