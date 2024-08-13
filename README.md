@@ -195,7 +195,7 @@ interface = AnnotatorInterFace.for_text_generation(
     fn=None, # a callable e.g. (function or transformers pipelines) that returns `str`
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
-
+interface.launch()
 ```
 
 </details>
@@ -210,13 +210,14 @@ prompts = ["Tell me something about Anthony Bourdain."]
 completions_a = ["Anthony Michael Bourdain was an American celebrity chef, author, and travel documentarian."]
 completions_b = ["Anthony Michael Bourdain was an cool guy that knew how to cook."]
 
-interface = AnnotatorInterFace.for_text_generation(
+interface = AnnotatorInterFace.for_text_generation_preference(
     prompts=prompts,
     completions_a=completions_a,
     completions_b=completions_b,
     fn=None, # a callable e.g. (function or transformers pipelines) that returns `str`
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
+interface.launch()
 ```
 
 </details>

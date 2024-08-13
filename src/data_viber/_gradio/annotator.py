@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
+import tempfile
 from typing import TYPE_CHECKING, Dict, List, Optional, Union, override
 
 import gradio
 import numpy as np
+import pandas as pd
 import PIL
 from gradio.components import (
     Button,
@@ -59,6 +62,67 @@ if TYPE_CHECKING:
 
 
 class AnnotatorInterFace(CollectorInterface):
+    @override
+    def __init__(
+        self,
+        *args,
+        inputs,
+        outputs,
+        **kwargs,
+    ):
+        self.task = "chat_generation"
+        # Initialize the parent class
+        gradio.Blocks.__init__(
+            self,
+            analytics_enabled=kwargs.get("analytics_enabled", True),
+            mode="interface",
+            css=kwargs.get("css", None),
+            title=kwargs.get("title", "Gradio"),
+            theme=kwargs.get("theme", None),
+            js=kwargs.get("js", None),
+            head=kwargs.get("head", None),
+            delete_cache=kwargs.get("delete_cache", False),
+            fill_width=kwargs.get("fill_width", False),
+            # **kwargs,
+        )
+        # Override the __init__ method of the parent class to avoid the re-creation of the blocks
+        gradio.Blocks.__init__ = lambda *args, **kwargs: None
+        with self:
+            with gradio.Accordion("Upload a file", open=False):
+                upload_button = gradio.UploadButton(
+                    "Upload", label="Upload a file", file_types=["csv", "xlsx", "xlsx"]
+                )
+                df_upload = gradio.Dataframe()
+                upload_button.upload(
+                    fn=self.upload_file, inputs=upload_button, outputs=df_upload
+                )
+        super().__init__(
+            *args,
+            inputs=inputs,
+            outputs=outputs,
+            **kwargs,
+        )
+        with self:
+            with gradio.Row(variant="panel"):
+                with gradio.Column():
+                    sort = gradio.Button("Semantic Sort", variant="secondary")
+                with gradio.Column():
+                    shuffle = gradio.Button("Shuffle", variant="secondary")
+                sort.click(fn=self.sort_data, inputs=None, outputs=None)
+                shuffle.click(fn=self.shuffle_data, inputs=None, outputs=None)
+            with gradio.Accordion("Annotations", open=False):
+                with gradio.Row():
+                    df_download = gradio.Dataframe()
+                with gradio.Row():
+                    download_button = gradio.DownloadButton(
+                        "Download", label="Download the annotations"
+                    )
+                with gradio.Row():
+                    output_csv = gradio.File(height=50)
+                download_button.click(
+                    fn=self.download_annotations, inputs=df_download, outputs=output_csv
+                )
+
     @classmethod
     def for_text_classification(
         cls,
@@ -350,7 +414,7 @@ class AnnotatorInterFace(CollectorInterface):
 
     @classmethod
     def for_text_generation_preference(
-        cls,
+        cls: "AnnotatorInterFace",
         prompts: List[str],
         *,
         completions_a: Optional[List[str]] = None,
@@ -380,7 +444,7 @@ class AnnotatorInterFace(CollectorInterface):
         # Input validation
         start = len(prompts)
         prompts, completions_a, completions_b = cls._validate_preference(
-            cls, fn, prompts, completions_a, completions_b
+            fn, prompts, completions_a, completions_b
         )
 
         # Process function
@@ -1076,3 +1140,33 @@ class AnnotatorInterFace(CollectorInterface):
         ):
             raise ValueError("Prompts and completions must be of the same length")
         return prompts, completions_a, completions_b
+
+    @staticmethod
+    def upload_file(file):
+        # Determine the file type and load accordingly
+        if file.name.endswith(".csv"):
+            df = pd.read_csv(file.name)
+        elif file.name.endswith(".xls") or file.name.endswith(".xlsx"):
+            df = pd.read_excel(file.name)
+        elif file.name.endswith(".json"):
+            with open(file.name) as f:
+                data = json.load(f)
+            df = pd.json_normalize(data)  # Convert JSON to DataFrame
+        else:
+            return "Unsupported file type. Please upload a CSV, Excel, or JSON file."
+
+        return df
+
+    @staticmethod
+    def download_annotations(dataframe):
+        with tempfile.NamedTemporaryFile(
+            delete=False, prefix="annotations_", suffix=".csv"
+        ) as temp_file:
+            dataframe.to_csv(temp_file.name, index=False)
+            return temp_file.name
+
+    def sort_data(self, annotations):
+        return annotations
+
+    def shuffle_data(self, annotations):
+        return annotations
