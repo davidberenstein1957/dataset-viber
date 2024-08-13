@@ -531,6 +531,26 @@ interface.launch()
 
 </details>
 
+</details>
+<summary><code>chat-classification</code></summary>
+
+```python
+from data_viber import ExplorerInterface
+from datasets import load_dataset
+
+ds = load_dataset("argilla/distilabel-capybara-dpo-7k-binarized", split="train[:1000]")
+df = ds.to_pandas()[["chosen"]]
+
+interface = ExplorerInterface.for_chat_classification(
+    dataframe=df,
+    chat_column='chosen',
+    labels=["math", "science", "history", "question seeking"],
+)
+interface.launch()
+```
+
+</details>
+
 ### Embedder
 
 > Built on top of the `onnx` and `optimum` to [efficiently embed data](https://www.philschmid.de/optimize-sentence-transformers).
@@ -670,10 +690,9 @@ WIP PR [here](https://github.com/davidberenstein1957/data-viber/pull/2)
 
 #### ideas ExplorerInterface
 
-- chat support
+- fix hovers for dataframe
 - image support
 - file upload support
-- review select visibility
 
 ## References
 

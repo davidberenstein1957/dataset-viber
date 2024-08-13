@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import importlib
+import warnings
 from collections import defaultdict
 from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Union
 
@@ -55,6 +56,15 @@ class ExplorerInterface:
         self.content_column = content_column
         self.label_column = label_column
         self.labels = labels
+        if label_column and labels:
+            if not all([label in dataframe[label_column].unique() for label in labels]):
+                # apply label to first x empty rows in label_column
+                empty_rows = dataframe[dataframe[label_column] == ""].index
+                for label, row in zip(labels, empty_rows):
+                    dataframe.loc[row, label_column] = label
+                warnings.warn(
+                    "Labels were not found in the label_column. Applied labels to the first x empty rows."
+                )
 
         contents = dataframe[content_column].tolist()
 
@@ -290,6 +300,7 @@ class ExplorerInterface:
         dataframe: pd.DataFrame,
         chat_column: List[Dict[str, str]],
         *,
+        label_column: str = None,
         embedding_model: Optional[
             Union["SentenceTransformer", str]
         ] = DEFAULT_EMBEDDING_MODEL,
@@ -298,8 +309,41 @@ class ExplorerInterface:
         return cls(
             dataframe=dataframe,
             content_column=chat_column,
+            label_column=label_column,
             embedding_model=embedding_model,
             umap_kwargs=umap_kwargs,
+            content_format="chat",
+        )
+
+    @classmethod
+    def for_chat_classification(
+        cls,
+        dataframe: pd.DataFrame,
+        chat_column: List[Dict[str, str]],
+        labels: list[str],
+        *,
+        label_column: str = None,
+        embedding_model: Optional[
+            Union["SentenceTransformer", str]
+        ] = DEFAULT_EMBEDDING_MODEL,
+        umap_kwargs: dict = {},
+        dataset_name: Optional[str] = None,
+        hf_token: Optional[str] = None,
+        private: Optional[bool] = False,
+    ):
+        if not label_column:
+            dataframe["label"] = ""
+            label_column = "label"
+        return cls(
+            dataframe=dataframe,
+            content_column=chat_column,
+            embedding_model=embedding_model,
+            umap_kwargs=umap_kwargs,
+            labels=labels,
+            dataset_name=dataset_name,
+            label_column=label_column,
+            hf_token=hf_token,
+            private=private,
             content_format="chat",
         )
 
@@ -347,14 +391,8 @@ class ExplorerInterface:
                 x=0.5,  # Center the legend at the bottom
             ),
             hoverlabel=dict(
-                font_size=9,
+                font_size=10,
                 font_family="monospace",
-                position="fixed",
-                overflow="auto",
-                top="50%",
-                left="50%",
-                transform="translate(-50%, -50%)",
-                zindex=1000,
             ),
         )
         return fig
@@ -364,7 +402,7 @@ class ExplorerInterface:
         if labels is not None:
             buttons.extend(
                 [
-                    buttons.asppend(
+                    buttons.append(
                         dcc.Dropdown(
                             id="label-dropdown",
                             options=[
@@ -489,7 +527,7 @@ class ExplorerInterface:
                                         max-width: 100vw !important;
                                         max-height: 80vh !important;
                                         overflow: auto;
-                                        font-size: 9px;
+                                        font-size: 1opx;
                                         position: fixed;
                                         top: 50%;
                                         left: 50%;
@@ -502,6 +540,7 @@ class ExplorerInterface:
                                 "whiteSpace": "normal",
                                 "height": "auto",
                                 "textAlign": "left",
+                                "font-size": "12px",
                                 "overflow": "auto",  # Enable scrolling
                             },
                             style_data={

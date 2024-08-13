@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-DEFAULT_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+DEFAULT_EMBEDDING_MODEL = "Snowflake/snowflake-arctic-embed-xs"
 COLORS = [
     "#a6cee3",
     "#1f78b4",
