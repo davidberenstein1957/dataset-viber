@@ -12,6 +12,7 @@ I've cooked up Data Viber, a cool set of tools to make your life easier when dea
 - **CollectorInterface**: Lazily collect data of interactions without human annotation.
 - **AnnotatorInterface**: Walk through your data and annotate it with models in the loop.
 - **ExplorerInterface**: Explore your data distribution and annotate in bulk.
+- **Embdedder**: Efficiently embed data with ONNX-optimized speeds.
 
 Need any tweaks or want to hear more about a specific tool? Just open an issue or give me a shout!
 
@@ -467,7 +468,7 @@ interface.launch()
 
 ### ExplorerInterface
 
-> Built on top of the `Dash`, `plotly-express`, `umap-learn`, and `sentence-transformers` to understand and label your dataset distribution.
+> Built on top of the `Dash`, `plotly-express`, `umap-learn`, and `Embedder` to embed, understand and label your dataset distribution.
 
 https://github.com/user-attachments/assets/5e96c06d-e37f-45a0-9633-1a8e714d71ed
 
@@ -509,6 +510,22 @@ interface = ExplorerInterface.for_text_classification(
     labels=df['label_text'].unique().tolist()
 )
 interface.launch()
+```
+
+</details>
+
+### Embedder
+
+> Built on top of the `onnx` and `optimum` to [efficiently embed data](https://www.philschmid.de/optimize-sentence-transformers).
+
+<details>
+<summary><code>Embedder</code></summary>
+
+```python
+from data_viber.embedder import Embedder
+
+embedder = Embedder(model_id="sentence-transformers/all-MiniLM-L6-v2")
+embedder.encode(["Anthony Bourdain was an amazing chef in New York."])
 ```
 
 </details>
@@ -636,7 +653,7 @@ WIP PR [here](https://github.com/davidberenstein1957/data-viber/pull/2)
 
 #### ideas ExplorerInterface
 
-- onnx embedding support (https://www.philschmid.de/optimize-sentence-transformers) - probably separate in module or package
+- chat support
 - image support
 - file upload support
 
