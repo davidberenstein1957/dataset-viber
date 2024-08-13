@@ -22,26 +22,13 @@ import plotly.express as px
 import umap
 from dash import dash_table, dcc, html
 from dash.dependencies import Input, Output, State
+from data_viber._constants import DEFAULT_EMBEDDING_MODEL
 from plotly.graph_objs._figure import Figure
 
 if TYPE_CHECKING:
     from sentence_transformers import SentenceTransformer
 
 
-_COLORS = [
-    "#a6cee3",
-    "#1f78b4",
-    "#b2df8a",
-    "#33a02c",
-    "#fb9a99",
-    "#e31a1c",
-    "#fdbf6f",
-    "#ff7f00",
-    "#cab2d6",
-    "#6a3d9a",
-    "#ffff99",
-    "#b15928",
-]
 external_stylesheets = ["https://codepen.io/chriddyp/pen/bWLwgP.css"]
 
 
@@ -55,7 +42,7 @@ class ExplorerInterface:
         score_column: str = None,
         embedding_model: Optional[
             Union["SentenceTransformer", str]
-        ] = "sentence-transformers/all-MiniLM-L6-v2",
+        ] = DEFAULT_EMBEDDING_MODEL,
         umap_kwargs: dict = {},
         labels: list[str] = None,
         dataset_name: Optional[str] = None,

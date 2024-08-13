@@ -16,15 +16,18 @@ from pathlib import Path
 
 import torch
 import torch.nn.functional as F
+from optimum.modeling_base import OptimizedModel
 from optimum.onnxruntime import ORTModelForFeatureExtraction, ORTOptimizer, ORTQuantizer
 from optimum.onnxruntime.configuration import AutoQuantizationConfig, OptimizationConfig
 from transformers import AutoTokenizer, Pipeline
+
+from data_viber._constants import DEFAULT_EMBEDDING_MODEL
 
 
 class Embedder:
     def __init__(
         self,
-        model_id="sentence-transformers/all-MiniLM-L6-v2",
+        model_id=DEFAULT_EMBEDDING_MODEL,
         use_onnx=True,
         device="cpu",
     ):
@@ -47,7 +50,7 @@ class Embedder:
 
     def load_model(self):
         if self.use_onnx:
-            self.model = ORTModelForFeatureExtraction.from_pretrained(
+            self.model: OptimizedModel = ORTModelForFeatureExtraction.from_pretrained(
                 self.model_id, export=True
             )
         else:

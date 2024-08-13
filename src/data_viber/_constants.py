@@ -12,6 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from data_viber._gradio import CollectorInterface  # noqa
-from data_viber._gradio import AnnotatorInterFace  # noqa
-from data_viber._plotly import ExplorerInterface  # noqa
+DEFAULT_EMBEDDING_MODEL = "all-MiniLM-L6-v2"
+COLORS = [
+    "#a6cee3",
+    "#1f78b4",
+    "#b2df8a",
+    "#33a02c",
+    "#fb9a99",
+    "#e31a1c",
+    "#fdbf6f",
+    "#ff7f00",
+    "#cab2d6",
+    "#6a3d9a",
+    "#ffff99",
+    "#b15928",
+]
