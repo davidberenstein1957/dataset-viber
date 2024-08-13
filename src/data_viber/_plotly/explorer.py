@@ -14,9 +14,10 @@
 
 import importlib
 from collections import defaultdict
-from typing import TYPE_CHECKING, Literal, Optional, Union
+from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Union
 
 import dash
+import dash_bootstrap_components as dbc
 import pandas as pd
 import plotly.express as px
 import umap
@@ -37,10 +38,9 @@ class ExplorerInterface:
     def __init__(
         self,
         dataframe: pd.DataFrame,
-        text_column: str,
+        content_column: str,
         *,
         label_column: str = None,
-        score_column: str = None,
         embedding_model: Optional[
             Union["SentenceTransformer", str]
         ] = DEFAULT_EMBEDDING_MODEL,
@@ -49,23 +49,25 @@ class ExplorerInterface:
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
-        data_format: Optional[str] = "text",
+        content_format: Optional[str] = "text",
     ):
-        self.data_format = data_format
-        self.text_column = text_column
+        self.content_format = content_format
+        self.content_column = content_column
         self.label_column = label_column
         self.labels = labels
 
-        # Extract texts
-        texts = dataframe[text_column].tolist()
+        contents = dataframe[content_column].tolist()
 
         # Apply embedding reduction
         component_columns: list[str] = ["x", "y"]
         if all([col in dataframe.columns for col in component_columns]):
             umap_df = dataframe[component_columns]
         else:
-            self._set_embedding_model(embedding_model)
-            embeddings = self.embedding_model.encode(texts, convert_to_numpy=True)
+            if "embeddings" in dataframe.columns:
+                embeddings = dataframe["embeddings"].tolist()
+            else:
+                self._set_embedding_model(embedding_model)
+                embeddings = self.embed_content(contents)
             reducer = umap.UMAP(n_components=2, **umap_kwargs)
             umap_embeddings = reducer.fit_transform(embeddings)
             # Create a DataFrame for plotting
@@ -77,11 +79,9 @@ class ExplorerInterface:
         umap_df["index"] = dataframe.index
         for col in dataframe.columns:
             umap_df[col] = dataframe[col]
-        if score_column and score_column in dataframe.columns:
-            umap_df["Size"] = umap_df[score_column].div(umap_df[score_column].mean())
 
         self.umap_df = umap_df
-        app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+        app = dash.Dash(__name__, external_stylesheets=[dbc.themes.SANDSTONE])
         figure = self._get_initial_figure(umap_df)
         app.layout = self._get_app_layout(figure, umap_df, labels, hf_token)
 
@@ -235,34 +235,31 @@ class ExplorerInterface:
     def for_text_visualization(
         cls,
         dataframe: pd.DataFrame,
-        text_column: str,
+        content_column: str,
         *,
         label_column: str = None,
-        score_column: str = None,
         embedding_model: Optional[
             Union["SentenceTransformer", str]
         ] = DEFAULT_EMBEDDING_MODEL,
         umap_kwargs: dict = {},
     ):
         return cls(
-            dataframe,
-            text_column,
+            dataframe=dataframe,
+            content_column=content_column,
             label_column=label_column,
-            score_column=score_column,
             embedding_model=embedding_model,
             umap_kwargs=umap_kwargs,
-            data_format="text",
+            content_format="text",
         )
 
     @classmethod
     def for_text_classification(
         cls,
         dataframe: pd.DataFrame,
-        text_column: str,
+        content_column: str,
         labels: list[str],
         *,
         label_column: str = None,
-        score_column: str = None,
         embedding_model: Optional[
             Union["SentenceTransformer", str]
         ] = DEFAULT_EMBEDDING_MODEL,
@@ -275,17 +272,35 @@ class ExplorerInterface:
             dataframe["label"] = ""
             label_column = "label"
         return cls(
-            dataframe,
-            text_column,
+            dataframe=dataframe,
+            content_column=content_column,
             label_column=label_column,
-            score_column=score_column,
             embedding_model=embedding_model,
             umap_kwargs=umap_kwargs,
             labels=labels,
             dataset_name=dataset_name,
             hf_token=hf_token,
             private=private,
-            data_format="text",
+            content_format="text",
+        )
+
+    @classmethod
+    def for_chat_visualization(
+        cls,
+        dataframe: pd.DataFrame,
+        chat_column: List[Dict[str, str]],
+        *,
+        embedding_model: Optional[
+            Union["SentenceTransformer", str]
+        ] = DEFAULT_EMBEDDING_MODEL,
+        umap_kwargs: dict = {},
+    ):
+        return cls(
+            dataframe=dataframe,
+            content_column=chat_column,
+            embedding_model=embedding_model,
+            umap_kwargs=umap_kwargs,
+            content_format="chat",
         )
 
     def launch(self, **kwargs):
@@ -293,13 +308,13 @@ class ExplorerInterface:
 
     def _get_initial_figure(self, dataframe) -> Figure:
         # color_map = {label: color for label, color in zip(self.labels, _COLORS)}
-        dataframe[f"wrapped_hover_{self.text_column}"] = dataframe[
-            self.text_column
-        ].apply(lambda x: self.wrap_text(x, max_length=30))
+        dataframe[f"wrapped_hover_{self.content_column}"] = dataframe[
+            self.content_column
+        ].apply(lambda x: self.format_content(x, content_format=self.content_format))
         custom_data = ["index"] + [
             col
             for col in dataframe.columns
-            if col not in ["x", "y", "index", self.text_column]
+            if col not in ["x", "y", "index", self.content_column]
         ]
         hovertemplate: Literal[""] = ""
         df_custom = dataframe[custom_data]
@@ -316,9 +331,7 @@ class ExplorerInterface:
             height=800,
             custom_data=custom_data,
         )
-        print(hovertemplate)
         fig.update_traces(hovertemplate=str(hovertemplate))
-
         fig.update_layout(
             xaxis_title=None,
             yaxis_title=None,
@@ -333,6 +346,16 @@ class ExplorerInterface:
                 xanchor="center",  # Center the legend horizontally
                 x=0.5,  # Center the legend at the bottom
             ),
+            hoverlabel=dict(
+                font_size=9,
+                font_family="monospace",
+                position="fixed",
+                overflow="auto",
+                top="50%",
+                left="50%",
+                transform="translate(-50%, -50%)",
+                zindex=1000,
+            ),
         )
         return fig
 
@@ -341,7 +364,7 @@ class ExplorerInterface:
         if labels is not None:
             buttons.extend(
                 [
-                    buttons.append(
+                    buttons.asppend(
                         dcc.Dropdown(
                             id="label-dropdown",
                             options=[
@@ -357,21 +380,45 @@ class ExplorerInterface:
                         )
                     ),
                     buttons.append(
-                        html.Button(
+                        dbc.Button(
                             "Update Labels",
                             id="update-button",
                             n_clicks=0,
                         )
                     ),
-                    html.Button(
+                    dbc.Button(
                         "Upload to Hub",
                         id="upload-button",
                         n_clicks=0,
                     ),
-                    html.Button("Download Text", id="btn-download-txt"),
+                    dbc.Button("Download Text", id="btn-download-txt"),
                     dcc.Download(id="download-text"),
                 ]
             )
+        if self.content_format == "chat":
+            tooltip_data = [
+                {
+                    self.content_column: {
+                        "value": pd.DataFrame.from_records(value)[
+                            ["role", "content"]
+                        ].to_markdown(index=False, tablefmt="pipe"),
+                        "type": "markdown",
+                    }
+                }
+                for value in dataframe[self.content_column].tolist()
+            ]
+            dataframe[self.content_column] = dataframe[self.content_column].apply(
+                lambda x: x[0]["content"]
+            )
+            columns = dataframe.columns
+        elif self.content_format == "text":
+            tooltip_data = None
+            columns = [dataframe.columns]
+        else:
+            raise ValueError(
+                "content_format should be either 'text' or 'chat' but got {self.content_format}"
+            )
+
         layout = html.Div(
             [
                 html.H1("ExplorerInterface"),
@@ -413,32 +460,56 @@ class ExplorerInterface:
                         "marginRight": "1%",
                     },
                 ),
+                # https://dash.plotly.com/datatable/tooltips#images-in-tooltips
+                #
                 html.Div(
                     [
                         dash_table.DataTable(
                             id="data-table",
-                            columns=[{"name": i, "id": i} for i in dataframe.columns],
-                            data=dataframe.to_dict("records"),
+                            columns=[{"name": i, "id": i} for i in columns],
+                            data=dataframe[columns].to_dict("records"),
                             hidden_columns=[
                                 "x",
                                 "y",
                                 "index",
-                                f"wrapped_hover_{self.text_column}",
+                                f"wrapped_hover_{self.content_column}",
                             ],
+                            tooltip_data=tooltip_data,
                             column_selectable=False,
                             page_size=20,
                             fill_width=True,
-                            css=[{"selector": ".show-hide", "rule": "display: none"}],
+                            css=[
+                                {"selector": ".show-hide", "rule": "display: none"},
+                                {
+                                    "selector": ".dash-table-tooltip",
+                                    "rule": """
+                                        background-color: grey;
+                                        font-family: monospace;
+                                        color: white;
+                                        max-width: 100vw !important;
+                                        max-height: 80vh !important;
+                                        overflow: auto;
+                                        font-size: 9px;
+                                        position: fixed;
+                                        top: 50%;
+                                        left: 50%;
+                                        transform: translate(-50%, -50%);
+                                        z-index: 1000;
+                                    """,
+                                },
+                            ],
                             style_cell={
                                 "whiteSpace": "normal",
                                 "height": "auto",
                                 "textAlign": "left",
+                                "overflow": "auto",  # Enable scrolling
                             },
                             style_data={
                                 "whiteSpace": "normal",
                                 "height": "auto",
                             },
                             style_table={"overflowX": "auto"},
+                            tooltip_duration=None,
                         )
                     ],
                     style={
@@ -451,22 +522,36 @@ class ExplorerInterface:
         )
         return layout
 
-    @staticmethod
-    def wrap_text(text, max_length=60):
-        words = text.split(" ")
+    def embed_content(self, content: List[str]):
+        if self.content_format == "text":
+            return self.embedding_model.encode(content, convert_to_numpy=True)
+        elif self.content_format == "chat":
+            content = [
+                " ".join([turn["content"] for turn in conversation])
+                for conversation in content
+            ]
+            return self.embedding_model.encode(content, convert_to_numpy=True)
+
+    def format_content(self, content, max_length=150, content_format="text"):
         wrapped_text = ""
-        line = ""
+        if content_format == "text":
+            words = content.split(" ")
+            line = ""
 
-        for word in words:
-            if len(line) + len(word) + 1 > max_length:
-                if line:
-                    wrapped_text += line + "<br>"
-                line = word
-            else:
-                if line:
-                    line += " " + word
-                else:
+            for word in words:
+                if len(line) + len(word) + 1 > max_length:
+                    if line:
+                        wrapped_text += line + "<br>"
                     line = word
+                else:
+                    if line:
+                        line += " " + word
+                    else:
+                        line = word
 
-        wrapped_text += line
-        return wrapped_text
+            wrapped_text += line
+            return wrapped_text
+        elif content_format == "chat":
+            for turn in content:
+                wrapped_text += f"<b>{turn['role']}</b>:<br>{self.format_content(turn['content'])}<br><br>"
+            return wrapped_text

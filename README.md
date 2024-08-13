@@ -485,7 +485,7 @@ ds = load_dataset("SetFit/ag_news", split="train[:2000]")
 
 interface: ExplorerInterface = ExplorerInterface.for_text_visualization(
     ds.to_pandas()[["text", "label_text"]],
-    text_column='text',
+    content_column='text',
     label_column='label_text',
 )
 interface.launch()
@@ -505,9 +505,26 @@ df = ds.to_pandas()[["text", "label_text"]]
 
 interface = ExplorerInterface.for_text_classification(
     dataframe=df,
-    text_column='text',
+    content_column='text',
     label_column='label_text',
     labels=df['label_text'].unique().tolist()
+)
+interface.launch()
+```
+
+</details>
+<summary><code>chat-visualization</code></summary>
+
+```python
+from data_viber import ExplorerInterface
+from datasets import load_dataset
+
+ds = load_dataset("argilla/distilabel-capybara-dpo-7k-binarized", split="train[:1000]")
+df = ds.to_pandas()[["chosen"]]
+
+interface = ExplorerInterface.for_chat_visualization(
+    dataframe=df,
+    chat_column='chosen',
 )
 interface.launch()
 ```

@@ -11,23 +11,20 @@ license = {text = "Apache 2.0"}
 dependencies = [
     "gradio[oauth]>=4.3,<5",
     "datasets>=2,<3",
+    "sentence-transformers>=3",
+    "optimum[onnxruntime]>=1.21.3",
+    "tabulate>=0.9.0",
 ]
 
 [project.optional-dependencies]
 "explorer" = [
-    "sentence-transformers>=3",
+
     "umap-learn>=0.5,<1",
     "plotly>=5,<6",
     "dash>=2.11,<3",
-]
-"transformers" = [
-    "transformers>=4",
-    "torch>=2",
-]
-"onnx" = [
-    "transformers>=4",
-    "torch>=2",
-    "optimum[onnxruntime]>=1.21.3",
+    "dash-bootstrap-components>=1.6.0",
+
+
 ]
 
 [build-system]
