@@ -7,7 +7,7 @@
 
 <h3 align="center">Avoid the hype, check the vibe!</h2>
 
-I've cooked up Dataset viber, a cool set of tools to make your life easier when dealing with data for NLP and image models. Dataset viber is all about making your data prep journey smooth and fun. It's **not for team collaboration or production**, nor trying to be all fancy and formal - just a bunch of **cool tools to help you collect feedback and do vibe-checks** for data for AI models as an AI engineer. Want to see it in action? Just plug it in and start vibing with your data. It's that easy!
+I've cooked up Dataset viber, a cool set of tools to make your life easier when dealing with data for AI models. Dataset viber is all about making your data prep journey smooth and fun. It's **not for team collaboration or production**, nor trying to be all fancy and formal - just a bunch of **cool tools to help you collect feedback and do vibe-checks** as a standalone an AI engineer or lover. Want to see it in action? Just plug it in and start vibing with your data. It's that easy!
 
 - **CollectorInterface**: Lazily collect data of model interactions without human annotation.
 - **AnnotatorInterface**: Walk through your data and annotate it with models in the loop.
