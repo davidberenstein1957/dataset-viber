@@ -501,7 +501,7 @@ class ExplorerInterface:
                     },
                 ),
                 # https://dash.plotly.com/datatable/tooltips#images-in-tooltips
-                #
+                # https://dash.plotly.com/dash-core-components/tooltip#visualizing-t-sne-plot-of-mnist-images
                 html.Div(
                     [
                         dash_table.DataTable(
