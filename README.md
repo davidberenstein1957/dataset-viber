@@ -1,13 +1,13 @@
 <h1 align="center">
   <a href=""><img src="https://cdn-icons-png.flaticon.com/512/2091/2091395.png" alt="dataset-viber" width="150"></a>
   <br>
-  Dataset viber
+  Dataset Viber
   <br>
 </h1>
 
 <h3 align="center">Avoid the hype, check the vibe!</h2>
 
-I've cooked up Dataset viber, a cool set of tools to make your life easier when dealing with data for AI models. Dataset viber is all about making your data prep journey smooth and fun. It's **not for team collaboration or production**, nor trying to be all fancy and formal - just a bunch of **cool tools to help you collect feedback and do vibe-checks** as a standalone AI engineer or lover. Want to see it in action? Just plug it in and start vibing with your data. It's that easy!
+I've cooked up Dataset Viber, a cool set of tools to make your life easier when dealing with data for AI models. Dataset Viber is all about making your data prep journey smooth and fun. It's **not for team collaboration or production**, nor trying to be all fancy and formal - just a bunch of **cool tools to help you collect feedback and do vibe-checks** as a standalone AI engineer or lover. Want to see it in action? Just plug it in and start vibing with your data. It's that easy!
 
 - **CollectorInterface**: Lazily collect data of model interactions without human annotation.
 - **AnnotatorInterface**: Walk through your data and annotate it with models in the loop.
