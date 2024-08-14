@@ -433,11 +433,11 @@ class BulkInterface:
                             n_clicks=0,
                         )
                     ),
-                    dbc.Button(
-                        "Upload to Hub",
-                        id="upload-button",
-                        n_clicks=0,
-                    ),
+                    # dbc.Button(
+                    #     "Upload to Hub",
+                    #     id="upload-button",
+                    #     n_clicks=0,
+                    # ),
                     dbc.Button("Download Text", id="btn-download-txt"),
                     dcc.Download(id="download-text"),
                 ]
