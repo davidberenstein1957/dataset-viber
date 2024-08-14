@@ -724,11 +724,84 @@ class AnnotatorInterFace(CollectorInterface):
         )
 
     @classmethod
+    def for_chat_generation_preference(
+        cls,
+        prompts: Union[List[List[Dict[str, str]]], List[List[gradio.ChatMessage]]],
+        *,
+        completions_a: Optional[List[str]],
+        completions_b: Optional[List[str]],
+        fn: Optional[Union["Pipeline", callable]] = None,
+        dataset_name: Optional[str] = None,
+        hf_token: Optional[str] = None,
+        private: Optional[bool] = False,
+    ) -> "AnnotatorInterFace":
+        """
+        Annotator Interface for chat generation preference tasks.
+
+        Args:
+            prompts (Union[List[List[Dict[str, str]]], List[List[gradio.ChatMessage]]): List of chat messages to annotate.
+            completions_a (Optional[List[str]]): List of completions to annotate for option A.
+            completions_b (Optional[List[str]]): List of completions to annotate for option B.
+            fn (Optional[Union["Pipeline", callable]], optional): Prediction function to apply to the chat messages before annotating.
+                Expecting it takes a `List[gradio.ChatMessage]` and returns `str`.
+                Defaults to None.
+            dataset_name (Optional[str], optional): Name of the dataset to save the annotations. Defaults to None.
+            hf_token (Optional[str], optional): Hugging Face API token to save the annotations. Defaults to None.
+            private (Optional[bool], optional): Whether to save the annotations as private. Defaults to False.
+
+        Returns:
+            AnnotatorInterFace: An instance of AnnotatorInterFace
+        """
+        # Input validation
+        start = len(prompts)
+        prompts, completions_a, completions_b = cls._validate_preference(
+            fn, prompts, completions_a, completions_b
+        )
+        prompts = cls._convert_to_chat_message(prompts)
+
+        # Process function
+        def next_input(_prompt, _completion_a, _completion_b):
+            if prompts:
+                cls._update_message(prompts, start)
+                prompt = prompts.pop(_POP_INDEX)
+                completion_a = completions_a.pop(_POP_INDEX)
+                completion_a = (
+                    completion_a if fn is None or completion_a else fn(prompt)
+                )
+                completion_b = completions_b.pop(_POP_INDEX)
+                completion_b = (
+                    completion_b if fn is None or completion_b else fn(prompt)
+                )
+                return prompt, completion_a, completion_b
+            else:
+                cls._done_message()
+                return [], None, None
+
+        # UI Config
+        prompt, completion_a, completion_b = next_input(None, None, None)
+        input_prompt = gradio.Chatbot(value=prompt, **_CHATBOT_KWARGS)
+        input_completion_a = gradio.Textbox(value=completion_a, label="👆 completion A")
+        input_completion_b = gradio.Textbox(value=completion_b, label="👇 completion B")
+        inputs = [input_prompt, input_completion_a, input_completion_b]
+        return cls(
+            fn=next_input,
+            inputs=inputs,
+            outputs=inputs,
+            allow_flagging="manual",
+            submit_btn=_SUBMIT_BTN,
+            flagging_options=_PREFERENCE_OPTIONS,
+            clear_btn=_CLEAR_BTN,
+            dataset_name=dataset_name,
+            hf_token=hf_token,
+            private=private,
+        )
+
+    @classmethod
     def for_image_generation_preference(
         cls,
-        prompts: List[str],
-        completions_a: List[Union[np.array, PIL.Image.Image, str]],
-        completions_b: List[Union[np.array, PIL.Image.Image, str]],
+        prompts: Optional[List[str]] = None,
+        completions_a: Optional[List[Union[np.array, PIL.Image.Image, str]]] = None,
+        completions_b: Optional[List[Union[np.array, PIL.Image.Image, str]]] = None,
         *,
         fn: Optional[Union["Pipeline", callable]] = None,
         dataset_name: Optional[str] = None,
@@ -748,26 +821,31 @@ class AnnotatorInterFace(CollectorInterface):
             private (Optional[bool], optional): Whether to save the annotations as private. Defaults to False.
         """
         # Input validation
-        start = len(prompts)
         if fn is not None:
-            raise NotImplementedError(
-                "fn is not supported for image generation preference."
-            )
-        if len(prompts) != len(completions_a) != len(completions_b):
-            raise ValueError("Prompts and completions must be of the same length")
+            if (
+                prompts is not None
+                or completions_a is not None
+                or completions_b is not None
+            ):
+                raise ValueError("fn should be None when completions are provided.")
+            next_input = fn
+        else:
+            start = len(prompts)
+            if len(prompts) != len(completions_a) != len(completions_b):
+                raise ValueError("Prompts and completions must be of the same length")
 
-        # Process function
-        def next_input(_prompt, _completion_a, _completion_b):
-            if prompts:
-                cls._update_message(prompts, start)
-                return (
-                    prompts.pop(_POP_INDEX),
-                    completions_a.pop(_POP_INDEX),
-                    completions_b.pop(_POP_INDEX),
-                )
-            else:
-                cls._done_message()
-                return None, None, None
+            # Process function
+            def next_input(_prompt, _completion_a, _completion_b):
+                if prompts:
+                    cls._update_message(prompts, start)
+                    return (
+                        prompts.pop(_POP_INDEX),
+                        completions_a.pop(_POP_INDEX),
+                        completions_b.pop(_POP_INDEX),
+                    )
+                else:
+                    cls._done_message()
+                    return None, None, None
 
         # UI Config
         prompt, completion_a, completion_b = next_input(None, None, None)
