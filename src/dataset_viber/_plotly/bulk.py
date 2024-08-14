@@ -153,10 +153,11 @@ class BulkInterface:
                     current_figure["data"] = updated_traces
 
                 local_dataframe = self.umap_df.copy()
-                tooltip_data = self.get_chat_tooltip(local_dataframe)
-                local_dataframe[self.content_column] = local_dataframe[
-                    self.content_column
-                ].apply(lambda x: x[0]["content"])
+                tooltip_data = self.get_tooltip(local_dataframe)
+                if self.content_format == "chat":
+                    local_dataframe[self.content_column] = local_dataframe[
+                        self.content_column
+                    ].apply(lambda x: x[0]["content"])
                 return current_figure, local_dataframe.to_dict("records"), tooltip_data
 
             # Callback to print the dataframe
@@ -216,10 +217,11 @@ class BulkInterface:
                 ]
 
             local_dataframe = filtered_df.copy()
-            tooltip_data = self.get_chat_tooltip(local_dataframe)
-            local_dataframe[self.content_column] = local_dataframe[
-                self.content_column
-            ].apply(lambda x: x[0]["content"])
+            tooltip_data = self.get_tooltip(local_dataframe)
+            if self.content_format == "chat":
+                local_dataframe[self.content_column] = local_dataframe[
+                    self.content_column
+                ].apply(lambda x: x[0]["content"])
             return figure, local_dataframe.to_dict("records"), tooltip_data
 
         self.app = app
@@ -433,24 +435,24 @@ class BulkInterface:
                             n_clicks=0,
                         )
                     ),
-                    # dbc.Button(
-                    #     "Upload to Hub",
-                    #     id="upload-button",
-                    #     n_clicks=0,
-                    # ),
+                    dbc.Button(
+                        "Upload to Hub",
+                        id="upload-button",
+                        n_clicks=0,
+                    ),
                     dbc.Button("Download Text", id="btn-download-txt"),
                     dcc.Download(id="download-text"),
                 ]
             )
         if self.content_format == "chat":
-            tooltip_data = self.get_chat_tooltip(local_dataframe)
+            tooltip_data = self.get_tooltip(local_dataframe)
             local_dataframe[self.content_column] = local_dataframe[
                 self.content_column
             ].apply(lambda x: x[0]["content"])
             columns = local_dataframe.columns
         elif self.content_format == "text":
             tooltip_data = None
-            columns = [local_dataframe.columns]
+            columns = local_dataframe.columns
         else:
             raise ValueError(
                 "content_format should be either 'text' or 'chat' but got {self.content_format}"
@@ -568,7 +570,9 @@ class BulkInterface:
                 wrapped_text += f"<b>{turn['role']}</b>:<br>{self.format_content(turn['content'])}<br><br>"
             return wrapped_text
 
-    def get_chat_tooltip(self, dataframe):
+    def get_tooltip(self, dataframe):
+        if self.content_format == "text":
+            return None
         return [
             {
                 self.content_column: {
