@@ -513,6 +513,8 @@ interface.launch()
 ```
 
 </details>
+
+<details>
 <summary><code>chat-visualization</code></summary>
 
 ```python
@@ -531,7 +533,7 @@ interface.launch()
 
 </details>
 
-</details>
+<details>
 <summary><code>chat-classification</code></summary>
 
 ```python
