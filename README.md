@@ -468,7 +468,7 @@ interface.launch()
 
 ### ExplorerInterface
 
-> Built on top of the `Dash`, `plotly-express`, `umap-learn`, and `Embedder` to embed, understand and label your dataset distribution.
+> Built on top of the `Dash`, `plotly-express`, `umap-learn`, and `Embedder` to embed, understand your distribution and annotate your data.
 
 https://github.com/user-attachments/assets/5e96c06d-e37f-45a0-9633-1a8e714d71ed
 
