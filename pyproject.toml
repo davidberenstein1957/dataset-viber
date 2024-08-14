@@ -1,6 +1,6 @@
 [project]
 name = "dataset-viber"
-version = "0.1.0"
+version = "0.0.1"
 description = "Dataset Viber is your chill repo for data collection, annotation and vibe checks."
 authors = [
     {name = "davidberenstein1957", email = "david.m.berenstein@gmail.com"},
