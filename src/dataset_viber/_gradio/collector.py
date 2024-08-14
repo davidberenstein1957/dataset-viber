@@ -40,7 +40,7 @@ class CollectorInterface(gradio.Interface):
         flagging_options: Optional[List[str]] = None,
         show_embedded_viewer: Optional[bool] = True,
         **kwargs,
-    ):
+    ) -> None:
         """
         Load a CollectorInterface with data logging capabilities.
 
@@ -214,7 +214,7 @@ class CollectorInterface(gradio.Interface):
         instance: gradio.Interface,
         flagging_callback: Optional[gradio.HuggingFaceDatasetSaver] = None,
         show_embedded_viewer: bool = True,
-    ):
+    ) -> gradio.Interface:
         if flagging_callback:
             repo_url = cls._get_repo_url(flagging_callback)
             formatted_repo_url = (

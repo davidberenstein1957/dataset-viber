@@ -996,6 +996,7 @@ class AnnotatorInterFace(CollectorInterface):
         _clear_btn: ClearButton,
         _submit_event: Dependency,
     ) -> None:
+        """Override the attach_flagging_events method to attach the flagging events."""
         # before the flaffing because otherwise input is reset
         self.attach_submit_events(_submit_btn=_clear_btn, _stop_btn=None)
         super().attach_flagging_events(flag_btns, _clear_btn, _submit_event)
@@ -1018,18 +1019,22 @@ class AnnotatorInterFace(CollectorInterface):
 
     @override
     def render_flag_btns(self) -> list[Button]:
+        """Override the render_flag_btns method to return the flagging buttons with labels."""
         return [Button(label, variant="primary") for label, _ in self.flagging_options]
 
     @staticmethod
     def _update_message(items: list, start: int) -> None:
+        """Print the progress of the annotation."""
         gradio.Info(f"{(len(items) / start) * 100:.2f}% done {len(items)} left.")
 
     @staticmethod
     def _done_message() -> None:
+        """Print the done message."""
         gradio.Info(_MESSAGE_DONE_ANNOTATING)
 
     @staticmethod
     def _convert_to_tokens(text: str) -> List[tuple[str, None]]:
+        """Convert a string to a list of tokens for TextHighligh."""
         return [(char, None) for char in text]
 
     @staticmethod
@@ -1038,6 +1043,17 @@ class AnnotatorInterFace(CollectorInterface):
         with_turn=False,
         last_role=None,
     ) -> List[List[gradio.ChatMessage]]:
+        """
+        Convert a list of chat messages to a list of gradio.ChatMessage.
+
+        Args:
+            messages (Union[List[List[Dict[str, str]]], List[List[gradio.ChatMessage]]): List of chat messages.
+            with_turn (bool, optional): Whether to add turn information. Defaults to False.
+            last_role ([type], optional): Last role. Defaults to None.
+
+        Returns:
+            List[List[gradio.ChatMessage]]: List of chat messages.
+        """
         if not isinstance(messages[0][0], gradio.ChatMessage):
             messages = [
                 [gradio.ChatMessage(**msg) for msg in prompt] for prompt in messages
@@ -1065,6 +1081,18 @@ class AnnotatorInterFace(CollectorInterface):
 
     @staticmethod
     def _validate_preference(fn, prompts, completions_a, completions_b):
+        """
+        Validate the inputs for preference tasks.
+
+        Args:
+            fn: Prediction function.
+            prompts: List of prompts.
+            completions_a: List of completions for option A.
+            completions_b: List of completions for option B.
+
+        Returns:
+            Tuple: Tuple of prompts, completions_a, completions_b.
+        """
         if fn is not None and (completions_a is not None and completions_b is not None):
             raise ValueError("fn should be None when completions are provided.")
         if completions_a is None:

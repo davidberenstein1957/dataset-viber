@@ -32,10 +32,7 @@ if TYPE_CHECKING:
     from sentence_transformers import SentenceTransformer
 
 
-external_stylesheets = ["https://codepen.io/chriddyp/pen/bWLwgP.css"]
-
-
-class ExplorerInterface:
+class BulkInterface:
     def __init__(
         self,
         dataframe: pd.DataFrame,
@@ -461,37 +458,12 @@ class ExplorerInterface:
 
         layout = html.Div(
             [
-                html.H1("ExplorerInterface"),
+                html.H1("BulkInterface"),
                 # Scatter plot
                 html.Div(
                     [
                         dcc.Graph(id="scatter-plot", figure=figure),
-                        html.Div(
-                            [
-                                *buttons,
-                                # dcc.Upload(
-                                #     id='upload-data',
-                                #     children=html.Div([
-                                #         'Drag and Drop or ',
-                                #         html.A('Select Files')
-                                #     ]),
-                                #     style={
-                                #         'width': '200px',
-                                #         # 'height': '60px',
-                                #         # 'lineHeight': '60px',
-                                #         'borderWidth': '1px',
-                                #         'borderStyle': 'dashed',
-                                #         'borderRadius': '5px',
-                                #         'textAlign': 'center',
-                                #         "display": "inline-block"
-                                #         # 'margin': '10px'
-                                #     },
-                                #     # Allow multiple files to be uploaded
-                                #     multiple=False
-                                # ),
-                                # html.Div(id='output-data-upload'),
-                            ]
-                        ),
+                        html.Div([*buttons]),
                     ],
                     style={
                         "width": "49%",
@@ -500,8 +472,6 @@ class ExplorerInterface:
                         "marginRight": "1%",
                     },
                 ),
-                # https://dash.plotly.com/datatable/tooltips#images-in-tooltips
-                # https://dash.plotly.com/dash-core-components/tooltip#visualizing-t-sne-plot-of-mnist-images
                 html.Div(
                     [
                         dash_table.DataTable(
