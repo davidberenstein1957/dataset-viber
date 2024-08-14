@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import TYPE_CHECKING, Dict, List, Optional, Union, override
+import sys
+from typing import TYPE_CHECKING, Dict, List, Optional, Union
 
 import gradio
 import numpy as np
@@ -24,22 +25,14 @@ from gradio.components import (
 from gradio.events import Dependency
 from gradio.flagging import FlagMethod
 
+from dataset_viber._constants import COLORS
 from dataset_viber._gradio.collector import CollectorInterface
 
-__HIGHLIGHT_TEXT_COLORS = [
-    "#a6cee3",
-    "#1f78b4",
-    "#b2df8a",
-    "#33a02c",
-    "#fb9a99",
-    "#e31a1c",
-    "#fdbf6f",
-    "#ff7f00",
-    "#cab2d6",
-    "#6a3d9a",
-    "#ffff99",
-    "#b15928",
-]
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override
+
 _POP_INDEX = 0
 _MESSAGE_DONE_ANNOTATING = "No data left to annotate."
 _HIGHLIGHT_TEXT_KWARGS = {
@@ -181,9 +174,7 @@ class AnnotatorInterFace(CollectorInterface):
 
         # UI Config
         if isinstance(labels, list):
-            labels = {
-                label: color for label, color in zip(labels, __HIGHLIGHT_TEXT_COLORS)
-            }
+            labels = {label: color for label, color in zip(labels, COLORS)}
         text = next_input(None)
         inputs = [
             gradio.HighlightedText(

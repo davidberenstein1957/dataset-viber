@@ -14,15 +14,21 @@
 
 from __future__ import annotations
 
+import sys
 from collections import OrderedDict
 from pathlib import Path
-from typing import Any, override
+from typing import Any
 
 import gradio as gr
 import huggingface_hub
 from gradio import utils
 from gradio.flagging import HuggingFaceDatasetSaver
 from gradio_client import utils as client_utils
+
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override
 
 
 class FixedHubDatasetSaver(HuggingFaceDatasetSaver):
