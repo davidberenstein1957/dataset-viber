@@ -692,9 +692,9 @@ WIP PR [here](https://github.com/davidberenstein1957/data-viber/pull/2)
 
 #### ideas ExplorerInterface
 
-- fix hovers for dataframe
 - image support
 - file upload support
+- Rename to BulkInterface
 
 ## References
 
