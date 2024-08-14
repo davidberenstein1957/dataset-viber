@@ -1,13 +1,13 @@
 <h1 align="center">
-  <a href=""><img src="https://cdn-icons-png.flaticon.com/512/2091/2091395.png" alt="data-viber" width="150"></a>
+  <a href=""><img src="https://cdn-icons-png.flaticon.com/512/2091/2091395.png" alt="dataset-viber" width="150"></a>
   <br>
-  Data Viber
+  Dataset viber
   <br>
 </h1>
 
 <h3 align="center">Avoid the hype, check the vibe!</h2>
 
-I've cooked up Data Viber, a cool set of tools to make your life easier when dealing with data for NLP and image models. Data Viber is all about making your data prep journey smooth and fun. It's **not for team collaboration or production**, neither trying to be all fancy and formal - just a bunch of **cool tools to help you collect feedback and do vibe-checks** for data for AI models as an AI engineer. Want to see it in action? Just plug it in and start vibing with your data. It's that easy! Vibing
+I've cooked up Dataset viber, a cool set of tools to make your life easier when dealing with data for NLP and image models. Dataset viber is all about making your data prep journey smooth and fun. It's **not for team collaboration or production**, neither trying to be all fancy and formal - just a bunch of **cool tools to help you collect feedback and do vibe-checks** for data for AI models as an AI engineer. Want to see it in action? Just plug it in and start vibing with your data. It's that easy! Vibing
 
 - **CollectorInterface**: Lazily collect data of interactions without human annotation.
 - **AnnotatorInterface**: Walk through your data and annotate it with models in the loop.
@@ -27,7 +27,7 @@ Need any tweaks or want to hear more about a specific tool? Just open an issue o
 I have not published this yet on PyPi, but for now, you can install it from the repo.
 
 ```bash
-pip install git+https://github.com/davidberenstein1957/data-viber.git
+pip install git+https://github.com/davidberenstein1957/dataset-viber.git
 ```
 
 ## How are we vibing?
@@ -38,7 +38,7 @@ pip install git+https://github.com/davidberenstein1957/data-viber.git
 
 <https://github.com/user-attachments/assets/4ddac8a1-62ab-4b3b-9254-f924f5898075>
 
-[Hub dataset](https://huggingface.co/datasets/davidberenstein1957/data-viber-token-classification)
+[Hub dataset](https://huggingface.co/datasets/davidberenstein1957/dataset-viber-token-classification)
 
 <details>
 <summary><code>CollectorInterface</code></summary>
@@ -115,7 +115,7 @@ interface.launch()
 
 https://github.com/user-attachments/assets/d1abda66-9972-4c60-89d2-7626f5654f15
 
-[Hub dataset](https://huggingface.co/datasets/davidberenstein1957/data-viber-text-classification)
+[Hub dataset](https://huggingface.co/datasets/davidberenstein1957/dataset-viber-text-classification)
 
 <details>
 <summary><code>text-classification</code>/<code>multi-label-text-classification</code></summary>
@@ -226,7 +226,7 @@ interface = AnnotatorInterFace.for_text_generation(
 
 https://github.com/user-attachments/assets/fe7f0139-95a3-40e8-bc03-e37667d4f7a9
 
-[Hub dataset](https://huggingface.co/datasets/davidberenstein1957/data-viber-chat-generation-preference)
+[Hub dataset](https://huggingface.co/datasets/davidberenstein1957/dataset-viber-chat-generation-preference)
 
 > [!TIP]
 > I recommend uploading the files files to a cloud storage and using the remote URL to avoid any issues. This can be done [using Hugging Face Datasets](https://huggingface.co/docs/datasets/en/image_load#local-files). As shown in [utils](#utils). Additionally [GradioChatbot](https://www.gradio.app/docs/gradio/chatbot#behavior) shows how to use the chatbot interface for multi-modal.
@@ -358,7 +358,7 @@ interface.launch()
 
 <https://github.com/user-attachments/assets/57d89edf-ae40-4942-a20a-bf8443100b66>
 
-[Hub dataset](https://huggingface.co/datasets/davidberenstein1957/data-viber-image-question-answering)
+[Hub dataset](https://huggingface.co/datasets/davidberenstein1957/dataset-viber-image-question-answering)
 
 > [!TIP]
 > I recommend uploading the files files to a cloud storage and using the remote URL to avoid any issues. This can be done [using Hugging Face Datasets](https://huggingface.co/docs/datasets/en/image_load#local-files). As shown in [utils](#utils).
@@ -682,7 +682,7 @@ Follow this [guide on making first contributions](https://github.com/firstcontri
 
 - continuous chat preference
 
-WIP PR [here](https://github.com/davidberenstein1957/data-viber/pull/2)
+WIP PR [here](https://github.com/davidberenstein1957/dataset-viber/pull/2)
 
 - show input-data and output-data in the interface
 - import data from the hub with oauth

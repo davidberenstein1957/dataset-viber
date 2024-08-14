@@ -21,7 +21,7 @@ from optimum.onnxruntime import ORTModelForFeatureExtraction, ORTOptimizer, ORTQ
 from optimum.onnxruntime.configuration import AutoQuantizationConfig, OptimizationConfig
 from transformers import AutoTokenizer, Pipeline
 
-from data_viber._constants import DEFAULT_EMBEDDING_MODEL
+from dataset_viber._constants import DEFAULT_EMBEDDING_MODEL
 
 
 class Embedder:

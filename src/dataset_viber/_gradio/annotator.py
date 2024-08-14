@@ -24,7 +24,7 @@ from gradio.components import (
 from gradio.events import Dependency
 from gradio.flagging import FlagMethod
 
-from data_viber._gradio.collector import CollectorInterface
+from dataset_viber._gradio.collector import CollectorInterface
 
 __HIGHLIGHT_TEXT_COLORS = [
     "#a6cee3",

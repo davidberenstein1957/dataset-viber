@@ -19,8 +19,8 @@ import gradio
 import huggingface_hub
 from gradio.components import Component
 
-from data_viber._gradio._flagging import FixedHubDatasetSaver
-from data_viber._utils import _get_init_payload
+from dataset_viber._gradio._flagging import FixedHubDatasetSaver
+from dataset_viber._utils import _get_init_payload
 
 if TYPE_CHECKING:
     from transformers.pipelines import Pipeline

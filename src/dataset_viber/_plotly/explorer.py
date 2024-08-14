@@ -26,7 +26,7 @@ from dash import dash_table, dcc, html
 from dash.dependencies import Input, Output, State
 from plotly.graph_objs._figure import Figure
 
-from data_viber._constants import DEFAULT_EMBEDDING_MODEL
+from dataset_viber._constants import DEFAULT_EMBEDDING_MODEL
 
 if TYPE_CHECKING:
     from sentence_transformers import SentenceTransformer
@@ -240,7 +240,7 @@ class ExplorerInterface:
             elif torch.cuda.is_available():
                 device = "cuda"
             if importlib.util.find_spec("onnxruntime") is not None:
-                from data_viber.embedder import Embedder
+                from dataset_viber.embedder import Embedder
 
                 self.embedding_model = Embedder(model_id=embedding_model, device=device)
             else:
