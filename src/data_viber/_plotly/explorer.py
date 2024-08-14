@@ -101,6 +101,7 @@ class ExplorerInterface:
                 [
                     Output("scatter-plot", "figure", allow_duplicate=True),
                     Output("data-table", "data", allow_duplicate=True),
+                    Output("data-table", "tooltip_data", allow_duplicate=True),
                 ],
                 [Input("update-button", "n_clicks")],
                 [
@@ -153,9 +154,13 @@ class ExplorerInterface:
                             trace["selectedpoints"] = []
                             updated_traces.append(trace)
                     current_figure["data"] = updated_traces
-                    return current_figure, self.umap_df.to_dict("records")
 
-                return current_figure, self.umap_df.to_dict("records")
+                local_dataframe = self.umap_df.copy()
+                tooltip_data = self.get_chat_tooltip(local_dataframe)
+                local_dataframe[self.content_column] = local_dataframe[
+                    self.content_column
+                ].apply(lambda x: x[0]["content"])
+                return current_figure, local_dataframe.to_dict("records"), tooltip_data
 
             # Callback to print the dataframe
             @app.callback(
@@ -183,6 +188,7 @@ class ExplorerInterface:
             [
                 Output("scatter-plot", "figure", allow_duplicate=True),
                 Output("data-table", "data", allow_duplicate=True),
+                Output("data-table", "tooltip_data", allow_duplicate=True),
             ],
             [Input("scatter-plot", "selectedData")],
             [State("scatter-plot", "figure")],
@@ -212,7 +218,12 @@ class ExplorerInterface:
                     ~filtered_df[self.label_column].isin(hidden_traces)
                 ]
 
-            return figure, filtered_df.to_dict("records")
+            local_dataframe = filtered_df.copy()
+            tooltip_data = self.get_chat_tooltip(local_dataframe)
+            local_dataframe[self.content_column] = local_dataframe[
+                self.content_column
+            ].apply(lambda x: x[0]["content"])
+            return figure, local_dataframe.to_dict("records"), tooltip_data
 
         self.app = app
 
@@ -398,6 +409,7 @@ class ExplorerInterface:
         return fig
 
     def _get_app_layout(self, figure, dataframe, labels, hf_token):
+        local_dataframe = dataframe.copy()
         buttons = []
         if labels is not None:
             buttons.extend(
@@ -434,24 +446,14 @@ class ExplorerInterface:
                 ]
             )
         if self.content_format == "chat":
-            tooltip_data = [
-                {
-                    self.content_column: {
-                        "value": pd.DataFrame.from_records(value)[
-                            ["role", "content"]
-                        ].to_markdown(index=False, tablefmt="pipe"),
-                        "type": "markdown",
-                    }
-                }
-                for value in dataframe[self.content_column].tolist()
-            ]
-            dataframe[self.content_column] = dataframe[self.content_column].apply(
-                lambda x: x[0]["content"]
-            )
-            columns = dataframe.columns
+            tooltip_data = self.get_chat_tooltip(local_dataframe)
+            local_dataframe[self.content_column] = local_dataframe[
+                self.content_column
+            ].apply(lambda x: x[0]["content"])
+            columns = local_dataframe.columns
         elif self.content_format == "text":
             tooltip_data = None
-            columns = [dataframe.columns]
+            columns = [local_dataframe.columns]
         else:
             raise ValueError(
                 "content_format should be either 'text' or 'chat' but got {self.content_format}"
@@ -505,7 +507,7 @@ class ExplorerInterface:
                         dash_table.DataTable(
                             id="data-table",
                             columns=[{"name": i, "id": i} for i in columns],
-                            data=dataframe[columns].to_dict("records"),
+                            data=local_dataframe[columns].to_dict("records"),
                             hidden_columns=[
                                 "x",
                                 "y",
@@ -527,7 +529,7 @@ class ExplorerInterface:
                                         max-width: 100vw !important;
                                         max-height: 80vh !important;
                                         overflow: auto;
-                                        font-size: 1opx;
+                                        font-size: 10px;
                                         position: fixed;
                                         top: 50%;
                                         left: 50%;
@@ -540,7 +542,7 @@ class ExplorerInterface:
                                 "whiteSpace": "normal",
                                 "height": "auto",
                                 "textAlign": "left",
-                                "font-size": "12px",
+                                "font-size": "10px",
                                 "overflow": "auto",  # Enable scrolling
                             },
                             style_data={
@@ -571,7 +573,7 @@ class ExplorerInterface:
             ]
             return self.embedding_model.encode(content, convert_to_numpy=True)
 
-    def format_content(self, content, max_length=150, content_format="text"):
+    def format_content(self, content, max_length=120, content_format="text"):
         wrapped_text = ""
         if content_format == "text":
             words = content.split(" ")
@@ -591,6 +593,20 @@ class ExplorerInterface:
             wrapped_text += line
             return wrapped_text
         elif content_format == "chat":
-            for turn in content:
+            wrapped_text = "First 2 turns:<br><br>"
+            for turn in content[:3]:
                 wrapped_text += f"<b>{turn['role']}</b>:<br>{self.format_content(turn['content'])}<br><br>"
             return wrapped_text
+
+    def get_chat_tooltip(self, dataframe):
+        return [
+            {
+                self.content_column: {
+                    "value": pd.DataFrame.from_records(value)[
+                        ["role", "content"]
+                    ].to_markdown(index=False, tablefmt="pipe"),
+                    "type": "markdown",
+                }
+            }
+            for value in dataframe[self.content_column].tolist()
+        ]
