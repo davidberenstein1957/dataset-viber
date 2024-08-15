@@ -65,9 +65,10 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin):
     ):
         self._override_block_init_method(**kwargs)
         with self:
+            gradio.LoginButton()
             with gradio.Accordion("Remaining data", open=False):
                 self.input_data_component = gradio.Dataframe(
-                    pd.DataFrame.from_dict(self.input_data)
+                    pd.DataFrame.from_dict(self.input_data), interactive=False
                 )
                 inputs[0].change(
                     fn=lambda x: pd.DataFrame.from_dict(self.input_data),
@@ -92,7 +93,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin):
                 )
             with gradio.Accordion("Completed data", open=False):
                 self.output_data_component = gradio.Dataframe(
-                    pd.DataFrame.from_dict(self.output_data)
+                    pd.DataFrame.from_dict(self.output_data), interactive=False
                 )
                 inputs[0].change(
                     fn=lambda x: pd.DataFrame.from_dict(self.output_data),
@@ -1153,12 +1154,6 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin):
         ):
             raise ValueError("Prompts and completions must be of the same length")
         return prompts, completions_a, completions_b
-
-    def update_data_component(self):
-        try:
-            self.input_data_component.update(self.input_data)
-        except Exception as e:
-            print(e)
 
     def shuffle_data(self):
         if not self.input_data.values():

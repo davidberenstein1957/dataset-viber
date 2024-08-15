@@ -20,6 +20,7 @@ import gradio
 import pandas as pd
 from datasets import Dataset, load_dataset
 from gradio_huggingfacehub_search import HuggingfaceHubSearch
+from huggingface_hub import whoami
 
 CODE_KWARGS = {
     "language": "json",
@@ -30,6 +31,12 @@ CODE_KWARGS = {
 
 
 class ImportExportMixin:
+    def _list_organizations(self, oauth_token: gradio.OAuthToken | None) -> str:
+        orgs = []
+        if oauth_token is not None:
+            orgs = [str(org["name"]) for org in whoami(oauth_token.token)["orgs"]]
+        return ",".join(orgs)
+
     def _override_block_init_method(self, **kwargs):
         # Initialize the parent class
         gradio.Blocks.__init__(
@@ -105,13 +112,21 @@ class ImportExportMixin:
         with self:
             with gradio.Accordion("Export to Hugging Face", open=False):
                 with gradio.Tab("Export to Hugging Face Hub"):
-                    dataset_name = gradio.Textbox("Dataset Name", label="Dataset Name")
-                    export_button_hf = gradio.Button("Export")
-                    export_button_hf.click(
-                        fn=self._export_data_hf,
-                        inputs=[self.output_data_component, dataset_name],
-                        outputs=dataset_name,
-                    )
+                    with gradio.Row():
+                        with gradio.Column():
+                            organization = gradio.Textbox(label="Organization")
+                            self.load(self._list_organizations, outputs=organization)
+                        with gradio.Column():
+                            dataset_name = gradio.Textbox(
+                                placeholder="Dataset Name", label="Dataset Name"
+                            )
+                    with gradio.Row():
+                        export_button_hf = gradio.Button("Export")
+                        export_button_hf.click(
+                            fn=self._export_data_hf,
+                            inputs=[self.output_data_component, dataset_name],
+                            outputs=dataset_name,
+                        )
                 with gradio.Tab("Export to file"):
                     with gradio.Column():
                         export_button = gradio.Button("Export")
@@ -150,7 +165,7 @@ class ImportExportMixin:
         gradio.Info(f"Exported the dataset to Hugging Face Hub as {dataset_name}.")
         raise ""
 
-    def _get_dataset_card(self, repo_id):
+    def _create_dataset_card(self, repo_id):
         pass
 
     def _get_autotrain_config(self):
