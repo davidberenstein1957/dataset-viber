@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import random
 import sys
 from typing import TYPE_CHECKING, Dict, List, Optional, Union
 
 import gradio
 import numpy as np
+import pandas as pd
 import PIL
 from gradio.components import (
     Button,
@@ -26,6 +28,7 @@ from gradio.events import Dependency
 from gradio.flagging import FlagMethod
 
 from dataset_viber._constants import COLORS
+from dataset_viber._gradio._import_export import ImportExportMixin
 from dataset_viber._gradio.collector import CollectorInterface
 
 if sys.version_info >= (3, 12):
@@ -51,7 +54,52 @@ if TYPE_CHECKING:
     from transformers.pipelines import Pipeline
 
 
-class AnnotatorInterFace(CollectorInterface):
+class AnnotatorInterFace(CollectorInterface, ImportExportMixin):
+    @override
+    def __init__(
+        self,
+        *args,
+        inputs,
+        outputs,
+        **kwargs,
+    ):
+        self._override_block_init_method(**kwargs)
+        with self:
+            with gradio.Accordion("Remaining data", open=False):
+                self.input_data_component = gradio.Dataframe(
+                    pd.DataFrame.from_dict(self.input_data)
+                )
+                inputs[0].change(
+                    fn=lambda x: pd.DataFrame.from_dict(self.input_data),
+                    outputs=self.input_data_component,
+                )
+        self._configure_import()
+        super().__init__(
+            *args,
+            inputs=inputs,
+            outputs=outputs,
+            **kwargs,
+        )
+        with self:
+            with gradio.Row(variant="panel"):
+                # with gradio.Column():
+                #     sort = gradio.Button("Semantic Sort", variant="secondary")
+                with gradio.Column():
+                    shuffle = gradio.Button("Shuffle", variant="secondary")
+                # sort.click(fn=self.sort_data, inputs=None, outputs=None)
+                shuffle.click(
+                    fn=self.shuffle_data, inputs=None, outputs=self.input_data_component
+                )
+            with gradio.Accordion("Completed data", open=False):
+                self.output_data_component = gradio.Dataframe(
+                    pd.DataFrame.from_dict(self.output_data)
+                )
+                inputs[0].change(
+                    fn=lambda x: pd.DataFrame.from_dict(self.output_data),
+                    outputs=self.output_data_component,
+                )
+        self._configure_export()
+
     @classmethod
     def for_text_classification(
         cls,
@@ -81,49 +129,51 @@ class AnnotatorInterFace(CollectorInterface):
         Returns:
             AnnotatorInterFace: An instance of AnnotatorInterFace
         """
+        # IO Config
+        cls.task = "text_classification"
+        cls.input_columns = ["text"]
+        cls.output_columns = ["text", "label"]
+        cls.input_data = {"text": texts}
+        cls.output_data = {label: [] for label in cls.output_columns}
+
         # Process function
         start = len(texts)
 
         def next_input(_text, _label):
             if texts:
                 cls._update_message(texts, start)
-                text = texts.pop(_POP_INDEX)
+                text = cls.input_data["text"].pop(_POP_INDEX)
                 label = [] if fn is None else fn(text)
+                cls.output_data["text"].append(_text)
+                cls.output_data["label"].append(_label)
                 if multi_label:
                     label = [lab["label"] for lab in label if lab["score"] > 0.5]
                     return (text, label)
                 elif not multi_label and fn is not None:
                     return (text, label[0]["label"])
                 else:
-                    return text
+                    return (text, [])
             else:
                 cls._done_message()
                 return ("", []) if multi_label or fn is not None else ""
 
-        if multi_label or fn is not None:
-            text, label = next_input(None, None)
-            if multi_label:
-                check_box_group = gradio.CheckboxGroup(
-                    labels, value=label, label="label"
-                )
-            else:
-                check_box_group = gradio.Radio(labels, value=label, label="label")
+        # if multi_label or fn is not None:
+        text, label = next_input(None, None)
+        if multi_label:
+            check_box_group = gradio.CheckboxGroup(labels, value=label, label="label")
         else:
-            text = next_input(None, None)
+            check_box_group = gradio.Radio(labels, value=label, label="label")
 
         # UI Config
-        inputs = gradio.Textbox(value=text, label="text")
-        if multi_label or fn is not None:
-            inputs = [inputs, check_box_group]
+        inputs = [gradio.Textbox(value=text, label="text")]
+
+        # if multi_label or fn is not None:
+        inputs.append(check_box_group)
         return cls(
             fn=next_input,
             inputs=inputs,
             outputs=inputs,
-            flagging_options=(
-                _SUBMIT_OPTIONS
-                if multi_label or fn is not None
-                else [(lab, lab) for lab in labels]
-            ),
+            flagging_options=_SUBMIT_OPTIONS,
             allow_flagging="manual",
             submit_btn=_SUBMIT_BTN,
             clear_btn=_CLEAR_BTN,
@@ -159,6 +209,13 @@ class AnnotatorInterFace(CollectorInterface):
         Returns:
             AnnotatorInterFace: An instance of AnnotatorInterFace
         """
+        # IO Config
+        cls.task = "token_classification"
+        cls.input_columns = ["text"]
+        cls.output_columns = ["text", "spans"]
+        cls.input_data = {"text": texts}
+        cls.output_data = {label: [] for label in labels}
+
         # Process function
         start = len(texts)
 
@@ -166,6 +223,7 @@ class AnnotatorInterFace(CollectorInterface):
             if texts:
                 cls._update_message(texts, start)
                 text = texts.pop(_POP_INDEX)
+                print(_spans)
                 text = cls._convert_to_tokens(text) if fn is None else fn(text)
                 return text
             else:
@@ -1095,3 +1153,31 @@ class AnnotatorInterFace(CollectorInterface):
         ):
             raise ValueError("Prompts and completions must be of the same length")
         return prompts, completions_a, completions_b
+
+    def update_data_component(self):
+        try:
+            self.input_data_component.update(self.input_data)
+        except Exception as e:
+            print(e)
+
+    def shuffle_data(self):
+        if not self.input_data.values():
+            return self.input_data
+
+        # Get the length of the first list in the dictionary
+        first_key = next(iter(self.input_data))
+        length = len(self.input_data[first_key])
+
+        # Check if all lists have the same length
+        if not all(len(lst) == length for lst in self.input_data.values()):
+            raise ValueError("All input lists must have the same length")
+
+        # Create a list of indices and shuffle it
+        indices = list(range(length))
+        random.shuffle(indices)
+
+        # Reorder each list based on the shuffled indices
+        gradio.Info("Data shuffled.")
+        return pd.DataFrame.from_dict(
+            {key: [lst[i] for i in indices] for key, lst in self.input_data.items()}
+        )

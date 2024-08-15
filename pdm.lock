@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:003f7b7d053422f7be3b5de6187436a2aeae95ce7a0717160f75805e546ddb11"
+content_hash = "sha256:3239ab982f26722a850a7a49646dc3012f0b6d1c4d934e684f6ca7ad7826ae59"
 
 [[metadata.targets]]
 requires_python = ">=3.9,<3.13"
@@ -977,6 +977,20 @@ dependencies = [
 files = [
     {file = "gradio_client-1.3.0-py3-none-any.whl", hash = "sha256:20c40cb4d56e18de1a025ccf58079f08a304e4fb2dfbcf7c2352815b2cb31091"},
     {file = "gradio_client-1.3.0.tar.gz", hash = "sha256:d904afeae4f5682add0a6a263542c10e7669ff6c9de0a53a5c2fc9b719a24bb8"},
+]
+
+[[package]]
+name = "gradio-huggingfacehub-search"
+version = "0.0.7"
+requires_python = ">=3.8"
+summary = "Gradio component for searching Hugging Face Hub models, datasets, Spaces, and more"
+groups = ["default"]
+dependencies = [
+    "gradio<5.0,>=4.0",
+]
+files = [
+    {file = "gradio_huggingfacehub_search-0.0.7-py3-none-any.whl", hash = "sha256:ccd42d1de20969c9896a037554125f4b4b9cb965bee0201197159501d6690c02"},
+    {file = "gradio_huggingfacehub_search-0.0.7.tar.gz", hash = "sha256:8a10f4a7c80bcc47d37c4ef6ffe7dcc3d7914f0d31d7c6d0822c87e2ec23637a"},
 ]
 
 [[package]]
@@ -3077,7 +3091,6 @@ dependencies = [
     "nvidia-cusparse-cu12==12.1.0.106; platform_system == \"Linux\" and platform_machine == \"x86_64\"",
     "nvidia-nccl-cu12==2.20.5; platform_system == \"Linux\" and platform_machine == \"x86_64\"",
     "nvidia-nvtx-cu12==12.1.105; platform_system == \"Linux\" and platform_machine == \"x86_64\"",
-    "setuptools",
     "sympy",
     "triton==3.0.0; platform_system == \"Linux\" and platform_machine == \"x86_64\" and python_version < \"3.13\"",
     "typing-extensions>=4.8.0",

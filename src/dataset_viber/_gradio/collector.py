@@ -186,7 +186,11 @@ class CollectorInterface(gradio.Interface):
         )
 
     @staticmethod
-    def _get_repo_url(
+    def _get_repo_url_from_repo_id(repo_id: str) -> str:
+        return f"https://huggingface.co/datasets/{repo_id}"
+
+    @staticmethod
+    def _get_repo_url_fom_dataset_saver(
         flagging_callback: gradio.HuggingFaceDatasetSaver,
     ) -> huggingface_hub.RepoUrl:
         return f"""https://huggingface.co/datasets/{huggingface_hub.create_repo(
@@ -216,7 +220,7 @@ class CollectorInterface(gradio.Interface):
         show_embedded_viewer: bool = True,
     ) -> gradio.Interface:
         if flagging_callback:
-            repo_url = cls._get_repo_url(flagging_callback)
+            repo_url = cls._get_repo_url_fom_dataset_saver(flagging_callback)
             formatted_repo_url = (
                 f"Data is being written to [a dataset on the Hub]({repo_url})."
             )
