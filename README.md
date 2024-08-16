@@ -264,36 +264,6 @@ interface.launch()
 </details>
 
 <details>
-<summary><code>chat-classification-per-message</code></summary>
-
-```python
-from dataset_viber import AnnotatorInterFace
-
-prompts = [
-    [
-        {
-            "role": "user",
-            "content": "Tell me something about Anthony Bourdain."
-        },
-        {
-            "role": "assistant",
-            "content": "Anthony Michael Bourdain was an American celebrity chef, author, and travel documentarian."
-        }
-    ]
-]
-
-interface = AnnotatorInterFace.for_chat_classification_per_message(
-    prompts=prompts,
-    labels=["toxic", "non-toxic"],
-    fn=None, # a callable e.g. (function or transformers pipelines) that returns [{"label": str, "score": float}]
-    dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
-)
-interface.launch()
-```
-
-</details>
-
-<details>
 <summary><code>chat-generation</code></summary>
 
 ```python

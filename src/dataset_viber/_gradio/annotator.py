@@ -630,59 +630,6 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         )
 
     @classmethod
-    def for_chat_classification_per_message(
-        cls,
-        prompts: List[List[Dict[str, str]]],
-        labels: List[str],
-        *,
-        fn: Optional[Union["Pipeline", callable]] = None,
-        dataset_name: Optional[str] = None,
-        hf_token: Optional[str] = None,
-        private: Optional[bool] = False,
-    ) -> "AnnotatorInterFace":
-        if fn is not None:
-            raise NotImplementedError(
-                "fn is not supported for chat message classification."
-            )
-        # Input validation
-        start = len(prompts)
-        prompts = cls._convert_to_chat_message(prompts, with_turn=True)
-
-        # Process function
-        def next_input(_prompt, *args):
-            if prompts:
-                cls._update_message(prompts, start)
-                prompt = prompts.pop(_POP_INDEX)
-                return prompt, *[""] * len(labels)
-            else:
-                cls._done_message()
-                return "", *[""] * len(labels)
-
-        # UI Config
-        prompt, *args = next_input(None, None)
-        chatbot = gradio.Chatbot(
-            value=prompt,
-            **_CHATBOT_KWARGS,
-        )
-        inputs = [
-            gradio.Dropdown(choices=range(100), label=label, multiselect=True)
-            for label in labels
-        ]
-        inputs = [chatbot] + inputs
-        return cls(
-            fn=next_input,
-            inputs=inputs,
-            outputs=inputs,
-            allow_flagging="manual",
-            submit_btn=_SUBMIT_BTN,
-            clear_btn=_CLEAR_BTN,
-            flagging_options=_SUBMIT_OPTIONS,
-            dataset_name=dataset_name,
-            hf_token=hf_token,
-            private=private,
-        )
-
-    @classmethod
     def for_chat_generation(
         cls,
         prompts: Union[List[List[Dict[str, str]]], List[List[gradio.ChatMessage]]],
