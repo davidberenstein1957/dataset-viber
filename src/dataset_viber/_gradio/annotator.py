@@ -166,13 +166,21 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
                 if "suggestion" in cls.input_data:
                     label = cls.input_data["suggestion"].pop(_POP_INDEX)
                 label = label if fn is None or label else fn(text)
-                if cls.task == "text-classification-multi-label":
-                    label = [lab["label"] for lab in label if lab["score"] > 0.5]
-                    return (text, label)
-                elif cls.task == "text-classification" and fn is not None:
-                    return (text, label[0]["label"])
+                if fn is not None and not label:
+                    label = fn(text)
+                    if cls.task == "text-classification-multi-label":
+                        label = [
+                            str(lab["label"]) for lab in label if lab["score"] > 0.5
+                        ]
+                        return (text, label)
+                    return (text, str(label[0]["label"]))
                 else:
-                    return (text, [] if multi_label else None)
+                    if cls.task == "text-classification-multi-label":
+                        label = [
+                            str(lab["label"]) for lab in label if lab["score"] > 0.5
+                        ]
+                        return (text, label)
+                    return (text, str(label))
             else:
                 cls._done_message()
                 return ("", [])
@@ -592,18 +600,19 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
                 label = ""
                 if "suggestion" in cls.input_data:
                     label = cls.input_data["suggestion"].pop(_POP_INDEX)
-                label = (
-                    label
-                    if fn is None or label
-                    else fn("\n".join([msg.content for msg in prompt]))
-                )
-                if cls.task == "chat-classification-multi-label":
-                    label = [lab["label"] for lab in label if lab["score"] > 0.5]
-                    return (prompt, label)
-                elif cls.task == "chat-classification" and fn is not None:
-                    return (prompt, label[0]["label"])
+                if fn is not None and not label:
+                    label = fn("\n".join([msg.content for msg in prompt]))
+                    if cls.task == "chat-classification-multi-label":
+                        label = [
+                            str(lab["label"]) for lab in label if lab["score"] > 0.5
+                        ]
+                        return (prompt, label)
+                    return (prompt, str(label[0]["label"]))
                 else:
-                    return (prompt, [] if multi_label else "")
+                    if cls.task == "chat-classification-multi-label":
+                        label = [str(lab) for lab in label]
+                        return (prompt, label)
+                    return (prompt, str(label))
             else:
                 cls._done_message()
                 return (None, [])
@@ -877,15 +886,21 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             if cls.input_data["image"]:
                 cls._update_message(cls)
                 image = cls.input_data["image"].pop(_POP_INDEX)
-                label = cls.input_data["suggestion"].pop(_POP_INDEX)
-                label = label if fn is None or label else fn(image)
-                if cls.task == "image-classification-multi-label":
-                    label = [lab["label"] for lab in label if lab["score"] > 0.5]
-                    return (image, label)
-                elif cls.task == "image-classification" and fn is not None:
-                    return (image, label[0]["label"])
+                label = ""
+                if "suggestion" in cls.input_data:
+                    label = cls.input_data["suggestion"].pop(_POP_INDEX)
+                if fn is not None and not label:
+                    label = fn(image)
+                    if cls.task == "image-classification-multi-label":
+                        label = [
+                            str(lab["label"]) for lab in label if lab["score"] > 0.5
+                        ]
+                        return (image, label)
+                    return (image, str(label[0]["label"]))
                 else:
-                    return (image, [] if multi_label else None)
+                    if cls.task == "image-classification-multi-label":
+                        label = [str(lab) for lab in label]
+                    return (image, str(label))
             else:
                 cls._done_message()
                 return (None, [])
