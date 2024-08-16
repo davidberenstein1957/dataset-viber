@@ -27,7 +27,6 @@ from gradio.components import (
 from gradio.events import Dependency
 from gradio.flagging import FlagMethod
 
-from dataset_viber._constants import COLORS
 from dataset_viber._gradio._mixins._import_export import ImportExportMixin
 from dataset_viber._gradio._mixins._task_config import TaskConfigMixin
 from dataset_viber._gradio.collector import CollectorInterface
@@ -250,14 +249,11 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
                 return "", cls._convert_to_tokens(" ")
 
         # UI Config
-        if isinstance(cls.labels, list):
-            cls.labels = {label: color for label, color in zip(cls.labels, COLORS)}
         text, spans = next_input(None, None)
         inputs = [
             gradio.Textbox(value=text, label="text", interactive=False),
             gradio.HighlightedText(
                 value=spans,
-                color_map=cls.labels if cls.labels else None,
                 label="spans",
                 **_HIGHLIGHT_TEXT_KWARGS,
             ),
@@ -484,14 +480,17 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
 
         # Process function
         def next_input(_prompt, _completion_a, _completion_b):
+            cls.output_data["prompt"].append(_prompt)
+            cls.output_data["completion_a"].append(_completion_a)
+            cls.output_data["completion_b"].append(_completion_b)
             if prompts:
                 cls._update_message(cls)
-                prompt = prompts.pop(_POP_INDEX)
-                completion_a = completions_a.pop(_POP_INDEX)
+                prompt = cls.input_data["prompt"].pop(_POP_INDEX)
+                completion_a = cls.input_data["completion_a"].pop(_POP_INDEX)
+                completion_b = cls.input_data["completion_b"].pop(_POP_INDEX)
                 completion_a = (
                     completion_a if fn is None or completion_a != "" else fn(prompt)
                 )
-                completion_b = completions_b.pop(_POP_INDEX)
                 completion_b = (
                     completion_b if fn is None or completion_b != "" else fn(prompt)
                 )
@@ -1119,7 +1118,10 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
     @override
     def render_flag_btns(self) -> list[Button]:
         """Override the render_flag_btns method to return the flagging buttons with labels."""
-        return [Button(label, variant="primary") for label, _ in self.flagging_options]
+        self.flagging_btns = [
+            Button(label, variant="primary") for label, _ in self.flagging_options
+        ]
+        return self.flagging_btns
 
     def _update_message(self) -> None:
         """Print the progress of the annotation."""
