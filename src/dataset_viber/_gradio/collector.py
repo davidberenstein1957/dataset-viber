@@ -76,9 +76,9 @@ class CollectorInterface(gradio.Interface):
             }
         )
         super().__init__(fn=fn, inputs=inputs, outputs=outputs, **kwargs)
-        self = self._add_html_component_with_viewer(
-            self, flagging_callback, show_embedded_viewer
-        )
+        # self = self._add_html_component_with_viewer(
+        #     self, flagging_callback, show_embedded_viewer
+        # )
 
     @classmethod
     def from_pipeline(

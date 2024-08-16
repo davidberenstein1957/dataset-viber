@@ -40,7 +40,7 @@ _POP_INDEX = 0
 _MESSAGE_DONE_ANNOTATING = "No data left to annotate."
 _HIGHLIGHT_TEXT_KWARGS = {
     "interactive": True,
-    "show_legend": False,
+    "show_legend": True,
     "combine_adjacent": True,
     "adjacent_separator": "",
 }
@@ -65,16 +65,43 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin):
     ):
         self._override_block_init_method(**kwargs)
         with self:
-            gradio.LoginButton()
-            with gradio.Accordion("Remaining data", open=False):
-                self.input_data_component = gradio.Dataframe(
-                    pd.DataFrame.from_dict(self.input_data), interactive=False
-                )
-                inputs[0].change(
-                    fn=lambda x: pd.DataFrame.from_dict(self.input_data),
-                    outputs=self.input_data_component,
-                )
-        self._configure_import()
+            gradio.LoginButton(
+                value="Sign in with Hugging Face - a login will reset the data!"
+            ).activate()
+            with gradio.Accordion(
+                open=False if self.start else True, label="Import and remaining data"
+            ):
+                with gradio.Tab("Remaining data"):
+                    self.input_data_component = gradio.Dataframe(
+                        pd.DataFrame.from_dict(self.input_data).head(100),
+                        interactive=False,
+                    )
+                    inputs[0].change(
+                        fn=lambda x: pd.DataFrame.from_dict(self.input_data).head(100),
+                        outputs=self.input_data_component,
+                    )
+                if self.task in [
+                    "text-classification",
+                    "chat-classification",
+                    "image-classification",
+                ]:
+                    with gradio.Tab("Label selector"):
+                        label_selector = gradio.Dropdown(
+                            choices=[],
+                            label="label",
+                            allow_custom_value=True,
+                            multiselect=True,
+                        )
+                        label_selector.change(
+                            fn=lambda x: gradio.Radio(x, value=None, label="label"),
+                            inputs=label_selector,
+                            outputs=[
+                                input
+                                for input in inputs
+                                if isinstance(input, gradio.Radio)
+                            ],
+                        )
+                self._configure_import()
         super().__init__(
             *args,
             inputs=inputs,
@@ -82,7 +109,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin):
             **kwargs,
         )
         with self:
-            with gradio.Row(variant="panel"):
+            with gradio.Row():
                 # with gradio.Column():
                 #     sort = gradio.Button("Semantic Sort", variant="secondary")
                 with gradio.Column():
@@ -91,22 +118,23 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin):
                 shuffle.click(
                     fn=self.shuffle_data, inputs=None, outputs=self.input_data_component
                 )
-            with gradio.Accordion("Completed data", open=False):
-                self.output_data_component = gradio.Dataframe(
-                    pd.DataFrame.from_dict(self.output_data), interactive=False
-                )
-                inputs[0].change(
-                    fn=lambda x: pd.DataFrame.from_dict(self.output_data),
-                    outputs=self.output_data_component,
-                )
-        self._configure_export()
+            with gradio.Accordion(open=False, label="Export and completed data"):
+                with gradio.Tab("Completed data"):
+                    self.output_data_component = gradio.Dataframe(
+                        pd.DataFrame.from_dict(self.output_data).tail(100),
+                        interactive=False,
+                    )
+                    inputs[0].change(
+                        fn=lambda x: pd.DataFrame.from_dict(self.output_data).tail(100),
+                        outputs=self.output_data_component,
+                    )
+                self._configure_export()
 
     @classmethod
     def for_text_classification(
         cls,
-        texts: List[str],
-        labels: List[str],
-        *,
+        texts: List[str] = None,
+        labels: List[str] = None,
         multi_label: Optional[bool] = False,
         fn: Optional[Union["Pipeline", callable]] = None,
         dataset_name: Optional[str] = None,
@@ -117,8 +145,8 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin):
         Annotator Interface for text classification tasks.
 
         Args:
-            texts (List[str]): List of texts to annotate.
-            labels (List[str]): List of labels to choose from.
+            texts (Optional[List[str]], optional): List of texts to annotate.
+            labels (Optional[List[str]], optional): List of labels to choose from.
             multi_label (Optional[bool], optional): Whether to allow multiple labels. Defaults to False.
             fn (Optional[Union["Pipeline", callable]], optional): Prediction function to apply to the text before annotating.
                 Expecting it takes a `str` and returns [{"label": str, "score": float}].
@@ -131,18 +159,19 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin):
             AnnotatorInterFace: An instance of AnnotatorInterFace
         """
         # IO Config
-        cls.task = "text_classification"
+        cls.task = "text-classification"
+        cls.labels = labels or []
         cls.input_columns = ["text"]
         cls.output_columns = ["text", "label"]
-        cls.input_data = {"text": texts}
+        cls.input_data = {"text": texts or []}
         cls.output_data = {label: [] for label in cls.output_columns}
 
         # Process function
-        start = len(texts)
+        cls.start = len(cls.input_data["text"])
 
         def next_input(_text, _label):
-            if texts:
-                cls._update_message(texts, start)
+            if cls.input_data["text"]:
+                cls._update_message(cls)
                 text = cls.input_data["text"].pop(_POP_INDEX)
                 label = [] if fn is None else fn(text)
                 cls.output_data["text"].append(_text)
@@ -153,12 +182,11 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin):
                 elif not multi_label and fn is not None:
                     return (text, label[0]["label"])
                 else:
-                    return (text, [])
+                    return (text, [] if multi_label else None)
             else:
                 cls._done_message()
-                return ("", []) if multi_label or fn is not None else ""
+                return ("", [])
 
-        # if multi_label or fn is not None:
         text, label = next_input(None, None)
         if multi_label:
             check_box_group = gradio.CheckboxGroup(labels, value=label, label="label")
@@ -166,7 +194,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin):
             check_box_group = gradio.Radio(labels, value=label, label="label")
 
         # UI Config
-        inputs = [gradio.Textbox(value=text, label="text")]
+        inputs: List[gradio.Textbox] = [gradio.Textbox(value=text, label="text")]
 
         # if multi_label or fn is not None:
         inputs.append(check_box_group)
@@ -186,9 +214,8 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin):
     @classmethod
     def for_token_classification(
         cls,
-        texts: List[str],
-        labels: List[str],
-        *,
+        texts: Optional[List[str]] = None,
+        labels: Optional[List[str]] = None,
         fn: Optional[Union["Pipeline", callable]] = None,
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
@@ -198,8 +225,8 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin):
         Annotator Interface for token classification tasks.
 
         Args:
-            texts (List[str]): List of texts to annotate.
-            labels (List[str]): List of labels to choose from.
+            texts (Optional[List[str]], optional): List of texts to annotate.
+            labels (Optional[List[str]], optional): List of labels to choose from.
             fn (Optional[Union["Pipeline", callable]], optional): Prediction function to apply to the text before annotating.
                 Expecting it takes a `str` and returns List[Tuple[str, str]] [("text","label")].
                 Defaults to None.
@@ -211,37 +238,40 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin):
             AnnotatorInterFace: An instance of AnnotatorInterFace
         """
         # IO Config
-        cls.task = "token_classification"
+        cls.task = "token-classification"
+        cls.labels = labels or []
         cls.input_columns = ["text"]
         cls.output_columns = ["text", "spans"]
-        cls.input_data = {"text": texts}
-        cls.output_data = {label: [] for label in labels}
+        cls.input_data = {"text": texts or []}
+        cls.output_data = {label: [] for label in cls.output_columns}
 
         # Process function
-        start = len(texts)
+        cls.start = len(cls.input_data["text"])
 
-        def next_input(_spans):
-            if texts:
-                cls._update_message(texts, start)
-                text = texts.pop(_POP_INDEX)
-                print(_spans)
-                text = cls._convert_to_tokens(text) if fn is None else fn(text)
-                return text
+        def next_input(_text, _spans):
+            if cls.input_data["text"]:
+                cls._update_message(cls)
+                text = cls.input_data["text"].pop(_POP_INDEX)
+                spans = cls._convert_to_tokens(text) if fn is None else fn(text)
+                cls.output_data["text"].append(_text)
+                cls.output_data["spans"].append(_spans)
+                return text, spans
             else:
                 cls._done_message()
-                return cls._convert_to_tokens(" ")
+                return "", cls._convert_to_tokens(" ")
 
         # UI Config
-        if isinstance(labels, list):
-            labels = {label: color for label, color in zip(labels, COLORS)}
-        text = next_input(None)
+        if isinstance(cls.labels, list):
+            cls.labels = {label: color for label, color in zip(cls.labels, COLORS)}
+        text, spans = next_input(None, None)
         inputs = [
+            gradio.Textbox(value=text, label="text", interactive=False),
             gradio.HighlightedText(
                 value=text,
-                color_map=labels,
+                color_map=cls.labels or None,
                 label="spans",
                 **_HIGHLIGHT_TEXT_KWARGS,
-            )
+            ),
         ]
 
         return cls(
@@ -260,9 +290,8 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin):
     @classmethod
     def for_question_answering(
         cls,
-        questions: List[str],
-        contexts: List[str],
-        *,
+        questions: Optional[List[str]] = None,
+        contexts: Optional[List[str]] = None,
         fn: Optional[Union["Pipeline", callable]] = None,
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
@@ -272,8 +301,8 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin):
         Annotator Interface for question answering tasks.
 
         Args:
-            questions (List[str]): List of questions to annotate.
-            contexts (List[str]): List of contexts to annotate.
+            questions (Optional[List[str]], optional): List of questions to annotate.
+            contexts (Optional[List[str]], optional): List of contexts to annotate.
             fn (Optional[Union["Pipeline", callable]], optional): Prediction function to apply to the context before annotating.
                 Expecting it takes a `str` and returns [{"label": str, "score": float}].
                 Defaults to None.
@@ -284,17 +313,26 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin):
         Returns:
             AnnotatorInterFace: An instance of AnnotatorInterFace
         """
+        # IO Config
+        cls.task = "question-answering"
+        cls.input_columns = ["question", "context"]
+        cls.output_columns = ["question", "context"]
+        cls.input_data = {"question": questions or [], "context": contexts or []}
+        cls.output_data = {col: [] for col in cls.output_columns}
+        cls.start = len(cls.input_data["question"])
+
         # Input validation
-        start = len(questions)
-        if len(questions) != len(contexts):
-            raise ValueError("Questions and contexts must be of the same length.")
+        cls.start = len(cls.input_data["question"])
+        if cls.input_data["question"] and cls.input_data["context"]:
+            if len(cls.input_data["question"]) != len(cls.input_data["context"]):
+                raise ValueError("Questions and contexts must be of the same length.")
 
         # Process function
         def next_input(_question, _context):
             if questions:
-                cls._update_message(questions, start)
-                question = questions.pop(_POP_INDEX)
-                context = contexts.pop(_POP_INDEX)
+                cls._update_message(cls)
+                question = cls.input_data["question"].pop(_POP_INDEX)
+                context = cls.input_data["context"].pop(_POP_INDEX)
                 context = (
                     cls._convert_to_tokens(context)
                     if fn is None
@@ -333,8 +371,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin):
     @classmethod
     def for_text_generation(
         cls,
-        prompts: List[str],
-        *,
+        prompts: Optional[List[str]] = None,
         completions: Optional[List[str]] = None,
         fn: Optional[Union["Pipeline", callable]] = None,
         dataset_name: Optional[str] = None,
@@ -345,7 +382,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin):
         Annotator Interface for text generation tasks.
 
         Args:
-            prompts (List[str]): List of prompts to annotate.
+            prompts (Optional[List[str]], optional): List of prompts to annotate.
             completions (Optional[List[str]], optional): List of completions to annotate. Defaults to None.
             fn (Optional[Union["Pipeline", callable]], optional): Prediction function to apply to the prompt before annotating.
                 Expecting it takes a `str` and returns `str`.
@@ -357,24 +394,31 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin):
         Returns:
             AnnotatorInterFace: An instance of AnnotatorInterFace
         """
+        # IO Config
+        cls.task = "text-generation"
+        cls.input_columns = ["prompt", "completion"]
+        cls.output_columns = ["prompt", "completion"]
+        cls.input_data = {"prompt": prompts or [], "completion": completions or []}
+        cls.output_data = {col: [] for col in cls.output_columns}
+        cls.start = len(cls.input_data["prompt"])
+
         # Input validation
-        if completions is None:
-            completions = ["" for _ in range(len(prompts))]
-        elif fn is not None:
-            raise ValueError("fn should be None when completions are provided.")
-        if len(prompts) != len(completions):
-            raise ValueError(
-                "Source and target must be of the same length. You can add empty strings to match the lengths."
-            )
+        if cls.input_data["prompt"] and cls.input_data["completion"]:
+            if len(cls.input_data["prompt"]) != len(cls.input_data["completion"]):
+                raise ValueError(
+                    "Source and target must be of the same length. You can add empty strings to match the lengths."
+                )
 
         # Process function
-        start = len(prompts)
-
         def next_input(_prompt, _completion):
             if prompts:
-                cls._update_message(prompts, start)
-                prompt = prompts.pop(_POP_INDEX)
-                completion = completions.pop(_POP_INDEX) if fn is None else fn(prompt)
+                cls._update_message(cls)
+                prompt = cls.input_data["prompt"].pop(_POP_INDEX)
+                completion = (
+                    cls.output_data["completion"].pop(_POP_INDEX)
+                    if fn is None
+                    else fn(prompt)
+                )
                 return prompt, completion
             else:
                 cls._done_message()
@@ -401,8 +445,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin):
     @classmethod
     def for_text_generation_preference(
         cls,
-        prompts: List[str],
-        *,
+        prompts: Optional[List[str]],
         completions_a: Optional[List[str]] = None,
         completions_b: Optional[List[str]] = None,
         fn: Optional[Union["Pipeline", callable]] = None,
@@ -414,7 +457,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin):
         Annotator Interface for text generation preference tasks.
 
         Args:
-            prompts (List[str]): List of prompts to annotate.
+            prompts (Optional[List[str]], optional): List of prompts to annotate.
             completions_a (Optional[List[str]], optional): List of completions to annotate for option A. Defaults to None.
             completions_b (Optional[List[str]], optional): List of completions to annotate for option B. Defaults to None.
             fn (Optional[Union["Pipeline", callable]], optional): Prediction function to apply to the prompt before annotating.
@@ -1072,9 +1115,11 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin):
         """Override the render_flag_btns method to return the flagging buttons with labels."""
         return [Button(label, variant="primary") for label, _ in self.flagging_options]
 
-    @staticmethod
-    def _update_message(items: list, start: int) -> None:
+    def _update_message(self) -> None:
         """Print the progress of the annotation."""
+        key = list(self.input_data.keys())[0]
+        items = self.input_data[key]
+        start = len(self.input_data[key]) + len(self.output_data[key])
         gradio.Info(f"{(len(items) / start) * 100:.2f}% done {len(items)} left.")
 
     @staticmethod
@@ -1173,6 +1218,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin):
 
         # Reorder each list based on the shuffled indices
         gradio.Info("Data shuffled.")
-        return pd.DataFrame.from_dict(
-            {key: [lst[i] for i in indices] for key, lst in self.input_data.items()}
-        )
+        self.input_data = {
+            key: [lst[i] for i in indices] for key, lst in self.input_data.items()
+        }
+        return pd.DataFrame.from_dict(self.input_data).head(100)

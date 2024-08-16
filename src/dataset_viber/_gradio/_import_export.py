@@ -56,91 +56,85 @@ class ImportExportMixin:
         gradio.Blocks.__init__ = lambda *args, **kwargs: None
 
     def _configure_import(self):
-        with self:
-            with gradio.Accordion("Import data", open=False):
-                with gradio.Tab("Import from Hugging Face Hub"):
-                    search_in = HuggingfaceHubSearch(
-                        label="Search Huggingface Hub",
-                        placeholder="Search for datasets on Huggingface",
-                        search_type="dataset",
-                        sumbit_on_select=True,
-                    )
-                    dataset_viewer = gradio.HTML(label="Dataset Viewer")
-                    search_in.submit(
-                        fn=lambda x: self._get_embedded_dataset_viewer(
-                            self._get_repo_url_from_repo_id(x)
-                        ),
-                        inputs=[search_in],
-                        outputs=[dataset_viewer],
-                    )
-                    column_mapping_hf_upload = gradio.Code(
-                        value=json.dumps(
-                            dict.fromkeys(self.input_columns, ""), indent=2
-                        ),
-                        **CODE_KWARGS,
-                    )
-                    start_btn_hf_upload = gradio.Button("Start Annotating")
-                    start_btn_hf_upload.click(
-                        fn=self._set_data_hf_upload,
-                        inputs=[search_in, column_mapping_hf_upload],
-                        outputs=self.input_data_component,
-                    )
-                with gradio.Tab(label="Import from file"):
-                    upload_button = gradio.UploadButton(
-                        "Upload",
-                        label="Select a file (CSV or Excel)",
-                        file_types=["csv", "xlsx", "xlsx"],
-                    )
-                    df_upload = gradio.Dataframe(interactive=True)
-                    upload_button.upload(
-                        fn=self.upload_file, inputs=upload_button, outputs=df_upload
-                    )
-                    column_mapping_file_upload = gradio.Code(
-                        value=json.dumps(
-                            dict.fromkeys(self.input_columns, ""), indent=2
-                        ),
-                        **CODE_KWARGS,
-                    )
-                    start_btn_file_upload = gradio.Button("Start Annotating")
-                    start_btn_file_upload.click(
-                        fn=self._set_data,
-                        inputs=[df_upload, column_mapping_file_upload],
-                        outputs=self.input_data_component,
-                    )
+        with gradio.Tab("Import data"):
+            with gradio.Tab("Import from Hugging Face Hub"):
+                search_in = HuggingfaceHubSearch(
+                    label="Search Huggingface Hub",
+                    placeholder="Search for datasets on Huggingface",
+                    search_type="dataset",
+                    sumbit_on_select=True,
+                )
+                dataset_viewer = gradio.HTML(label="Dataset Viewer")
+                search_in.submit(
+                    fn=lambda x: self._get_embedded_dataset_viewer(
+                        self._get_repo_url_from_repo_id(x)
+                    ),
+                    inputs=[search_in],
+                    outputs=[dataset_viewer],
+                )
+                column_mapping_hf_upload = gradio.Code(
+                    value=json.dumps(dict.fromkeys(self.input_columns, ""), indent=2),
+                    **CODE_KWARGS,
+                )
+                start_btn_hf_upload = gradio.Button("Start Annotating")
+                start_btn_hf_upload.click(
+                    fn=self._set_data_hf_upload,
+                    inputs=[search_in, column_mapping_hf_upload],
+                    outputs=self.input_data_component,
+                )
+            with gradio.Tab(label="Import from file"):
+                upload_button = gradio.UploadButton(
+                    "Upload",
+                    label="Select a file (CSV or Excel)",
+                    file_types=["csv", "xlsx", "xlsx"],
+                )
+                df_upload = gradio.Dataframe(interactive=True)
+                upload_button.upload(
+                    fn=self.upload_file, inputs=upload_button, outputs=df_upload
+                )
+                column_mapping_file_upload = gradio.Code(
+                    value=json.dumps(dict.fromkeys(self.input_columns, ""), indent=2),
+                    **CODE_KWARGS,
+                )
+                start_btn_file_upload = gradio.Button("Start Annotating")
+                start_btn_file_upload.click(
+                    fn=self._set_data,
+                    inputs=[df_upload, column_mapping_file_upload],
+                    outputs=self.input_data_component,
+                )
 
     def _configure_export(self):
-        with self:
-            with gradio.Accordion("Export to Hugging Face", open=False):
-                with gradio.Tab("Export to Hugging Face Hub"):
-                    with gradio.Row():
-                        with gradio.Column():
-                            organization = gradio.Textbox(label="Organization")
-                            self.load(self._list_organizations, outputs=organization)
-                        with gradio.Column():
-                            dataset_name = gradio.Textbox(
-                                placeholder="Dataset Name", label="Dataset Name"
-                            )
-                    with gradio.Row():
-                        export_button_hf = gradio.Button("Export")
-                        export_button_hf.click(
-                            fn=self._export_data_hf,
-                            inputs=[self.output_data_component, dataset_name],
-                            outputs=dataset_name,
+        with gradio.Tab("Export to Hugging Face"):
+            with gradio.Tab("Export to Hugging Face Hub"):
+                with gradio.Row():
+                    with gradio.Column():
+                        organization = gradio.Textbox(label="Organization")
+                        self.load(self._list_organizations, outputs=organization)
+                    with gradio.Column():
+                        dataset_name = gradio.Textbox(
+                            placeholder="Dataset Name", label="Dataset Name"
                         )
-                with gradio.Tab("Export to file"):
-                    with gradio.Column():
-                        export_button = gradio.Button("Export")
-                    with gradio.Column():
-                        delete_button = gradio.Button("🗑️ delete file")
-                    self.file = gradio.File(interactive=False, visible=False)
-                    export_button.click(
-                        fn=self._export_data,
-                        inputs=self.output_data_component,
-                        outputs=self.file,
+                with gradio.Row():
+                    export_button_hf = gradio.Button("Export")
+                    export_button_hf.click(
+                        fn=self._export_data_hf,
+                        inputs=[self.output_data_component, dataset_name],
+                        outputs=dataset_name,
                     )
-                    delete_button.click(
-                        self._delete_file, inputs=self.file, outputs=self.file
-                    )
+            with gradio.Tab("Export to file"):
+                with gradio.Column():
+                    export_button = gradio.Button("Export")
+                with gradio.Column():
+                    delete_button = gradio.Button("🗑️ delete file")
+                self.file = gradio.File(interactive=False, visible=False)
+                export_button.click(
+                    fn=self._export_data,
+                    inputs=self.output_data_component,
+                    outputs=self.file,
+                )
+                delete_button.click(
+                    self._delete_file, inputs=self.file, outputs=self.file
+                )
 
     def _set_data_hf_upload(self, repo_id, column_mapping, split="train"):
         gradio.Info("Started loading the dataset. This may take a while.")
@@ -149,21 +143,30 @@ class ImportExportMixin:
         return self._set_data(dataframe, column_mapping)
 
     def _set_data(self, dataframe, column_mapping):
-        column_mapping = self._load_json_as_dict(column_mapping)
-        dataframe = dataframe[list(column_mapping.values())]
-        dataframe.columns = list(column_mapping.keys())
-        for column in column_mapping.keys():
-            self.input_data[column].extend(dataframe[column].tolist())
+        try:
+            column_mapping = self._load_json_as_dict(column_mapping)
+            dataframe = dataframe[list(column_mapping.values())]
+            dataframe.columns = list(column_mapping.keys())
+            for column in column_mapping.keys():
+                self.input_data[column].extend(dataframe[column].tolist())
+            # assert all columns are a similar length and fille with "" if not
+            for column in self.input_columns:
+                if len(self.input_data[column]) < len(dataframe):
+                    self.input_data[column].extend(
+                        [""] * (len(dataframe) - len(self.input_data[column]))
+                    )
+            self.start = len(dataframe)
+        except Exception as e:
+            raise gradio.Error(f"An error occurred: {e}")
         gradio.Info(
-            "Data loaded successfully. Click on 🗑️ discard to get the next record."
+            "Data loaded successfully. Showing first 100 examples in 'remaing data' tab. Click on 🗑️ discard to get the next record."
         )
-        return dataframe
+        return dataframe.head(100)
 
     def _export_data_hf(self, dataframe: pd.DataFrame, dataset_name):
         gradio.Info("Started exporting the dataset. This may take a while.")
         Dataset.from_pandas(dataframe).push_to_hub(dataset_name)
         gradio.Info(f"Exported the dataset to Hugging Face Hub as {dataset_name}.")
-        raise ""
 
     def _create_dataset_card(self, repo_id):
         pass
