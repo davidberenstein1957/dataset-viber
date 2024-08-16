@@ -463,7 +463,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         # IO Config
         cls.task = "text-generation-preference"
         cls.input_columns = ["prompt", "completion_a", "completion_b"]
-        cls.output_columns = ["prompt", "completion_a", "completion_b", "flag"]
+        cls.output_columns = ["prompt", "chosen", "rejected", "flag"]
         cls.input_data = {
             "prompt": prompts or [],
             "completion_a": completions_a or [],
@@ -481,8 +481,12 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         def next_input(_prompt, _completion_a, _completion_b):
             if _prompt:
                 cls.output_data["prompt"].append(_prompt)
-                cls.output_data["completion_a"].append(_completion_a)
-                cls.output_data["completion_b"].append(_completion_b)
+                if cls.output_data["flag"][-1] == "👆 A is better":
+                    cls.output_data["chosen"].append(_completion_a)
+                    cls.output_data["rejected"].append(_completion_b)
+                else:
+                    cls.output_data["chosen"].append(_completion_b)
+                    cls.output_data["rejected"].append(_completion_a)
             if prompts:
                 cls._update_message(cls)
                 prompt = cls.input_data["prompt"].pop(_POP_INDEX)
