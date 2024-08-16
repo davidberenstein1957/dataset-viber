@@ -244,9 +244,7 @@ class ImportExportMixin:
             # Case: numpy array or list
             return Image.fromarray(np.array(input_data))
         else:
-            raise ValueError("Unsupported input type")
-
-        raise ValueError("Invalid input format")
+            return input_data
 
     def _set_equal_length_input_data(self):
         # assert all columns for self.input_data are a similar length and fille with "" if not

@@ -43,8 +43,31 @@ class TaskConfigMixin:
                     return (
                         gradio.CheckboxGroup(**_kwargs)
                         if "multi-label" in self.task
-                        else gradio.CheckboxGroup(**_kwargs)
+                        else gradio.Radio(**_kwargs)
                     )
+
+                def get_label_from_dataframe(_input_data_component, _label_selector):
+                    if "suggestion" in _input_data_component.columns:
+                        unique_labels = (
+                            _input_data_component["suggestion"].unique().tolist()
+                        )
+                    else:
+                        unique_labels = _label_selector
+                    labels = [str(label) for label in unique_labels]
+                    labels = sorted(labels)
+                    return gradio.Dropdown(
+                        choices=labels,
+                        value=labels,
+                        label="label",
+                        allow_custom_value=True,
+                        multiselect=True,
+                    )
+
+                self.input_data_component.change(
+                    fn=get_label_from_dataframe,
+                    inputs=[self.input_data_component, label_selector],
+                    outputs=[label_selector],
+                )
 
                 label_selector.change(
                     fn=update_labels,
