@@ -22,7 +22,6 @@ import numpy as np
 import pandas as pd
 from datasets import Dataset, load_dataset
 from gradio_huggingfacehub_search import HuggingfaceHubSearch
-from huggingface_hub import whoami
 from PIL import Image
 
 CODE_KWARGS = {
@@ -34,12 +33,6 @@ CODE_KWARGS = {
 
 
 class ImportExportMixin:
-    def _list_organizations(self, oauth_token: gradio.OAuthToken | None) -> str:
-        orgs = []
-        if oauth_token is not None:
-            orgs = [str(org["name"]) for org in whoami(oauth_token.token)["orgs"]]
-        return ",".join(orgs)
-
     def _override_block_init_method(self, **kwargs):
         # Initialize the parent class
         gradio.Blocks.__init__(
@@ -110,20 +103,14 @@ class ImportExportMixin:
         with gradio.Tab("Export data"):
             with gradio.Tab("Export to Hugging Face Hub"):
                 with gradio.Row():
-                    with gradio.Column():
-                        token = gradio.Textbox(
-                            label="Token", interactive=True, type="password"
-                        )
-                        self.load(self._get_token, outputs=token)
-                    with gradio.Column():
-                        dataset_name = gradio.Textbox(
-                            placeholder="Dataset Name", label="Dataset Name"
-                        )
+                    dataset_name = gradio.Textbox(
+                        placeholder="Dataset Name", label="Dataset Name"
+                    )
                 with gradio.Row():
                     export_button_hf = gradio.Button("Export")
                     export_button_hf.click(
                         fn=self._export_data_hf,
-                        inputs=[dataset_name, token],
+                        inputs=dataset_name,
                         outputs=dataset_name,
                     )
             with gradio.Tab("Export to file"):
@@ -191,9 +178,11 @@ class ImportExportMixin:
         )
         return dataframe.head(100)
 
-    def _export_data_hf(self, dataset_name, token):
+    def _export_data_hf(self, dataset_name, oauth_token: gradio.OAuthToken | None):
         gradio.Info("Started exporting the dataset. This may take a while.")
-        Dataset.from_dict(self.output_data).push_to_hub(dataset_name, token=token)
+        Dataset.from_dict(self.output_data).push_to_hub(
+            dataset_name, token=oauth_token.token
+        )
         gradio.Info(f"Exported the dataset to Hugging Face Hub as {dataset_name}.")
 
     def _create_dataset_card(self, repo_id):
