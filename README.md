@@ -197,7 +197,7 @@ interface = AnnotatorInterFace.for_text_generation(
     fn=None, # a callable e.g. (function or transformers pipelines) that returns `str`
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
-
+interface.launch()
 ```
 
 </details>
@@ -219,6 +219,7 @@ interface = AnnotatorInterFace.for_text_generation_preference(
     fn=None, # a callable e.g. (function or transformers pipelines) that returns `str`
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
+interface.launch()
 ```
 
 </details>
@@ -407,6 +408,7 @@ interface = AnnotatorInterFace.for_image_description(
 )
 interface.launch()
 ```
+
 </details>
 
 <details>
