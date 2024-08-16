@@ -134,7 +134,6 @@ class ImportExportMixin:
                 self.file = gradio.File(interactive=False, visible=False)
                 export_button.click(
                     fn=self._export_data,
-                    inputs=self.output_data_component,
                     outputs=self.file,
                 )
                 delete_button.click(
@@ -208,8 +207,12 @@ class ImportExportMixin:
 
     def _export_data(self, dataframe):
         id = uuid.uuid4()
-        filename = f"{id}.csv"
-        dataframe.to_csv(filename, index=False)
+        if "image" in self.task:
+            filename = f"{id}.parquet"
+            Dataset.from_dict(self.output_data).to_parquet(filename)
+        else:
+            filename = f"{id}.csv"
+            Dataset.from_dict(self.output_data).to_csv(filename)
         return gradio.File(value=filename, visible=True)
 
     def _delete_file(self, _file):
