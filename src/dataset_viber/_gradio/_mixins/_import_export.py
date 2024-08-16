@@ -12,15 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import io
 import json
 import uuid
 from pathlib import Path
 
 import gradio
+import numpy as np
 import pandas as pd
 from datasets import Dataset, load_dataset
 from gradio_huggingfacehub_search import HuggingfaceHubSearch
 from huggingface_hub import whoami
+from PIL import Image
 
 CODE_KWARGS = {
     "language": "json",
@@ -104,11 +107,13 @@ class ImportExportMixin:
                 )
 
     def _configure_export(self):
-        with gradio.Tab("Export to Hugging Face"):
+        with gradio.Tab("Export data"):
             with gradio.Tab("Export to Hugging Face Hub"):
                 with gradio.Row():
                     with gradio.Column():
-                        organization = gradio.Textbox(label="Organization")
+                        organization = gradio.Textbox(
+                            label="Organization", interactive=True
+                        )
                         self.load(self._list_organizations, outputs=organization)
                     with gradio.Column():
                         dataset_name = gradio.Textbox(
@@ -118,7 +123,7 @@ class ImportExportMixin:
                     export_button_hf = gradio.Button("Export")
                     export_button_hf.click(
                         fn=self._export_data_hf,
-                        inputs=[self.output_data_component, dataset_name],
+                        inputs=[dataset_name],
                         outputs=dataset_name,
                     )
             with gradio.Tab("Export to file"):
@@ -137,24 +142,29 @@ class ImportExportMixin:
                 )
 
     def _set_data_hf_upload(self, repo_id, column_mapping, split="train"):
-        gradio.Info("Started loading the dataset. This may take a while.")
-        dataset = load_dataset(repo_id, split=split)
-        dataframe = dataset.to_pandas()
-        return self._set_data(dataframe, column_mapping)
-
-    def _set_data(self, dataframe, column_mapping):
+        gradio.Info("Started loading the dataset. This might take a while.")
         try:
             column_mapping = self._load_json_as_dict(column_mapping)
-            dataframe = dataframe[list(column_mapping.values())]
-            dataframe.columns = list(column_mapping.keys())
+            dataset = load_dataset(repo_id, split=split)
+            for key, value in column_mapping.items():
+                if key != value:
+                    if value in dataset.column_names:
+                        dataset = dataset.rename_column(value, key)
+            dataset = dataset.select_columns(
+                [
+                    col
+                    for col in list(column_mapping.keys())
+                    if col in dataset.column_names
+                ]
+            )
+            # add images before converting to bytes
             for column in column_mapping.keys():
-                self.input_data[column].extend(dataframe[column].tolist())
-            # assert all columns are a similar length and fille with "" if not
-            for column in self.input_columns:
-                if len(self.input_data[column]) < len(dataframe):
+                if column in dataset.column_names:
                     self.input_data[column].extend(
-                        [""] * (len(dataframe) - len(self.input_data[column]))
+                        [self.process_image_input(entry) for entry in dataset[column]]
                     )
+            self._set_equal_length_input_data()
+            dataframe = pd.DataFrame.from_dict(self.input_data)
             self.start = len(dataframe)
         except Exception as e:
             raise gradio.Error(f"An error occurred: {e}")
@@ -163,9 +173,28 @@ class ImportExportMixin:
         )
         return dataframe.head(100)
 
-    def _export_data_hf(self, dataframe: pd.DataFrame, dataset_name):
+    def _set_data(self, dataframe, column_mapping):
+        gradio.Info("Started loading the dataset. This might take a while.")
+        try:
+            column_mapping = self._load_json_as_dict(column_mapping)
+            dataframe = dataframe[list(column_mapping.values())]
+            dataframe.columns = list(column_mapping.keys())
+            for column in column_mapping.keys():
+                if column in dataframe.columns:
+                    self.input_data[column].extend(dataframe[column].tolist())
+            self._set_equal_length_input_data()
+            dataframe = pd.DataFrame.from_dict(self.input_data)
+            self.start = len(dataframe)
+        except Exception as e:
+            raise gradio.Error(f"An error occurred: {e}")
+        gradio.Info(
+            "Data loaded successfully. Showing first 100 examples in 'remaing data' tab. Click on 🗑️ discard to get the next record."
+        )
+        return dataframe.head(100)
+
+    def _export_data_hf(self, dataset_name):
         gradio.Info("Started exporting the dataset. This may take a while.")
-        Dataset.from_pandas(dataframe).push_to_hub(dataset_name)
+        Dataset.from_dict(self.output_data).push_to_hub(dataset_name)
         gradio.Info(f"Exported the dataset to Hugging Face Hub as {dataset_name}.")
 
     def _create_dataset_card(self, repo_id):
@@ -202,3 +231,38 @@ class ImportExportMixin:
         else:
             return "Unsupported file type. Please upload a CSV, Excel, or JSON file."
         return df
+
+    def process_image_input(self, input_data):
+        if input_data is None:
+            return None
+        elif isinstance(input_data, dict):
+            if "bytes" in input_data and input_data["bytes"]:
+                # Case: bytes in a dictionary
+                return Image.open(io.BytesIO(input_data["bytes"]))
+            elif "path" in input_data and input_data["path"]:
+                # Case: path in a dictionary
+                return input_data["path"]
+        elif isinstance(input_data, Image.Image):
+            # Case: PIL Image
+            return input_data
+        elif isinstance(input_data, str):
+            # Case: URL or file path as string
+            return input_data
+        elif isinstance(input_data, (np.ndarray, list)):
+            # Case: numpy array or list
+            return Image.fromarray(np.array(input_data))
+        else:
+            raise ValueError("Unsupported input type")
+
+        raise ValueError("Invalid input format")
+
+    def _set_equal_length_input_data(self):
+        # assert all columns for self.input_data are a similar length and fille with "" if not
+        max_column_len = max(
+            [len(self.input_data[column]) for column in self.input_data.keys()]
+        )
+        for column in self.input_data.keys():
+            if len(self.input_data[column]) < max_column_len:
+                self.input_data[column].extend(
+                    [""] * (max_column_len - len(self.input_data[column]))
+                )

@@ -870,7 +870,8 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
 
         # Process function
         def next_input(_image, _label):
-            if _image:
+            if _image is not None:
+                _image = cls.process_image_input(cls, _image)
                 cls.output_data["image"].append(_image)
                 cls.output_data["label"].append(_label)
             if cls.input_data["image"]:
@@ -943,7 +944,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         cls.output_columns = ["prompt", "completion"]
         cls.input_data = {"prompt": prompts or [], "completion": completions or []}
         cls.output_data = {col: [] for col in cls.output_columns}
-        cls.start = len(cls.input_data["prompt"])
+        cls.start: int = len(cls.input_data["prompt"])
 
         # Input validation
         if cls.input_data["prompt"] and cls.input_data["completion"]:
@@ -955,6 +956,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         # Process function
         def next_input(_prompt, _completion):
             if _prompt:
+                _completion = cls.process_image_input(cls, _completion)
                 cls.output_data["prompt"].append(_prompt)
                 cls.output_data["completion"].append(_completion)
             if cls.input_data["prompt"]:
@@ -1029,7 +1031,8 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
 
         # Process function
         def next_input(_image, _description):
-            if _image:
+            if _image is not None:
+                _image = cls.process_image_input(cls, _image)
                 cls.output_data["image"].append(_image)
                 cls.output_data["description"].append(_description)
             if cls.input_data["image"]:
@@ -1111,6 +1114,8 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         # Process function
         def next_input(_prompt, _completion_a, _completion_b):
             if _prompt:
+                _completion_a = cls.process_image_input(cls, _completion_a)
+                _completion_b = cls.process_image_input(cls, _completion_b)
                 cls.output_data["prompt"].append(_prompt)
                 if cls.output_data["flag"][-1] == "👆 A is better":
                     cls.output_data["chosen"].append(_completion_a)
@@ -1207,7 +1212,8 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
 
         # Process function
         def next_input(_image, _question, _answer):
-            if _image:
+            if _image is not None:
+                _image = cls.process_image_input(cls, _image)
                 cls.output_data["image"].append(_image)
                 cls.output_data["question"].append(_question)
                 cls.output_data["answer"].append(_answer)
