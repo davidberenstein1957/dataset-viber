@@ -28,7 +28,8 @@ from gradio.events import Dependency
 from gradio.flagging import FlagMethod
 
 from dataset_viber._constants import COLORS
-from dataset_viber._gradio._import_export import ImportExportMixin
+from dataset_viber._gradio._mixins._import_export import ImportExportMixin
+from dataset_viber._gradio._mixins._task_config import TaskConfigMixin
 from dataset_viber._gradio.collector import CollectorInterface
 
 if sys.version_info >= (3, 12):
@@ -54,7 +55,7 @@ if TYPE_CHECKING:
     from transformers.pipelines import Pipeline
 
 
-class AnnotatorInterFace(CollectorInterface, ImportExportMixin):
+class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin):
     @override
     def __init__(
         self,
@@ -80,27 +81,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin):
                         fn=lambda x: pd.DataFrame.from_dict(self.input_data).head(100),
                         outputs=self.input_data_component,
                     )
-                if self.task in [
-                    "text-classification",
-                    "chat-classification",
-                    "image-classification",
-                ]:
-                    with gradio.Tab("Label selector"):
-                        label_selector = gradio.Dropdown(
-                            choices=[],
-                            label="label",
-                            allow_custom_value=True,
-                            multiselect=True,
-                        )
-                        label_selector.change(
-                            fn=lambda x: gradio.Radio(x, value=None, label="label"),
-                            inputs=label_selector,
-                            outputs=[
-                                input
-                                for input in inputs
-                                if isinstance(input, gradio.Radio)
-                            ],
-                        )
+                self._set_text_classification_config(inputs)
                 self._configure_import()
         super().__init__(
             *args,
@@ -159,7 +140,11 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin):
             AnnotatorInterFace: An instance of AnnotatorInterFace
         """
         # IO Config
-        cls.task = "text-classification"
+        cls.task = (
+            "text-classification"
+            if not multi_label
+            else "text-classification-multi-label"
+        )
         cls.labels = labels or []
         cls.input_columns = ["text"]
         cls.output_columns = ["text", "label"]
@@ -176,10 +161,10 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin):
                 label = [] if fn is None else fn(text)
                 cls.output_data["text"].append(_text)
                 cls.output_data["label"].append(_label)
-                if multi_label:
+                if cls.task == "text-classification-multi-label":
                     label = [lab["label"] for lab in label if lab["score"] > 0.5]
                     return (text, label)
-                elif not multi_label and fn is not None:
+                elif cls.task == "text-classification" and fn is not None:
                     return (text, label[0]["label"])
                 else:
                     return (text, [] if multi_label else None)
@@ -188,16 +173,18 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin):
                 return ("", [])
 
         text, label = next_input(None, None)
-        if multi_label:
-            check_box_group = gradio.CheckboxGroup(labels, value=label, label="label")
+        if cls.task == "text-classification-multi-label":
+            check_box_group = gradio.CheckboxGroup(
+                cls.labels, value=label, label="label"
+            )
         else:
-            check_box_group = gradio.Radio(labels, value=label, label="label")
+            check_box_group = gradio.Radio(cls.labels, value=label, label="label")
 
         # UI Config
-        inputs: List[gradio.Textbox] = [gradio.Textbox(value=text, label="text")]
-
-        # if multi_label or fn is not None:
-        inputs.append(check_box_group)
+        inputs: List[gradio.Textbox] = [
+            gradio.Textbox(value=text, label="text"),
+            check_box_group,
+        ]
         return cls(
             fn=next_input,
             inputs=inputs,
