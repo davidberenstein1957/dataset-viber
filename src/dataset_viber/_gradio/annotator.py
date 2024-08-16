@@ -113,8 +113,9 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
     @classmethod
     def for_text_classification(
         cls,
-        texts: List[str] = None,
-        labels: List[str] = None,
+        texts: Optional[List[str]] = None,
+        suggestions: Optional[List[str]] = None,
+        labels: Optional[List[str]] = None,
         multi_label: Optional[bool] = False,
         fn: Optional[Union["Pipeline", callable]] = None,
         dataset_name: Optional[str] = None,
@@ -126,6 +127,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
 
         Args:
             texts (Optional[List[str]], optional): List of texts to annotate.
+            suggestions (Optional[List[str]], optional): List of suggestions to correct for. Defaults to None.
             labels (Optional[List[str]], optional): List of labels to choose from.
             multi_label (Optional[bool], optional): Whether to allow multiple labels. Defaults to False.
             fn (Optional[Union["Pipeline", callable]], optional): Prediction function to apply to the text before annotating.
@@ -145,9 +147,9 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             else "text-classification-multi-label"
         )
         cls.labels = labels or []
-        cls.input_columns = ["text"]
+        cls.input_columns = ["text", "suggestion"]
         cls.output_columns = ["text", "label"]
-        cls.input_data = {"text": texts or []}
+        cls.input_data = {"text": texts or [], "suggestion": suggestions or []}
         cls.output_data = {label: [] for label in cls.output_columns}
 
         # Process function
@@ -160,7 +162,10 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             if cls.input_data["text"]:
                 cls._update_message(cls)
                 text = cls.input_data["text"].pop(_POP_INDEX)
-                label = [] if fn is None else fn(text)
+                label = ""
+                if "suggestion" in cls.input_data:
+                    label = cls.input_data["suggestion"].pop(_POP_INDEX)
+                label = label if fn is None or label else fn(text)
                 if cls.task == "text-classification-multi-label":
                     label = [lab["label"] for lab in label if lab["score"] > 0.5]
                     return (text, label)
@@ -172,6 +177,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
                 cls._done_message()
                 return ("", [])
 
+        # UI Config
         text, label = next_input(None, None)
         if cls.task == "text-classification-multi-label":
             check_box_group = gradio.CheckboxGroup(
@@ -179,8 +185,6 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             )
         else:
             check_box_group = gradio.Radio(cls.labels, value=label, label="label")
-
-        # UI Config
         inputs: List[gradio.Textbox] = [
             gradio.Textbox(value=text, label="text"),
             check_box_group,
@@ -316,7 +320,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             if _question:
                 cls.output_data["question"].append(_question)
                 cls.output_data["context"].append(_context)
-            if questions:
+            if cls.input_data["question"]:
                 cls._update_message(cls)
                 question = cls.input_data["question"].pop(_POP_INDEX)
                 context = cls.input_data["context"].pop(_POP_INDEX)
@@ -401,7 +405,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             if _prompt:
                 cls.output_data["prompt"].append(_prompt)
                 cls.output_data["completion"].append(_completion)
-            if prompts:
+            if cls.input_data["prompt"]:
                 cls._update_message(cls)
                 prompt = cls.input_data["prompt"].pop(_POP_INDEX)
                 completion = (
@@ -487,7 +491,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
                 else:
                     cls.output_data["chosen"].append(_completion_b)
                     cls.output_data["rejected"].append(_completion_a)
-            if prompts:
+            if cls.input_data["prompt"]:
                 cls._update_message(cls)
                 prompt = cls.input_data["prompt"].pop(_POP_INDEX)
                 completion_a = cls.input_data["completion_a"].pop(_POP_INDEX)
@@ -525,9 +529,9 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
     @classmethod
     def for_chat_classification(
         cls,
-        prompts: List[List[Dict[str, str]]],
-        labels: List[str],
-        *,
+        prompts: Optional[List[List[Dict[str, str]]]] = None,
+        suggestions: Optional[List[str]] = None,
+        labels: Optional[List[str]] = None,
         multi_label: Optional[bool] = False,
         fn: Optional[Union["Pipeline", callable]] = None,
         dataset_name: Optional[str] = None,
@@ -538,8 +542,9 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         Annotator Interface for chat classification tasks.
 
         Args:
-            prompts (List[List[Dict[str, str]]): List of chat messages to annotate.
-            labels (List[str]): List of labels to choose from.
+            prompts (Optional[List[List[Dict[str, str]]], optional): List of chat messages to annotate.
+            suggestions (Optional[List[str]], optional): List of suggestions to correct for. Defaults to None.
+            labels (Optional[List[str]], optional): List of labels to choose from.
             multi_label (Optional[bool], optional): Whether to allow multiple labels. Defaults to False.
             fn (Optional[Union["Pipeline", callable]], optional): Prediction function to apply to the chat messages before annotating.
                 Expecting it takes a `str` and returns [{"label": str, "score": float}].
@@ -551,57 +556,71 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         Returns:
             AnnotatorInterFace: An instance of AnnotatorInterFace
         """
+        # IO Config
+        cls.task = (
+            "chat-classification"
+            if not multi_label
+            else "chat-classification-multi-label"
+        )
+        cls.labels = labels
+        cls.input_columns = ["prompt", "suggestion"]
+        cls.output_columns = ["prompt", "label"]
+        cls.input_data = {"prompt": prompts or [], "suggestion": suggestions or []}
+        cls.output_data = {col: [] for col in cls.output_columns}
+        cls.start = len(cls.input_data["prompt"])
+
         # Input validation
-        start = len(prompts)
-        prompts = cls._convert_to_chat_message(prompts)
+        cls.input_data["prompt"] = cls._convert_to_chat_message(
+            cls.input_data["prompt"]
+        )
 
         # Process function
         def next_input(_prompt, _label):
-            if prompts:
-                cls._update_message(prompts, start)
-                prompt = prompts.pop(_POP_INDEX)
+            if _prompt:
+                cls.output_data["prompt"].append(_prompt)
+                cls.output_data["label"].append(_label)
+            if cls.input_data["prompt"]:
+                cls._update_message(cls)
+                prompt = cls.input_data["prompt"].pop(_POP_INDEX)
+                label = ""
+                if "suggestion" in cls.input_data:
+                    label = cls.input_data["suggestion"].pop(_POP_INDEX)
                 label = (
-                    [] if fn is None else fn("\n".join([msg.content for msg in prompt]))
+                    label
+                    if fn is None or label
+                    else fn("\n".join([msg.content for msg in prompt]))
                 )
-                if multi_label:
-                    return (
-                        prompt,
-                        [lab["label"] for lab in label if label["score"] > 0.5],
-                    )
-                elif not multi_label and fn is not None:
+                if cls.task == "chat-classification-multi-label":
+                    label = [lab["label"] for lab in label if lab["score"] > 0.5]
+                    return (prompt, label)
+                elif cls.task == "chat-classification" and fn is not None:
                     return (prompt, label[0]["label"])
                 else:
-                    return prompt
+                    return (prompt, [] if multi_label else "")
             else:
                 cls._done_message()
-                return ([], []) if multi_label or fn is not None else []
+                return (None, [])
 
         # UI Config
-        if multi_label:
-            labels = [(label, label) for label in labels]
-        if multi_label or fn is not None:
-            prompt, label = next_input(None, None)
-            if multi_label:
-                check_box_group = gradio.CheckboxGroup(
-                    labels, value=label, label="label"
-                )
-            else:
-                check_box_group = gradio.Radio(labels, value=label, label="label")
+        prompt, label = next_input(None, None)
+        if cls.task == "chat-classification-multi-label":
+            check_box_group = gradio.CheckboxGroup(
+                cls.labels, value=label, label="label"
+            )
         else:
-            prompt = next_input(None, None)
-        inputs = gradio.Chatbot(
-            value=prompt,
-            **_CHATBOT_KWARGS,
-        )
-        if multi_label or fn is not None:
-            inputs = [inputs, check_box_group]
+            check_box_group = gradio.Radio(cls.labels, value=label, label="label")
+        inputs = [
+            gradio.Chatbot(
+                value=prompt,
+                **_CHATBOT_KWARGS,
+            ),
+            check_box_group,
+        ]
         return cls(
             fn=next_input,
             inputs=inputs,
             outputs=inputs,
-            flagging_options=(
-                _SUBMIT_OPTIONS if multi_label else [(lab, lab) for lab in labels]
-            ),
+            flagging_options=_SUBMIT_OPTIONS,
             allow_flagging="manual",
             submit_btn=_SUBMIT_BTN,
             clear_btn=_CLEAR_BTN,
@@ -1168,6 +1187,8 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         Returns:
             List[List[gradio.ChatMessage]]: List of chat messages.
         """
+        if not messages:
+            return []
         if not isinstance(messages[0][0], gradio.ChatMessage):
             messages = [
                 [gradio.ChatMessage(**msg) for msg in prompt] for prompt in messages

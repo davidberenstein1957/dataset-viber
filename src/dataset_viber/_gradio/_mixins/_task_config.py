@@ -21,7 +21,9 @@ class TaskConfigMixin:
             "text-classification",
             "text-classification-multi-label",
             "chat-classification",
+            "chat-classification-multi-label",
             "image-classification",
+            "image-classification-multi-label",
         ]:
             with gradio.Tab("Label selector"):
                 with gradio.Column():
