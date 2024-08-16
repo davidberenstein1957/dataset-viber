@@ -44,7 +44,7 @@ class CollectorInterface(gradio.Interface):
         """
         Load a CollectorInterface with data logging capabilities.
 
-        Args:
+        Parameters:
             fn: the function to run
             inputs: the input component(s)
             outputs: the output component(s)
@@ -96,7 +96,7 @@ class CollectorInterface(gradio.Interface):
         """
         Load an existing transformers.pipeline into a CollectorInterface with data logging capabilities.
 
-        Parameters:
+        Parameters::
             pipeline: an initialized the transformers.pipeline
             dataset_name: the "org/dataset" to which the data needs to be logged
             hf_token: optional token to pass, otherwise will default to env var HF_TOKEN
@@ -134,7 +134,7 @@ class CollectorInterface(gradio.Interface):
         """
         Load an existing gradio.Interface into a CollectorInterface with data logging capabilities.
 
-        Parameters:
+        Parameters::
             interface: any initialized gradio.Interface
             dataset_name: the "org/dataset" to which the data needs to be logged
             hf_token: optional token to pass, otherwise will default to env var HF_TOKEN

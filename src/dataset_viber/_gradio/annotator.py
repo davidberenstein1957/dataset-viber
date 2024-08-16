@@ -125,7 +125,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         """
         Annotator Interface for text classification tasks.
 
-        Args:
+        Parameters:
             texts (Optional[List[str]]): List of texts to annotate.
             suggestions (Optional[List[str]]): List of suggestions to correct for. Defaults to None.
             labels (Optional[List[str]]): List of labels to choose from.
@@ -215,7 +215,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         """
         Annotator Interface for token classification tasks.
 
-        Args:
+        Parameters:
             texts (Optional[List[str]]): List of texts to annotate.
             labels (Optional[List[str]]): List of labels to choose from.
             fn (Optional[Union["Pipeline", callable]]): Prediction function to apply to the text before annotating.
@@ -288,7 +288,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         """
         Annotator Interface for question answering tasks.
 
-        Args:
+        Parameters:
             questions (Optional[List[str]]): List of questions to annotate.
             contexts (Optional[List[str]]): List of contexts to annotate.
             fn (Optional[Union["Pipeline", callable]]): Prediction function to apply to the context before annotating.
@@ -372,7 +372,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         """
         Annotator Interface for text generation tasks.
 
-        Args:
+        Parameters:
             prompts (Optional[List[str]]): List of prompts to annotate.
             completions (Optional[List[str]]): List of completions to annotate. Defaults to None.
             fn (Optional[Union["Pipeline", callable]]): Prediction function to apply to the prompt before annotating.
@@ -450,7 +450,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         """
         Annotator Interface for text generation preference tasks.
 
-        Args:
+        Parameters:
             prompts (Optional[List[str]]): List of prompts to annotate.
             completions_a (Optional[List[str]]): List of completions to annotate for option A. Defaults to None.
             completions_b (Optional[List[str]]): List of completions to annotate for option B. Defaults to None.
@@ -548,7 +548,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         """
         Annotator Interface for chat classification tasks.
 
-        Args:
+        Parameters:
             prompts (Optional[List[List[Dict[str, str]]]): List of chat messages to annotate.
             suggestions (Optional[List[str]]): List of suggestions to correct for. Defaults to None.
             labels (Optional[List[str]]): List of labels to choose from.
@@ -651,7 +651,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         """
         Annotator Interface for chat generation tasks.
 
-        Args:
+        Parameters:
             prompts (Optional[Union[List[List[Dict[str, str]]], List[List[gradio.ChatMessage]]]): List of chat messages to annotate.
             completions (Optional[List[str]]): List of completions to annotate. Defaults to None.
             fn (Optional[Union["Pipeline", callable]]): Prediction function to apply to the chat messages before annotating.
@@ -741,7 +741,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         """
         Annotator Interface for chat generation preference tasks.
 
-        Args:
+        Parameters:
             prompts (Optional[Union[List[List[Dict[str, str]]], List[List[gradio.ChatMessage]]]): List of chat messages to annotate.
             completions_a (Optional[List[str]]): List of completions to annotate for option A.
             completions_b (Optional[List[str]]): List of completions to annotate for option B.
@@ -827,6 +827,92 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             private=private,
         )
 
+    @classmethod
+    def for_image_classification(
+        cls,
+        images: Optional[List[Union[np.array, PIL.Image.Image, str]]] = None,
+        suggestions: Optional[List[str]] = None,
+        labels: Optional[List[str]] = None,
+        multi_label: Optional[bool] = False,
+        fn: Optional[Union["Pipeline", callable]] = None,
+        dataset_name: Optional[str] = None,
+        hf_token: Optional[str] = None,
+        private: Optional[bool] = False,
+    ) -> "AnnotatorInterFace":
+        """
+        Annotator Interface for image classification tasks.
+
+        Parameters:
+            images (List[Union[np.array, PIL.Image.Image, str]]): List of images to annotate.
+            labels (List[str]): List of labels to choose from.
+            multi_label (Optional[bool]): Whether to allow multiple labels. Defaults to False.
+            fn (Optional[Union["Pipeline", callable]]): Prediction function to apply to the image before annotating.
+                it should take an `np.array` or `PIL.Image.Image` and return `Union[str, List[Dict[str, Union[str, float]]]]`.
+            dataset_name (Optional[str]): Name of the dataset to save the annotations. Defaults to None.
+            hf_token (Optional[str]): Hugging Face API token to save the annotations. Defaults to None.
+            private (Optional[bool]): Whether to save the annotations as private. Defaults to False.
+
+        Returns:
+            AnnotatorInterFace: An instance of AnnotatorInterFace
+        """
+        # IO Config
+        cls.task = (
+            "image-classification"
+            if not multi_label
+            else "image-classification-multi-label"
+        )
+        cls.labels = labels or []
+        cls.input_columns = ["image", "suggestion"]
+        cls.output_columns = ["image", "label"]
+        cls.input_data = {"image": images or [], "suggestion": suggestions or []}
+        cls.output_data = {col: [] for col in cls.output_columns}
+        cls.start = len(cls.input_data["image"])
+
+        # Process function
+        def next_input(_image, _label):
+            if _image:
+                cls.output_data["image"].append(_image)
+                cls.output_data["label"].append(_label)
+            if cls.input_data["image"]:
+                cls._update_message(cls)
+                image = cls.input_data["image"].pop(_POP_INDEX)
+                label = cls.input_data["suggestion"].pop(_POP_INDEX)
+                label = label if fn is None or label else fn(image)
+                if cls.task == "image-classification-multi-label":
+                    label = [lab["label"] for lab in label if lab["score"] > 0.5]
+                    return (image, label)
+                elif cls.task == "image-classification" and fn is not None:
+                    return (image, label[0]["label"])
+                else:
+                    return (image, [] if multi_label else None)
+            else:
+                cls._done_message()
+                return (None, [])
+
+        # UI Config
+        image, label = next_input(None, None)
+        inputs = gradio.Image(value=image, label="image", height=400)
+        if cls.task == "image-classification-multi-label":
+            check_box_group = gradio.CheckboxGroup(
+                cls.labels, value=label, label="label"
+            )
+        else:
+            check_box_group = gradio.Radio(cls.labels, value=label, label="label")
+        inputs = [inputs, check_box_group]
+        return cls(
+            fn=next_input,
+            inputs=inputs,
+            outputs=inputs,
+            flagging_options=_SUBMIT_OPTIONS,
+            allow_flagging="manual",
+            submit_btn=_SUBMIT_BTN,
+            clear_btn=_CLEAR_BTN,
+            dataset_name=dataset_name,
+            hf_token=hf_token,
+            private=private,
+        )
+
+    @classmethod
     def for_image_generation(
         cls,
         prompts: Optional[List[str]] = None,
@@ -839,12 +925,11 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         """
         Annotator Interface for image generation tasks.
 
-        Args:
+        Parameters:
             prompts (Optional[List[str]]): List of prompts to annotate.
             completions (Optional[List[Union[np.array, PIL.Image.Image, str]]]): List of completions to annotate. Defaults to None.
-            fn (Optional[Union["Pipeline", callable]]): Prediction function to apply to the prompt before annotating.
-                Expecting it takes a `str` and returns `str`.
-                Defaults to None.
+            fn (Optional[Union["Pipeline", callable]]): Prediction function to apply to the prompt to generate an image.
+                it takes a `str` and returns `Union[np.array, PIL.Image.Image, str]`.
             dataset_name (Optional[str]): Name of the dataset to save the annotations. Defaults to None.
             hf_token (Optional[str]): Hugging Face API token to save the annotations. Defaults to None.
             private (Optional[bool]): Whether to save the annotations as private. Defaults to False.
@@ -875,11 +960,8 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             if cls.input_data["prompt"]:
                 cls._update_message(cls)
                 prompt = cls.input_data["prompt"].pop(_POP_INDEX)
-                completion = (
-                    cls.output_data["completion"].pop(_POP_INDEX)
-                    if fn is None
-                    else fn(prompt)
-                )
+                completion = cls.input_data["completion"].pop(_POP_INDEX)
+                completion = completion if fn is None or completion else fn(prompt)
                 return prompt, completion
             else:
                 cls._done_message()
@@ -906,6 +988,79 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         )
 
     @classmethod
+    def for_image_description(
+        cls,
+        images: Optional[List[Union[np.array, PIL.Image.Image, str]]] = None,
+        descriptions: Optional[List[str]] = None,
+        fn: Optional[Union["Pipeline", callable]] = None,
+        dataset_name: Optional[str] = None,
+        hf_token: Optional[str] = None,
+        private: Optional[bool] = False,
+    ) -> "AnnotatorInterFace":
+        """
+        Annotator Interface for image description tasks.
+
+        Parameters:
+            images (List[Union[np.array, PIL.Image.Image, str]]): List of images to annotate.
+            descriptions (Optional[List[str]]): List of descriptions to annotate. Defaults to None.
+            fn (Optional[Union["Pipeline", callable]]): Prediction function to apply to the image before annotating.
+                it should take an `np.array` or `PIL.Image.Image` and return `str`.
+            dataset_name (Optional[str]): Name of the dataset to save the annotations. Defaults to None.
+            hf_token (Optional[str]): Hugging Face API token to save the annotations. Defaults to None.
+            private (Optional[bool]): Whether to save the annotations as private. Defaults to False.
+
+        Returns:
+            AnnotatorInterFace: An instance of AnnotatorInterFace
+        """
+        # IO Config
+        cls.task = "image-description"
+        cls.input_columns = ["image", "description"]
+        cls.output_columns = ["image", "description"]
+        cls.input_data = {"image": images or [], "description": descriptions or []}
+        cls.output_data = {col: [] for col in cls.output_columns}
+        cls.start = len(cls.input_data["image"])
+
+        # Input validation
+        if cls.input_data["prompt"] and cls.input_data["completion"]:
+            if len(cls.input_data["prompt"]) != len(cls.input_data["completion"]):
+                raise ValueError(
+                    "Source and target must be of the same length. You can add empty strings to match the lengths."
+                )
+
+        # Process function
+        def next_input(_image, _description):
+            if _image:
+                cls.output_data["image"].append(_image)
+                cls.output_data["description"].append(_description)
+            if cls.input_data["image"]:
+                cls._update_message(cls)
+                image = cls.input_data["image"].pop(_POP_INDEX)
+                description = cls.input_data["description"].pop(_POP_INDEX)
+                description = description if fn is None or description else fn(image)
+                return image, description
+            else:
+                cls._done_message()
+                return None, ""
+
+        # UI Config
+        image, description = next_input(None, None)
+        inputs = gradio.Image(value=image, label="image", height=400)
+        outputs = gradio.Textbox(value=description, label="text")
+        inputs = [inputs, outputs]
+        return cls(
+            fn=next_input,
+            inputs=inputs,
+            outputs=inputs,
+            flagging_options=_SUBMIT_OPTIONS,
+            allow_flagging="manual",
+            submit_btn=_SUBMIT_BTN,
+            clear_btn=_CLEAR_BTN,
+            dataset_name=dataset_name,
+            hf_token=hf_token,
+            private=private,
+        )
+
+    @classmethod
     def for_image_generation_preference(
         cls,
         prompts: Optional[List[str]] = None,
@@ -919,7 +1074,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         """
         Annotator Interface for image generation preference tasks.
 
-        Args:
+        Parameters:
             prompts (List[str]): List of prompts to annotate.
             completions_a (List[Union[np.array, PIL.Image.Image, str]]): List of completions to annotate for option A.
             completions_b (List[Union[np.array, PIL.Image.Image, str]]): List of completions to annotate for option B.
@@ -928,24 +1083,53 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             hf_token (Optional[str]): Hugging Face API token to save the annotations. Defaults to None.
             private (Optional[bool]): Whether to save the annotations as private. Defaults to False.
         """
+        # IO Config
+        cls.task = "image-generation-preference"
+        cls.input_columns = ["prompt", "completion_a", "completion_b"]
+        cls.output_columns = ["prompt", "chosen", "rejected", "flag"]
+        cls.input_data = {
+            "prompt": prompts or [],
+            "completion_a": completions_a or [],
+            "completion_b": completions_b or [],
+        }
+        cls.output_data = {col: [] for col in cls.output_columns}
+        cls.start = len(cls.input_data["prompt"])
+
         # Input validation
-        start = len(prompts)
-        if fn is not None:
-            raise NotImplementedError(
-                "fn is not supported for image generation preference."
-            )
-        if len(prompts) != len(completions_a) != len(completions_b):
-            raise ValueError("Prompts and completions must be of the same length")
+        if (
+            cls.input_data["prompt"]
+            and cls.input_data["completion_a"]
+            and cls.input_data["completion_b"]
+        ):
+            if (
+                len(cls.input_data["prompt"])
+                != len(cls.input_data["completion_a"])
+                != len(cls.input_data["completion_b"])
+            ):
+                raise ValueError("Prompts and completions must be of the same length")
 
         # Process function
         def next_input(_prompt, _completion_a, _completion_b):
-            if prompts:
-                cls._update_message(prompts, start)
-                return (
-                    prompts.pop(_POP_INDEX),
-                    completions_a.pop(_POP_INDEX),
-                    completions_b.pop(_POP_INDEX),
+            if _prompt:
+                cls.output_data["prompt"].append(_prompt)
+                if cls.output_data["flag"][-1] == "👆 A is better":
+                    cls.output_data["chosen"].append(_completion_a)
+                    cls.output_data["rejected"].append(_completion_b)
+                else:
+                    cls.output_data["chosen"].append(_completion_b)
+                    cls.output_data["rejected"].append(_completion_a)
+            if cls.input_data["prompt"]:
+                cls._update_message(cls)
+                prompt = cls.input_data["prompt"].pop(_POP_INDEX)
+                completion_a = cls.input_data["completion_a"].pop(_POP_INDEX)
+                completion_b = cls.input_data["completion_b"].pop(_POP_INDEX)
+                completion_a = (
+                    completion_a if fn is None or completion_a else fn(prompt)
                 )
+                completion_b = (
+                    completion_b if fn is None or completion_b else fn(prompt)
+                )
+                return prompt, completion_a, completion_b
             else:
                 cls._done_message()
                 return None, None, None
@@ -974,134 +1158,9 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         )
 
     @classmethod
-    def for_image_classification(
-        cls,
-        images: List[Union[np.array, PIL.Image.Image, str]],
-        labels: List[str],
-        *,
-        multi_label: Optional[bool] = False,
-        fn: Optional[Union["Pipeline", callable]] = None,
-        dataset_name: Optional[str] = None,
-        hf_token: Optional[str] = None,
-        private: Optional[bool] = False,
-    ) -> "AnnotatorInterFace":
-        """
-        Annotator Interface for image classification tasks.
-
-        Args:
-            images (List[Union[np.array, PIL.Image.Image, str]]): List of images to annotate.
-            labels (List[str]): List of labels to choose from.
-            multi_label (Optional[bool]): Whether to allow multiple labels. Defaults to False.
-            fn (Optional[Union["Pipeline", callable]]): NotImplementedError. Defaults to None.
-            dataset_name (Optional[str]): Name of the dataset to save the annotations. Defaults to None.
-            hf_token (Optional[str]): Hugging Face API token to save the annotations. Defaults to None.
-            private (Optional[bool]): Whether to save the annotations as private. Defaults to False.
-
-        Returns:
-            AnnotatorInterFace: An instance of AnnotatorInterFace
-        """
-        # Input validation
-        start = len(images)
-        if fn is not None:
-            raise NotImplementedError("fn is not supported for image classification.")
-
-        # Process function
-        def next_input(_image, _label):
-            if images:
-                cls._update_message(images, start)
-                image = images.pop(_POP_INDEX)
-                return (image, []) if multi_label else image
-            else:
-                cls._done_message()
-                return (None, []) if multi_label else None
-
-        # UI Config
-        labels = [(label, label) for label in labels]
-        inputs = gradio.Image(value=images.pop(_POP_INDEX), label="image", height=400)
-        if multi_label:
-            inputs = [inputs, gradio.CheckboxGroup(labels, label="label")]
-        return cls(
-            fn=next_input,
-            inputs=inputs,
-            outputs=inputs,
-            flagging_options=(
-                _SUBMIT_OPTIONS if multi_label else [(lab, lab) for lab in labels]
-            ),
-            allow_flagging="manual",
-            submit_btn=_SUBMIT_BTN,
-            clear_btn=_CLEAR_BTN,
-            dataset_name=dataset_name,
-            hf_token=hf_token,
-            private=private,
-        )
-
-    @classmethod
-    def for_image_description(
-        cls,
-        images: List[Union[np.array, PIL.Image.Image, str]],
-        *,
-        descriptions: Optional[List[str]] = None,
-        fn: Optional[Union["Pipeline", callable]] = None,
-        dataset_name: Optional[str] = None,
-        hf_token: Optional[str] = None,
-        private: Optional[bool] = False,
-    ) -> "AnnotatorInterFace":
-        """
-        Annotator Interface for image description tasks.
-
-        Args:
-            images (List[Union[np.array, PIL.Image.Image, str]]): List of images to annotate.
-            descriptions (Optional[List[str]]): List of descriptions to annotate. Defaults to None.
-            fn (Optional[Union["Pipeline", callable]]): NotImplementedError. Defaults to None.
-            dataset_name (Optional[str]): Name of the dataset to save the annotations. Defaults to None.
-            hf_token (Optional[str]): Hugging Face API token to save the annotations. Defaults to None.
-            private (Optional[bool]): Whether to save the annotations as private. Defaults to False.
-
-        Returns:
-            AnnotatorInterFace: An instance of AnnotatorInterFace
-        """
-        # Input validation
-        start = len(images)
-        if fn is not None:
-            raise NotImplementedError("fn is not supported for image description.")
-        if descriptions is None:
-            descriptions = ["" for _ in range(len(images))]
-        else:
-            assert len(descriptions) == len(images)
-
-        # Process function
-        def next_input(_image, _description):
-            if images:
-                cls._update_message(images, start)
-                img = images.pop(_POP_INDEX)
-                description = descriptions.pop(_POP_INDEX)
-                return img, description
-            else:
-                cls._done_message()
-                return None, ""
-
-        # UI Config
-        inputs = gradio.Image(value=images.pop(_POP_INDEX), label="image", height=400)
-        outputs = gradio.Textbox(value=descriptions.pop(_POP_INDEX), label="text")
-        inputs = [inputs, outputs]
-        return cls(
-            fn=next_input,
-            inputs=inputs,
-            outputs=inputs,
-            flagging_options=_SUBMIT_OPTIONS,
-            allow_flagging="manual",
-            submit_btn=_SUBMIT_BTN,
-            clear_btn=_CLEAR_BTN,
-            dataset_name=dataset_name,
-            hf_token=hf_token,
-            private=private,
-        )
-
-    @classmethod
     def for_image_question_answering(
         cls,
-        images: List[Union[np.array, PIL.Image.Image, str]],
-        *,
+        images: List[Union[np.array, PIL.Image.Image, str]] = None,
         questions: Optional[List[str]] = None,
         answers: Optional[List[str]] = None,
         fn: Optional[Union["Pipeline", callable]] = None,
@@ -1112,7 +1171,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         """
         Annotator Interface for image question answering tasks.
 
-        Args:
+        Parameters:
             images (List[Union[np.array, PIL.Image.Image, str]]): List of images to annotate.
             questions (Optional[List[str]]): List of questions to annotate. Defaults to None.
             answers (Optional[List[str]]): List of answers to annotate. Defaults to None.
@@ -1124,39 +1183,51 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         Returns:
             AnnotatorInterFace: An instance of AnnotatorInterFace
         """
-        start = len(images)
-        if fn is not None:
+        if fn:
             raise NotImplementedError(
-                "fn is not supported for image question answering."
+                "Prediction function is not supported for this task."
             )
-        if questions is None:
-            questions = ["" for _ in range(start)]
-        else:
-            assert len(questions) == start
-        if answers is None:
-            answers = ["" for _ in range(start)]
-        else:
-            assert len(answers) == start
+        # IO Config
+        cls.task = "image-question-answering"
+        cls.input_columns = ["image", "question", "answer"]
+        cls.output_columns = ["image", "question", "answer"]
+        cls.input_data = {"image": images or []}
+        cls.output_data = {col: [] for col in cls.output_columns}
+        cls.start = len(cls.input_data["image"])
+
+        # Input validation
+        if cls.input_data["image"]:
+            max_length = max(len(img) for img in cls.input_data["image"])
+            cls.input_data["question"] = [
+                question.ljust(max_length) for question in cls.input_data["question"]
+            ]
+            cls.input_data["answer"] = [
+                answer.ljust(max_length) for answer in cls.input_data["answer"]
+            ]
 
         # Process function
         def next_input(_image, _question, _answer):
-            if images:
-                cls._update_message(images, start)
-                img = images.pop(_POP_INDEX)
-                question = questions.pop(_POP_INDEX)
-                answer = answers.pop(_POP_INDEX)
-                return img, question, answer
+            if _image:
+                cls.output_data["image"].append(_image)
+                cls.output_data["question"].append(_question)
+                cls.output_data["answer"].append(_answer)
+            if cls.input_data["image"]:
+                cls._update_message(cls)
+                image = cls.input_data["image"].pop(_POP_INDEX)
+                question = cls.input_data["question"].pop(_POP_INDEX)
+                answer = cls.input_data["answer"].pop(_POP_INDEX)
+                return image, question, answer
             else:
                 cls._done_message()
                 return None, "", ""
 
         # UI Config
-        inputs = gradio.Image(value=images.pop(_POP_INDEX), label="image", height=400)
-        outputs = [
-            gradio.Textbox(value=questions.pop(_POP_INDEX), label="question"),
-            gradio.Textbox(value=answers.pop(_POP_INDEX), label="answer"),
+        image, question, answer = next_input(None, None, None)
+        inputs = [
+            gradio.Image(value=image, label="image", height=400),
+            gradio.Textbox(value=question, label="question"),
+            gradio.Textbox(value=answer, label="answer"),
         ]
-        inputs = [inputs, *outputs]
         return cls(
             fn=next_input,
             inputs=inputs,
@@ -1239,7 +1310,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         """
         Convert a list of chat messages to a list of gradio.ChatMessage.
 
-        Args:
+        Parameters:
             messages (Union[List[List[Dict[str, str]]], List[List[gradio.ChatMessage]]): List of chat messages.
             with_turn (bool): Whether to add turn information. Defaults to False.
             last_role ([type]): Last role. Defaults to None.
@@ -1279,7 +1350,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         """
         Validate the inputs for preference tasks.
 
-        Args:
+        Parameters:
             fn: Prediction function.
             prompts: List of prompts.
             completions_a: List of completions for option A.
