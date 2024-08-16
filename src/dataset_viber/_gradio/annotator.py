@@ -126,16 +126,16 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         Annotator Interface for text classification tasks.
 
         Args:
-            texts (Optional[List[str]], optional): List of texts to annotate.
-            suggestions (Optional[List[str]], optional): List of suggestions to correct for. Defaults to None.
-            labels (Optional[List[str]], optional): List of labels to choose from.
-            multi_label (Optional[bool], optional): Whether to allow multiple labels. Defaults to False.
-            fn (Optional[Union["Pipeline", callable]], optional): Prediction function to apply to the text before annotating.
+            texts (Optional[List[str]]): List of texts to annotate.
+            suggestions (Optional[List[str]]): List of suggestions to correct for. Defaults to None.
+            labels (Optional[List[str]]): List of labels to choose from.
+            multi_label (Optional[bool]): Whether to allow multiple labels. Defaults to False.
+            fn (Optional[Union["Pipeline", callable]]): Prediction function to apply to the text before annotating.
                 Expecting it takes a `str` and returns [{"label": str, "score": float}].
                 Defaults to None.
-            dataset_name (Optional[str], optional): Name of the dataset to save the annotations. Defaults to None.
-            hf_token (Optional[str], optional): Hugging Face API token to save the annotations. Defaults to None.
-            private (Optional[bool], optional): Whether to save the annotations as private. Defaults to False.
+            dataset_name (Optional[str]): Name of the dataset to save the annotations. Defaults to None.
+            hf_token (Optional[str]): Hugging Face API token to save the annotations. Defaults to None.
+            private (Optional[bool]): Whether to save the annotations as private. Defaults to False.
 
         Returns:
             AnnotatorInterFace: An instance of AnnotatorInterFace
@@ -216,14 +216,14 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         Annotator Interface for token classification tasks.
 
         Args:
-            texts (Optional[List[str]], optional): List of texts to annotate.
-            labels (Optional[List[str]], optional): List of labels to choose from.
-            fn (Optional[Union["Pipeline", callable]], optional): Prediction function to apply to the text before annotating.
+            texts (Optional[List[str]]): List of texts to annotate.
+            labels (Optional[List[str]]): List of labels to choose from.
+            fn (Optional[Union["Pipeline", callable]]): Prediction function to apply to the text before annotating.
                 Expecting it takes a `str` and returns List[Tuple[str, str]] [("text","label")].
                 Defaults to None.
-            dataset_name (Optional[str], optional): Name of the dataset to save the annotations. Defaults to None.
-            hf_token (Optional[str], optional): Hugging Face API token to save the annotations. Defaults to None.
-            private (Optional[bool], optional): Whether to save the annotations as private. Defaults to False.
+            dataset_name (Optional[str]): Name of the dataset to save the annotations. Defaults to None.
+            hf_token (Optional[str]): Hugging Face API token to save the annotations. Defaults to None.
+            private (Optional[bool]): Whether to save the annotations as private. Defaults to False.
 
         Returns:
             AnnotatorInterFace: An instance of AnnotatorInterFace
@@ -289,14 +289,14 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         Annotator Interface for question answering tasks.
 
         Args:
-            questions (Optional[List[str]], optional): List of questions to annotate.
-            contexts (Optional[List[str]], optional): List of contexts to annotate.
-            fn (Optional[Union["Pipeline", callable]], optional): Prediction function to apply to the context before annotating.
+            questions (Optional[List[str]]): List of questions to annotate.
+            contexts (Optional[List[str]]): List of contexts to annotate.
+            fn (Optional[Union["Pipeline", callable]]): Prediction function to apply to the context before annotating.
                 Expecting it takes a `str` and returns [{"label": str, "score": float}].
                 Defaults to None.
-            dataset_name (Optional[str], optional): Name of the dataset to save the annotations. Defaults to None.
-            hf_token (Optional[str], optional): Hugging Face API token to save the annotations. Defaults to None.
-            private (Optional[bool], optional): Whether to save the annotations as private. Defaults to False.
+            dataset_name (Optional[str]): Name of the dataset to save the annotations. Defaults to None.
+            hf_token (Optional[str]): Hugging Face API token to save the annotations. Defaults to None.
+            private (Optional[bool]): Whether to save the annotations as private. Defaults to False.
 
         Returns:
             AnnotatorInterFace: An instance of AnnotatorInterFace
@@ -373,14 +373,14 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         Annotator Interface for text generation tasks.
 
         Args:
-            prompts (Optional[List[str]], optional): List of prompts to annotate.
-            completions (Optional[List[str]], optional): List of completions to annotate. Defaults to None.
-            fn (Optional[Union["Pipeline", callable]], optional): Prediction function to apply to the prompt before annotating.
+            prompts (Optional[List[str]]): List of prompts to annotate.
+            completions (Optional[List[str]]): List of completions to annotate. Defaults to None.
+            fn (Optional[Union["Pipeline", callable]]): Prediction function to apply to the prompt before annotating.
                 Expecting it takes a `str` and returns `str`.
                 Defaults to None.
-            dataset_name (Optional[str], optional): Name of the dataset to save the annotations. Defaults to None.
-            hf_token (Optional[str], optional): Hugging Face API token to save the annotations. Defaults to None.
-            private (Optional[bool], optional): Whether to save the annotations as private. Defaults to False.
+            dataset_name (Optional[str]): Name of the dataset to save the annotations. Defaults to None.
+            hf_token (Optional[str]): Hugging Face API token to save the annotations. Defaults to None.
+            private (Optional[bool]): Whether to save the annotations as private. Defaults to False.
 
         Returns:
             AnnotatorInterFace: An instance of AnnotatorInterFace
@@ -451,15 +451,15 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         Annotator Interface for text generation preference tasks.
 
         Args:
-            prompts (Optional[List[str]], optional): List of prompts to annotate.
-            completions_a (Optional[List[str]], optional): List of completions to annotate for option A. Defaults to None.
-            completions_b (Optional[List[str]], optional): List of completions to annotate for option B. Defaults to None.
-            fn (Optional[Union["Pipeline", callable]], optional): Prediction function to apply to the prompt before annotating.
+            prompts (Optional[List[str]]): List of prompts to annotate.
+            completions_a (Optional[List[str]]): List of completions to annotate for option A. Defaults to None.
+            completions_b (Optional[List[str]]): List of completions to annotate for option B. Defaults to None.
+            fn (Optional[Union["Pipeline", callable]]): Prediction function to apply to the prompt before annotating.
                 Expecting it takes a `str` and returns `str`.
                 Defaults to None.
-            dataset_name (Optional[str], optional): Name of the dataset to save the annotations. Defaults to None.
-            hf_token (Optional[str], optional): Hugging Face API token to save the annotations. Defaults to None.
-            private (Optional[bool], optional): Whether to save the annotations as private. Defaults to False.
+            dataset_name (Optional[str]): Name of the dataset to save the annotations. Defaults to None.
+            hf_token (Optional[str]): Hugging Face API token to save the annotations. Defaults to None.
+            private (Optional[bool]): Whether to save the annotations as private. Defaults to False.
 
         Returns:
             AnnotatorInterFace: An instance of AnnotatorInterFace
@@ -477,8 +477,15 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         cls.start = len(cls.input_data["prompt"])
 
         # Input validation
-        prompts, completions_a, completions_b = cls._validate_preference(
-            fn, prompts, completions_a, completions_b
+        (
+            cls.input_data["promt"],
+            cls.input_data["completion_a"],
+            cls.input_data["completion_b"],
+        ) = cls._validate_preference(
+            fn,
+            cls.input_data["promt"],
+            cls.input_data["completion_a"],
+            cls.input_data["completion_b"],
         )
 
         # Process function
@@ -542,16 +549,16 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         Annotator Interface for chat classification tasks.
 
         Args:
-            prompts (Optional[List[List[Dict[str, str]]], optional): List of chat messages to annotate.
-            suggestions (Optional[List[str]], optional): List of suggestions to correct for. Defaults to None.
-            labels (Optional[List[str]], optional): List of labels to choose from.
-            multi_label (Optional[bool], optional): Whether to allow multiple labels. Defaults to False.
-            fn (Optional[Union["Pipeline", callable]], optional): Prediction function to apply to the chat messages before annotating.
+            prompts (Optional[List[List[Dict[str, str]]]): List of chat messages to annotate.
+            suggestions (Optional[List[str]]): List of suggestions to correct for. Defaults to None.
+            labels (Optional[List[str]]): List of labels to choose from.
+            multi_label (Optional[bool]): Whether to allow multiple labels. Defaults to False.
+            fn (Optional[Union["Pipeline", callable]]): Prediction function to apply to the chat messages before annotating.
                 Expecting it takes a `str` and returns [{"label": str, "score": float}].
                 Defaults to None.
-            dataset_name (Optional[str], optional): Name of the dataset to save the annotations. Defaults to None.
-            hf_token (Optional[str], optional): Hugging Face API token to save the annotations. Defaults to None.
-            private (Optional[bool], optional): Whether to save the annotations as private. Defaults to False.
+            dataset_name (Optional[str]): Name of the dataset to save the annotations. Defaults to None.
+            hf_token (Optional[str]): Hugging Face API token to save the annotations. Defaults to None.
+            private (Optional[bool]): Whether to save the annotations as private. Defaults to False.
 
         Returns:
             AnnotatorInterFace: An instance of AnnotatorInterFace
@@ -632,8 +639,9 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
     @classmethod
     def for_chat_generation(
         cls,
-        prompts: Union[List[List[Dict[str, str]]], List[List[gradio.ChatMessage]]],
-        *,
+        prompts: Optional[
+            Union[List[List[Dict[str, str]]], List[List[gradio.ChatMessage]]]
+        ] = None,
         completions: Optional[List[str]] = None,
         fn: Optional[Union["Pipeline", callable]] = None,
         dataset_name: Optional[str] = None,
@@ -644,54 +652,53 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         Annotator Interface for chat generation tasks.
 
         Args:
-            prompts (Union[List[List[Dict[str, str]]], List[List[gradio.ChatMessage]]): List of chat messages to annotate.
-            completions (Optional[List[str]], optional): List of completions to annotate. Defaults to None.
-            fn (Optional[Union["Pipeline", callable]], optional): Prediction function to apply to the chat messages before annotating.
+            prompts (Optional[Union[List[List[Dict[str, str]]], List[List[gradio.ChatMessage]]]): List of chat messages to annotate.
+            completions (Optional[List[str]]): List of completions to annotate. Defaults to None.
+            fn (Optional[Union["Pipeline", callable]]): Prediction function to apply to the chat messages before annotating.
                 Expecting it takes a `List[gradio.ChatMessage]` and returns `str`.
                 Defaults to None.
-            dataset_name (Optional[str], optional): Name of the dataset to save the annotations. Defaults to None.
-            hf_token (Optional[str], optional): Hugging Face API token to save the annotations. Defaults to None.
-            private (Optional[bool], optional): Whether to save the annotations as private. Defaults to False.
+            dataset_name (Optional[str]): Name of the dataset to save the annotations. Defaults to None.
+            hf_token (Optional[str]): Hugging Face API token to save the annotations. Defaults to None.
+            private (Optional[bool]): Whether to save the annotations as private. Defaults to False.
 
         Returns:
             AnnotatorInterFace: An instance of AnnotatorInterFace
         """
+        # IO Config
+        cls.task = "chat-generation"
+        cls.input_columns = ["prompt", "completion"]
+        cls.output_columns = ["prompt", "completion"]
+        cls.input_data = {"prompt": prompts or [], "completion": completions or []}
+        cls.output_data = {col: [] for col in cls.output_columns}
+        cls.start = len(cls.input_data["prompt"])
+
         # Input validation
-        start = len(prompts)
-        if completions is None:
-            completions = ["" for _ in range(len(prompts))]
-        if len(prompts) != len(completions):
-            raise ValueError(
-                "Source and target must be of the same length. You can add empty strings to match the lengths."
-            )
-        prompts = cls._convert_to_chat_message(prompts)
+        if cls.input_data["prompt"] and cls.input_data["completion"]:
+            if len(cls.input_data["prompt"]) != len(cls.input_data["completion"]):
+                raise ValueError(
+                    "Source and target must be of the same length. You can add empty strings to match the lengths."
+                )
+        cls.input_data["prompt"] = cls._convert_to_chat_message(
+            cls.input_data["prompt"]
+        )
 
         # Process function
         def next_input(_prompt, _completion):
             def _last_is_user(_prompt):
                 return _prompt[-1].role == "user"
 
-            if prompts:
-                if _prompt and False:
-                    _prompt.append(
-                        gradio.ChatMessage(
-                            role="assistant" if _last_is_user(_prompt) else "user",
-                            content=_completion,
-                        )
-                    )
-                    prompt = _prompt
-                    completion = ""
-                    if _last_is_user(prompt):
-                        completion = "" if fn is None else fn(prompt)
-                else:
-                    cls._update_message(prompts, start)
-                    prompt = prompts.pop(_POP_INDEX)
-                    completion = completions.pop(_POP_INDEX)
-                    completion = (
-                        completion
-                        if (fn is None or completion != "") and _last_is_user(prompt)
-                        else fn(prompt)
-                    )
+            if _prompt:
+                cls.output_data["prompt"].append(_prompt)
+                cls.output_data["completion"].append(_completion)
+            if cls.input_data["prompt"]:
+                cls._update_message(cls)
+                prompt = cls.input_data["prompt"].pop(_POP_INDEX)
+                completion = cls.input_data["completion"].pop(_POP_INDEX)
+                completion = (
+                    completion
+                    if (fn is None or completion != "") and _last_is_user(prompt)
+                    else fn(prompt)
+                )
                 return prompt, completion
             else:
                 cls._done_message()
@@ -721,10 +728,11 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
     @classmethod
     def for_chat_generation_preference(
         cls,
-        prompts: Union[List[List[Dict[str, str]]], List[List[gradio.ChatMessage]]],
-        *,
-        completions_a: Optional[List[str]],
-        completions_b: Optional[List[str]],
+        prompts: Optional[
+            Union[List[List[Dict[str, str]]], List[List[gradio.ChatMessage]]]
+        ] = None,
+        completions_a: Optional[List[str]] = None,
+        completions_b: Optional[List[str]] = None,
         fn: Optional[Union["Pipeline", callable]] = None,
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
@@ -734,38 +742,66 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         Annotator Interface for chat generation preference tasks.
 
         Args:
-            prompts (Union[List[List[Dict[str, str]]], List[List[gradio.ChatMessage]]): List of chat messages to annotate.
+            prompts (Optional[Union[List[List[Dict[str, str]]], List[List[gradio.ChatMessage]]]): List of chat messages to annotate.
             completions_a (Optional[List[str]]): List of completions to annotate for option A.
             completions_b (Optional[List[str]]): List of completions to annotate for option B.
-            fn (Optional[Union["Pipeline", callable]], optional): Prediction function to apply to the chat messages before annotating.
+            fn (Optional[Union["Pipeline", callable]]): Prediction function to apply to the chat messages before annotating.
                 Expecting it takes a `List[gradio.ChatMessage]` and returns `str`.
                 Defaults to None.
-            dataset_name (Optional[str], optional): Name of the dataset to save the annotations. Defaults to None.
-            hf_token (Optional[str], optional): Hugging Face API token to save the annotations. Defaults to None.
-            private (Optional[bool], optional): Whether to save the annotations as private. Defaults to False.
+            dataset_name (Optional[str]): Name of the dataset to save the annotations. Defaults to None.
+            hf_token (Optional[str]): Hugging Face API token to save the annotations. Defaults to None.
+            private (Optional[bool]): Whether to save the annotations as private. Defaults to False.
 
         Returns:
             AnnotatorInterFace: An instance of AnnotatorInterFace
         """
+        # IO Config
+        cls.task = "chat-generation-preference"
+        cls.input_columns = ["prompt", "completion_a", "completion_b"]
+        cls.output_columns = ["prompt", "chosen", "rejected", "flag"]
+        cls.input_data = {
+            "prompt": prompts or [],
+            "completion_a": completions_a or [],
+            "completion_b": completions_b or [],
+        }
+        cls.output_data = {col: [] for col in cls.output_columns}
+        cls.start = len(cls.input_data["prompt"])
+
         # Input validation
-        start = len(prompts)
-        prompts, completions_a, completions_b = cls._validate_preference(
-            fn, prompts, completions_a, completions_b
+        (
+            cls.input_data["promt"],
+            cls.input_data["completion_a"],
+            cls.input_data["completion_b"],
+        ) = cls._validate_preference(
+            fn,
+            cls.input_data["promt"],
+            cls.input_data["completion_a"],
+            cls.input_data["completion_b"],
         )
-        prompts = cls._convert_to_chat_message(prompts)
+        cls.input_data["prompt"] = cls._convert_to_chat_message(
+            cls.input_data["prompt"]
+        )
 
         # Process function
         def next_input(_prompt, _completion_a, _completion_b):
-            if prompts:
-                cls._update_message(prompts, start)
-                prompt = prompts.pop(_POP_INDEX)
-                completion_a = completions_a.pop(_POP_INDEX)
+            if _prompt:
+                cls.output_data["prompt"].append(_prompt)
+                if cls.output_data["flag"][-1] == "👆 A is better":
+                    cls.output_data["chosen"].append(_completion_a)
+                    cls.output_data["rejected"].append(_completion_b)
+                else:
+                    cls.output_data["chosen"].append(_completion_b)
+                    cls.output_data["rejected"].append(_completion_a)
+            if cls.input_data["prompt"]:
+                cls._update_message(cls)
+                prompt = cls.input_data["prompt"].pop(_POP_INDEX)
+                completion_a = cls.input_data["completion_a"].pop(_POP_INDEX)
+                completion_b = cls.input_data["completion_b"].pop(_POP_INDEX)
                 completion_a = (
-                    completion_a if fn is None or completion_a else fn(prompt)
+                    completion_a if fn is None or completion_a != "" else fn(prompt)
                 )
-                completion_b = completions_b.pop(_POP_INDEX)
                 completion_b = (
-                    completion_b if fn is None or completion_b else fn(prompt)
+                    completion_b if fn is None or completion_b != "" else fn(prompt)
                 )
                 return prompt, completion_a, completion_b
             else:
@@ -791,13 +827,90 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             private=private,
         )
 
+    def for_image_generation(
+        cls,
+        prompts: Optional[List[str]] = None,
+        completions: Optional[List[Union[np.array, PIL.Image.Image, str]]] = None,
+        fn: Optional[Union["Pipeline", callable]] = None,
+        dataset_name: Optional[str] = None,
+        hf_token: Optional[str] = None,
+        private: Optional[bool] = False,
+    ) -> "AnnotatorInterFace":
+        """
+        Annotator Interface for image generation tasks.
+
+        Args:
+            prompts (Optional[List[str]]): List of prompts to annotate.
+            completions (Optional[List[Union[np.array, PIL.Image.Image, str]]]): List of completions to annotate. Defaults to None.
+            fn (Optional[Union["Pipeline", callable]]): Prediction function to apply to the prompt before annotating.
+                Expecting it takes a `str` and returns `str`.
+                Defaults to None.
+            dataset_name (Optional[str]): Name of the dataset to save the annotations. Defaults to None.
+            hf_token (Optional[str]): Hugging Face API token to save the annotations. Defaults to None.
+            private (Optional[bool]): Whether to save the annotations as private. Defaults to False.
+
+        Returns:
+            AnnotatorInterFace: An instance of AnnotatorInterFace
+        """
+        # IO Config
+        cls.task = "image-generation"
+        cls.input_columns = ["prompt", "completion"]
+        cls.output_columns = ["prompt", "completion"]
+        cls.input_data = {"prompt": prompts or [], "completion": completions or []}
+        cls.output_data = {col: [] for col in cls.output_columns}
+        cls.start = len(cls.input_data["prompt"])
+
+        # Input validation
+        if cls.input_data["prompt"] and cls.input_data["completion"]:
+            if len(cls.input_data["prompt"]) != len(cls.input_data["completion"]):
+                raise ValueError(
+                    "Source and target must be of the same length. You can add empty strings to match the lengths."
+                )
+
+        # Process function
+        def next_input(_prompt, _completion):
+            if _prompt:
+                cls.output_data["prompt"].append(_prompt)
+                cls.output_data["completion"].append(_completion)
+            if cls.input_data["prompt"]:
+                cls._update_message(cls)
+                prompt = cls.input_data["prompt"].pop(_POP_INDEX)
+                completion = (
+                    cls.output_data["completion"].pop(_POP_INDEX)
+                    if fn is None
+                    else fn(prompt)
+                )
+                return prompt, completion
+            else:
+                cls._done_message()
+                return None, None
+
+        # UI Config
+        prompt, completion = next_input(None, None)
+        input_prompt = gradio.Textbox(value=prompt, label="prompt")
+        input_completion = gradio.Image(
+            value=completion, label="completion", height=400
+        )
+        inputs = [input_prompt, input_completion]
+        return cls(
+            fn=next_input,
+            inputs=inputs,
+            outputs=inputs,
+            allow_flagging="manual",
+            submit_btn=_SUBMIT_BTN,
+            clear_btn=_CLEAR_BTN,
+            flagging_options=_SUBMIT_OPTIONS,
+            dataset_name=dataset_name,
+            hf_token=hf_token,
+            private=private,
+        )
+
     @classmethod
     def for_image_generation_preference(
         cls,
-        prompts: List[str],
-        completions_a: List[Union[np.array, PIL.Image.Image, str]],
-        completions_b: List[Union[np.array, PIL.Image.Image, str]],
-        *,
+        prompts: Optional[List[str]] = None,
+        completions_a: Optional[List[Union[np.array, PIL.Image.Image, str]]] = None,
+        completions_b: Optional[List[Union[np.array, PIL.Image.Image, str]]] = None,
         fn: Optional[Union["Pipeline", callable]] = None,
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
@@ -810,10 +923,10 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             prompts (List[str]): List of prompts to annotate.
             completions_a (List[Union[np.array, PIL.Image.Image, str]]): List of completions to annotate for option A.
             completions_b (List[Union[np.array, PIL.Image.Image, str]]): List of completions to annotate for option B.
-            fn (Optional[Union["Pipeline", callable]], optional): NotImplementedError. Defaults to None.
-            dataset_name (Optional[str], optional): Name of the dataset to save the annotations. Defaults to None.
-            hf_token (Optional[str], optional): Hugging Face API token to save the annotations. Defaults to None.
-            private (Optional[bool], optional): Whether to save the annotations as private. Defaults to False.
+            fn (Optional[Union["Pipeline", callable]]): NotImplementedError. Defaults to None.
+            dataset_name (Optional[str]): Name of the dataset to save the annotations. Defaults to None.
+            hf_token (Optional[str]): Hugging Face API token to save the annotations. Defaults to None.
+            private (Optional[bool]): Whether to save the annotations as private. Defaults to False.
         """
         # Input validation
         start = len(prompts)
@@ -878,11 +991,11 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         Args:
             images (List[Union[np.array, PIL.Image.Image, str]]): List of images to annotate.
             labels (List[str]): List of labels to choose from.
-            multi_label (Optional[bool], optional): Whether to allow multiple labels. Defaults to False.
-            fn (Optional[Union["Pipeline", callable]], optional): NotImplementedError. Defaults to None.
-            dataset_name (Optional[str], optional): Name of the dataset to save the annotations. Defaults to None.
-            hf_token (Optional[str], optional): Hugging Face API token to save the annotations. Defaults to None.
-            private (Optional[bool], optional): Whether to save the annotations as private. Defaults to False.
+            multi_label (Optional[bool]): Whether to allow multiple labels. Defaults to False.
+            fn (Optional[Union["Pipeline", callable]]): NotImplementedError. Defaults to None.
+            dataset_name (Optional[str]): Name of the dataset to save the annotations. Defaults to None.
+            hf_token (Optional[str]): Hugging Face API token to save the annotations. Defaults to None.
+            private (Optional[bool]): Whether to save the annotations as private. Defaults to False.
 
         Returns:
             AnnotatorInterFace: An instance of AnnotatorInterFace
@@ -938,11 +1051,11 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
 
         Args:
             images (List[Union[np.array, PIL.Image.Image, str]]): List of images to annotate.
-            descriptions (Optional[List[str]], optional): List of descriptions to annotate. Defaults to None.
-            fn (Optional[Union["Pipeline", callable]], optional): NotImplementedError. Defaults to None.
-            dataset_name (Optional[str], optional): Name of the dataset to save the annotations. Defaults to None.
-            hf_token (Optional[str], optional): Hugging Face API token to save the annotations. Defaults to None.
-            private (Optional[bool], optional): Whether to save the annotations as private. Defaults to False.
+            descriptions (Optional[List[str]]): List of descriptions to annotate. Defaults to None.
+            fn (Optional[Union["Pipeline", callable]]): NotImplementedError. Defaults to None.
+            dataset_name (Optional[str]): Name of the dataset to save the annotations. Defaults to None.
+            hf_token (Optional[str]): Hugging Face API token to save the annotations. Defaults to None.
+            private (Optional[bool]): Whether to save the annotations as private. Defaults to False.
 
         Returns:
             AnnotatorInterFace: An instance of AnnotatorInterFace
@@ -1001,12 +1114,12 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
 
         Args:
             images (List[Union[np.array, PIL.Image.Image, str]]): List of images to annotate.
-            questions (Optional[List[str]], optional): List of questions to annotate. Defaults to None.
-            answers (Optional[List[str]], optional): List of answers to annotate. Defaults to None.
-            fn (Optional[Union["Pipeline", callable]], optional): NotImplementedError. Defaults to None.
-            dataset_name (Optional[str], optional): Name of the dataset to save the annotations. Defaults to None.
-            hf_token (Optional[str], optional): Hugging Face API token to save the annotations. Defaults to None.
-            private (Optional[bool], optional): Whether to save the annotations as private. Defaults to False.
+            questions (Optional[List[str]]): List of questions to annotate. Defaults to None.
+            answers (Optional[List[str]]): List of answers to annotate. Defaults to None.
+            fn (Optional[Union["Pipeline", callable]]): NotImplementedError. Defaults to None.
+            dataset_name (Optional[str]): Name of the dataset to save the annotations. Defaults to None.
+            hf_token (Optional[str]): Hugging Face API token to save the annotations. Defaults to None.
+            private (Optional[bool]): Whether to save the annotations as private. Defaults to False.
 
         Returns:
             AnnotatorInterFace: An instance of AnnotatorInterFace
@@ -1128,8 +1241,8 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
 
         Args:
             messages (Union[List[List[Dict[str, str]]], List[List[gradio.ChatMessage]]): List of chat messages.
-            with_turn (bool, optional): Whether to add turn information. Defaults to False.
-            last_role ([type], optional): Last role. Defaults to None.
+            with_turn (bool): Whether to add turn information. Defaults to False.
+            last_role ([type]): Last role. Defaults to None.
 
         Returns:
             List[List[gradio.ChatMessage]]: List of chat messages.

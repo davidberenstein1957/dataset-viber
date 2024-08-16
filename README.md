@@ -359,6 +359,33 @@ interface.launch()
 </details>
 
 <details>
+<summary><code>image-generation</code></summary>
+
+```python
+from dataset_viber import AnnotatorInterFace
+
+prompts = [
+    "Anthony Bourdain laughing",
+    "David Chang wearing a suit"
+]
+images = [
+    "https://upload.wikimedia.org/wikipedia/commons/8/85/David_Chang_David_Shankbone_2010.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Anthony_Bourdain_Peabody_2014b.jpg/440px-Anthony_Bourdain_Peabody_2014b.jpg",
+]
+
+interface = AnnotatorInterFace.for_image_generation(
+    prompts=prompts,
+    completions=images,
+    fn=None, # NotImplementedError("Not implemented yet")
+    dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
+)
+
+interface.launch()
+```
+
+</details>
+
+<details>
 <summary><code>image-description</code></summary>
 
 ```python
