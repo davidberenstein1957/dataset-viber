@@ -155,12 +155,13 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         cls.start = len(cls.input_data["text"])
 
         def next_input(_text, _label):
+            if _text:
+                cls.output_data["text"].append(_text)
+                cls.output_data["label"].append(_label)
             if cls.input_data["text"]:
                 cls._update_message(cls)
                 text = cls.input_data["text"].pop(_POP_INDEX)
                 label = [] if fn is None else fn(text)
-                cls.output_data["text"].append(_text)
-                cls.output_data["label"].append(_label)
                 if cls.task == "text-classification-multi-label":
                     label = [lab["label"] for lab in label if lab["score"] > 0.5]
                     return (text, label)
@@ -236,12 +237,13 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         cls.start = len(cls.input_data["text"])
 
         def next_input(_text, _spans):
+            if _text:
+                cls.output_data["text"].append(_text)
+                cls.output_data["spans"].append(_spans)
             if cls.input_data["text"]:
                 cls._update_message(cls)
                 text = cls.input_data["text"].pop(_POP_INDEX)
                 spans = cls._convert_to_tokens(text) if fn is None else fn(text)
-                cls.output_data["text"].append(_text)
-                cls.output_data["spans"].append(_spans)
                 return text, spans
             else:
                 cls._done_message()
@@ -254,8 +256,8 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         inputs = [
             gradio.Textbox(value=text, label="text", interactive=False),
             gradio.HighlightedText(
-                value=text,
-                color_map=cls.labels or None,
+                value=spans,
+                color_map=cls.labels if cls.labels else None,
                 label="spans",
                 **_HIGHLIGHT_TEXT_KWARGS,
             ),
@@ -316,6 +318,9 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
 
         # Process function
         def next_input(_question, _context):
+            if _question:
+                cls.output_data["question"].append(_question)
+                cls.output_data["context"].append(_context)
             if questions:
                 cls._update_message(cls)
                 question = cls.input_data["question"].pop(_POP_INDEX)
@@ -398,6 +403,9 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
 
         # Process function
         def next_input(_prompt, _completion):
+            if _prompt:
+                cls.output_data["prompt"].append(_prompt)
+                cls.output_data["completion"].append(_completion)
             if prompts:
                 cls._update_message(cls)
                 prompt = cls.input_data["prompt"].pop(_POP_INDEX)
@@ -432,7 +440,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
     @classmethod
     def for_text_generation_preference(
         cls,
-        prompts: Optional[List[str]],
+        prompts: Optional[List[str]] = None,
         completions_a: Optional[List[str]] = None,
         completions_b: Optional[List[str]] = None,
         fn: Optional[Union["Pipeline", callable]] = None,
@@ -457,8 +465,19 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         Returns:
             AnnotatorInterFace: An instance of AnnotatorInterFace
         """
+        # IO Config
+        cls.task = "text-generation-preference"
+        cls.input_columns = ["prompt", "completion_a", "completion_b"]
+        cls.output_columns = ["prompt", "completion_a", "completion_b"]
+        cls.input_data = {
+            "prompt": prompts or [],
+            "completion_a": completions_a or [],
+            "completion_b": completions_b or [],
+        }
+        cls.output_data = {col: [] for col in cls.output_columns}
+        cls.start = len(cls.input_data["prompt"])
+
         # Input validation
-        start = len(prompts)
         prompts, completions_a, completions_b = cls._validate_preference(
             cls, fn, prompts, completions_a, completions_b
         )
@@ -466,7 +485,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         # Process function
         def next_input(_prompt, _completion_a, _completion_b):
             if prompts:
-                cls._update_message(prompts, start)
+                cls._update_message(cls)
                 prompt = prompts.pop(_POP_INDEX)
                 completion_a = completions_a.pop(_POP_INDEX)
                 completion_a = (
