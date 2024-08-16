@@ -258,7 +258,6 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
                 **_HIGHLIGHT_TEXT_KWARGS,
             ),
         ]
-
         return cls(
             fn=next_input,
             inputs=inputs,
@@ -464,7 +463,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         # IO Config
         cls.task = "text-generation-preference"
         cls.input_columns = ["prompt", "completion_a", "completion_b"]
-        cls.output_columns = ["prompt", "completion_a", "completion_b"]
+        cls.output_columns = ["prompt", "completion_a", "completion_b", "flag"]
         cls.input_data = {
             "prompt": prompts or [],
             "completion_a": completions_a or [],
@@ -475,14 +474,15 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
 
         # Input validation
         prompts, completions_a, completions_b = cls._validate_preference(
-            cls, fn, prompts, completions_a, completions_b
+            fn, prompts, completions_a, completions_b
         )
 
         # Process function
         def next_input(_prompt, _completion_a, _completion_b):
-            cls.output_data["prompt"].append(_prompt)
-            cls.output_data["completion_a"].append(_completion_a)
-            cls.output_data["completion_b"].append(_completion_b)
+            if _prompt:
+                cls.output_data["prompt"].append(_prompt)
+                cls.output_data["completion_a"].append(_completion_a)
+                cls.output_data["completion_b"].append(_completion_b)
             if prompts:
                 cls._update_message(cls)
                 prompt = cls.input_data["prompt"].pop(_POP_INDEX)
@@ -1097,6 +1097,13 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         """Override the attach_flagging_events method to attach the flagging events."""
         # before the flaffing because otherwise input is reset
         self.attach_submit_events(_submit_btn=_clear_btn, _stop_btn=None)
+        for btn in flag_btns:
+
+            def add_label():
+                if "flag" in self.output_data:
+                    self.output_data["flag"].append(str(btn.value))
+
+            btn.click(fn=add_label)
         super().attach_flagging_events(flag_btns, _clear_btn, _submit_event)
         if self.allow_flagging == "manual":
             for flag_btn in flag_btns:
