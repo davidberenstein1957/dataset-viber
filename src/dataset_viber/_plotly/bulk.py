@@ -26,16 +26,13 @@ from dash import dash_table, dcc, html
 from dash.dependencies import Input, Output, State
 from plotly.graph_objs._figure import Figure
 
-from data_viber._constants import DEFAULT_EMBEDDING_MODEL
+from dataset_viber._constants import DEFAULT_EMBEDDING_MODEL
 
 if TYPE_CHECKING:
     from sentence_transformers import SentenceTransformer
 
 
-external_stylesheets = ["https://codepen.io/chriddyp/pen/bWLwgP.css"]
-
-
-class ExplorerInterface:
+class BulkInterface:
     def __init__(
         self,
         dataframe: pd.DataFrame,
@@ -156,10 +153,11 @@ class ExplorerInterface:
                     current_figure["data"] = updated_traces
 
                 local_dataframe = self.umap_df.copy()
-                tooltip_data = self.get_chat_tooltip(local_dataframe)
-                local_dataframe[self.content_column] = local_dataframe[
-                    self.content_column
-                ].apply(lambda x: x[0]["content"])
+                tooltip_data = self.get_tooltip(local_dataframe)
+                if self.content_format == "chat":
+                    local_dataframe[self.content_column] = local_dataframe[
+                        self.content_column
+                    ].apply(lambda x: x[0]["content"])
                 return current_figure, local_dataframe.to_dict("records"), tooltip_data
 
             # Callback to print the dataframe
@@ -219,10 +217,11 @@ class ExplorerInterface:
                 ]
 
             local_dataframe = filtered_df.copy()
-            tooltip_data = self.get_chat_tooltip(local_dataframe)
-            local_dataframe[self.content_column] = local_dataframe[
-                self.content_column
-            ].apply(lambda x: x[0]["content"])
+            tooltip_data = self.get_tooltip(local_dataframe)
+            if self.content_format == "chat":
+                local_dataframe[self.content_column] = local_dataframe[
+                    self.content_column
+                ].apply(lambda x: x[0]["content"])
             return figure, local_dataframe.to_dict("records"), tooltip_data
 
         self.app = app
@@ -240,7 +239,7 @@ class ExplorerInterface:
             elif torch.cuda.is_available():
                 device = "cuda"
             if importlib.util.find_spec("onnxruntime") is not None:
-                from data_viber.embedder import Embedder
+                from dataset_viber.embedder import Embedder
 
                 self.embedding_model = Embedder(model_id=embedding_model, device=device)
             else:
@@ -446,14 +445,14 @@ class ExplorerInterface:
                 ]
             )
         if self.content_format == "chat":
-            tooltip_data = self.get_chat_tooltip(local_dataframe)
+            tooltip_data = self.get_tooltip(local_dataframe)
             local_dataframe[self.content_column] = local_dataframe[
                 self.content_column
             ].apply(lambda x: x[0]["content"])
             columns = local_dataframe.columns
         elif self.content_format == "text":
             tooltip_data = None
-            columns = [local_dataframe.columns]
+            columns = local_dataframe.columns
         else:
             raise ValueError(
                 "content_format should be either 'text' or 'chat' but got {self.content_format}"
@@ -461,37 +460,12 @@ class ExplorerInterface:
 
         layout = html.Div(
             [
-                html.H1("ExplorerInterface"),
+                html.H1("BulkInterface"),
                 # Scatter plot
                 html.Div(
                     [
                         dcc.Graph(id="scatter-plot", figure=figure),
-                        html.Div(
-                            [
-                                *buttons,
-                                # dcc.Upload(
-                                #     id='upload-data',
-                                #     children=html.Div([
-                                #         'Drag and Drop or ',
-                                #         html.A('Select Files')
-                                #     ]),
-                                #     style={
-                                #         'width': '200px',
-                                #         # 'height': '60px',
-                                #         # 'lineHeight': '60px',
-                                #         'borderWidth': '1px',
-                                #         'borderStyle': 'dashed',
-                                #         'borderRadius': '5px',
-                                #         'textAlign': 'center',
-                                #         "display": "inline-block"
-                                #         # 'margin': '10px'
-                                #     },
-                                #     # Allow multiple files to be uploaded
-                                #     multiple=False
-                                # ),
-                                # html.Div(id='output-data-upload'),
-                            ]
-                        ),
+                        html.Div([*buttons]),
                     ],
                     style={
                         "width": "49%",
@@ -500,8 +474,6 @@ class ExplorerInterface:
                         "marginRight": "1%",
                     },
                 ),
-                # https://dash.plotly.com/datatable/tooltips#images-in-tooltips
-                # https://dash.plotly.com/dash-core-components/tooltip#visualizing-t-sne-plot-of-mnist-images
                 html.Div(
                     [
                         dash_table.DataTable(
@@ -598,7 +570,9 @@ class ExplorerInterface:
                 wrapped_text += f"<b>{turn['role']}</b>:<br>{self.format_content(turn['content'])}<br><br>"
             return wrapped_text
 
-    def get_chat_tooltip(self, dataframe):
+    def get_tooltip(self, dataframe):
+        if self.content_format == "text":
+            return None
         return [
             {
                 self.content_column: {

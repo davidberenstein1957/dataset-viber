@@ -1,33 +1,34 @@
 <h1 align="center">
-  <a href=""><img src="https://cdn-icons-png.flaticon.com/512/2091/2091395.png" alt="data-viber" width="150"></a>
+  <a href=""><img src="https://cdn-icons-png.flaticon.com/512/2091/2091395.png" alt="dataset-viber" width="150"></a>
   <br>
-  Data Viber
+  Dataset Viber
   <br>
 </h1>
 
 <h3 align="center">Avoid the hype, check the vibe!</h2>
 
-I've cooked up Data Viber, a cool set of tools to make your life easier when dealing with data for NLP and image models. Data Viber is all about making your data prep journey smooth and fun. It's **not for team collaboration or production**, neither trying to be all fancy and formal - just a bunch of **cool tools to help you collect feedback and do vibe-checks** for data for AI models as an AI engineer. Want to see it in action? Just plug it in and start vibing with your data. It's that easy! Vibing
+I've cooked up Dataset Viber, a cool set of tools to make your life easier when dealing with data for AI models. Dataset Viber is all about making your data prep journey smooth and fun. It's **not for team collaboration or production**, nor trying to be all fancy and formal - just a bunch of **cool tools to help you collect feedback and do vibe-checks** as an AI engineer or lover. Want to see it in action? Just plug it in and start vibing with your data. It's that easy!
 
-- **CollectorInterface**: Lazily collect data of interactions without human annotation.
+- **CollectorInterface**: Lazily collect data of model interactions without human annotation.
 - **AnnotatorInterface**: Walk through your data and annotate it with models in the loop.
-- **ExplorerInterface**: Explore your data distribution and annotate in bulk.
+- **BulkInterface**: Explore your data distribution and annotate in bulk.
 - **Embdedder**: Efficiently embed data with ONNX-optimized speeds.
 
-Need any tweaks or want to hear more about a specific tool? Just open an issue or give me a shout!
+Need any tweaks or want to hear more about a specific tool? Just [open an issue](https://github.com/davidberenstein1957/dataset-viber/issues/new) or give me a shout!
 
 > [!NOTE]
-> - Data is logged to a CSV or directly to the Hugging Face Hub.
+>
+> - Data is logged to a local CSV or directly to the Hugging Face Hub.
 > - All tools also run in `.ipynb` notebooks.
 > - You can use models in the loop.
 > - It supports various tasks for `text`, `chat` and `image` modalities.
 
 ## Installation
 
-I have not published this yet on PyPi, but for now, you can install it from the repo.
+You can install the package via pip:
 
 ```bash
-pip install git+https://github.com/davidberenstein1957/data-viber.git
+pip install dataset-viber
 ```
 
 ## How are we vibing?
@@ -38,14 +39,14 @@ pip install git+https://github.com/davidberenstein1957/data-viber.git
 
 <https://github.com/user-attachments/assets/4ddac8a1-62ab-4b3b-9254-f924f5898075>
 
-[Hub dataset](https://huggingface.co/datasets/davidberenstein1957/data-viber-token-classification)
+[Hub dataset](https://huggingface.co/datasets/davidberenstein1957/dataset-viber-token-classification)
 
 <details>
 <summary><code>CollectorInterface</code></summary>
 
 ```python
 import gradio as gr
-from data_viber import CollectorInterface
+from dataset_viber import CollectorInterface
 
 def calculator(num1, operation, num2):
     if operation == "add":
@@ -94,7 +95,7 @@ interface.launch()
 
 ```python
 from transformers import pipeline
-from data_viber import CollectorInterface
+from dataset_viber import CollectorInterface
 
 pipeline = pipeline("text-classification", model="mrm8488/bert-tiny-finetuned-sms-spam-detection")
 interface = CollectorInterface.from_pipeline(
@@ -115,13 +116,13 @@ interface.launch()
 
 https://github.com/user-attachments/assets/d1abda66-9972-4c60-89d2-7626f5654f15
 
-[Hub dataset](https://huggingface.co/datasets/davidberenstein1957/data-viber-text-classification)
+[Hub dataset](https://huggingface.co/datasets/davidberenstein1957/dataset-viber-text-classification)
 
 <details>
 <summary><code>text-classification</code>/<code>multi-label-text-classification</code></summary>
 
 ```python
-from data_viber import AnnotatorInterFace
+from dataset_viber import AnnotatorInterFace
 
 texts = [
     "Anthony Bourdain was an amazing chef!",
@@ -145,14 +146,14 @@ interface.launch()
 <summary><code>token-classification</code></summary>
 
 ```python
-from data_viber import AnnotatorInterFace
+from dataset_viber import AnnotatorInterFace
 
 texts = ["Anthony Bourdain was an amazing chef in New York."]
 labels = ["NAME", "LOC"]
 
 interface = AnnotatorInterFace.for_token_classification(
     texts=texts,
-    labels=labels,(
+    labels=labels,
     fn=None, # a callable e.g. (function or transformers pipelines) that returns [("text", "label")]
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
@@ -165,7 +166,7 @@ interface.launch()
 <summary><code>extractive-question-answering</code></summary>
 
 ```python
-from data_viber import AnnotatorInterFace
+from dataset_viber import AnnotatorInterFace
 
 questions = ["Where was Anthony Bourdain located?"]
 contexts = ["Anthony Bourdain was an amazing chef in New York."]
@@ -185,7 +186,7 @@ interface.launch()
 <summary><code>text-generation</code>/<code>translation</code>/<code>completion</code></summary>
 
 ```python
-from data_viber import AnnotatorInterFace
+from dataset_viber import AnnotatorInterFace
 
 prompts = ["Tell me something about Anthony Bourdain."]
 completions = ["Anthony Michael Bourdain was an American celebrity chef, author, and travel documentarian."]
@@ -205,13 +206,13 @@ interface = AnnotatorInterFace.for_text_generation(
 <summary><code>text-generation-preference</code></summary>
 
 ```python
-from data_viber import AnnotatorInterFace
+from dataset_viber import AnnotatorInterFace
 
 prompts = ["Tell me something about Anthony Bourdain."]
 completions_a = ["Anthony Michael Bourdain was an American celebrity chef, author, and travel documentarian."]
 completions_b = ["Anthony Michael Bourdain was an cool guy that knew how to cook."]
 
-interface = AnnotatorInterFace.for_text_generation(
+interface = AnnotatorInterFace.for_text_generation_preference(
     prompts=prompts,
     completions_a=completions_a,
     completions_b=completions_b,
@@ -226,7 +227,7 @@ interface = AnnotatorInterFace.for_text_generation(
 
 https://github.com/user-attachments/assets/fe7f0139-95a3-40e8-bc03-e37667d4f7a9
 
-[Hub dataset](https://huggingface.co/datasets/davidberenstein1957/data-viber-chat-generation-preference)
+[Hub dataset](https://huggingface.co/datasets/davidberenstein1957/dataset-viber-chat-generation-preference)
 
 > [!TIP]
 > I recommend uploading the files files to a cloud storage and using the remote URL to avoid any issues. This can be done [using Hugging Face Datasets](https://huggingface.co/docs/datasets/en/image_load#local-files). As shown in [utils](#utils). Additionally [GradioChatbot](https://www.gradio.app/docs/gradio/chatbot#behavior) shows how to use the chatbot interface for multi-modal.
@@ -235,7 +236,7 @@ https://github.com/user-attachments/assets/fe7f0139-95a3-40e8-bc03-e37667d4f7a9
 <summary><code>chat-classification</code></summary>
 
 ```python
-from data_viber import AnnotatorInterFace
+from dataset_viber import AnnotatorInterFace
 
 prompts = [
     [
@@ -265,7 +266,7 @@ interface.launch()
 <summary><code>chat-classification-per-message</code></summary>
 
 ```python
-from data_viber import AnnotatorInterFace
+from dataset_viber import AnnotatorInterFace
 
 prompts = [
     [
@@ -295,7 +296,7 @@ interface.launch()
 <summary><code>chat-generation</code></summary>
 
 ```python
-from data_viber import AnnotatorInterFace
+from dataset_viber import AnnotatorInterFace
 
 prompts = [
     [
@@ -325,7 +326,7 @@ interface.launch()
 <summary><code>chat-generation-preference</code></summary>
 
 ```python
-from data_viber import AnnotatorInterFace
+from dataset_viber import AnnotatorInterFace
 
 prompts = [
     [
@@ -358,7 +359,7 @@ interface.launch()
 
 <https://github.com/user-attachments/assets/57d89edf-ae40-4942-a20a-bf8443100b66>
 
-[Hub dataset](https://huggingface.co/datasets/davidberenstein1957/data-viber-image-question-answering)
+[Hub dataset](https://huggingface.co/datasets/davidberenstein1957/dataset-viber-image-question-answering)
 
 > [!TIP]
 > I recommend uploading the files files to a cloud storage and using the remote URL to avoid any issues. This can be done [using Hugging Face Datasets](https://huggingface.co/docs/datasets/en/image_load#local-files). As shown in [utils](#utils).
@@ -367,7 +368,7 @@ interface.launch()
 <summary><code>image-classification</code>/<code>multi-label-image-classification</code></summary>
 
 ```python
-from data_viber import AnnotatorInterFace
+from dataset_viber import AnnotatorInterFace
 
 images = [
     "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Anthony_Bourdain_Peabody_2014b.jpg/440px-Anthony_Bourdain_Peabody_2014b.jpg",
@@ -390,7 +391,7 @@ interface.launch()
 <summary><code>image-description</code></summary>
 
 ```python
-from data_viber import AnnotatorInterFace
+from dataset_viber import AnnotatorInterFace
 
 images = [
     "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Anthony_Bourdain_Peabody_2014b.jpg/440px-Anthony_Bourdain_Peabody_2014b.jpg",
@@ -412,7 +413,7 @@ interface.launch()
 <summary><code>image-question-answering</code>/<code>visual-question-answering</code></summary>
 
 ```python
-from data_viber import AnnotatorInterFace
+from dataset_viber import AnnotatorInterFace
 
 images = [
     "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Anthony_Bourdain_Peabody_2014b.jpg/440px-Anthony_Bourdain_Peabody_2014b.jpg",
@@ -437,7 +438,7 @@ interface.launch()
 <summary><code>image-generation-preference</code></summary>
 
 ```python
-from data_viber import AnnotatorInterFace
+from dataset_viber import AnnotatorInterFace
 
 prompts = [
     "Anthony Bourdain laughing",
@@ -466,9 +467,9 @@ interface.launch()
 
 </details>
 
-### ExplorerInterface
+### BulkInterface
 
-> Built on top of the `Dash`, `plotly-express`, `umap-learn`, and `Embedder` to embed, understand and label your dataset distribution.
+> Built on top of the `Dash`, `plotly-express`, `umap-learn`, and `Embedder` to embed and understand your distribution and annotate your data.
 
 https://github.com/user-attachments/assets/5e96c06d-e37f-45a0-9633-1a8e714d71ed
 
@@ -478,12 +479,12 @@ https://github.com/user-attachments/assets/5e96c06d-e37f-45a0-9633-1a8e714d71ed
 <summary><code>text-visualization</code></summary>
 
 ```python
-from data_viber import ExplorerInterface
+from dataset_viber import BulkInterface
 from datasets import load_dataset
 
 ds = load_dataset("SetFit/ag_news", split="train[:2000]")
 
-interface: ExplorerInterface = ExplorerInterface.for_text_visualization(
+interface: BulkInterface = BulkInterface.for_text_visualization(
     ds.to_pandas()[["text", "label_text"]],
     content_column='text',
     label_column='label_text',
@@ -497,13 +498,13 @@ interface.launch()
 <summary><code>text-classification</code></summary>
 
 ```python
-from data_viber import ExplorerInterface
+from dataset_viber import BulkInterface
 from datasets import load_dataset
 
 ds = load_dataset("SetFit/ag_news", split="train[:2000]")
 df = ds.to_pandas()[["text", "label_text"]]
 
-interface = ExplorerInterface.for_text_classification(
+interface = BulkInterface.for_text_classification(
     dataframe=df,
     content_column='text',
     label_column='label_text',
@@ -518,13 +519,13 @@ interface.launch()
 <summary><code>chat-visualization</code></summary>
 
 ```python
-from data_viber import ExplorerInterface
+from dataset_viber import BulkInterface
 from datasets import load_dataset
 
 ds = load_dataset("argilla/distilabel-capybara-dpo-7k-binarized", split="train[:1000]")
 df = ds.to_pandas()[["chosen"]]
 
-interface = ExplorerInterface.for_chat_visualization(
+interface = BulkInterface.for_chat_visualization(
     dataframe=df,
     chat_column='chosen',
 )
@@ -537,13 +538,13 @@ interface.launch()
 <summary><code>chat-classification</code></summary>
 
 ```python
-from data_viber import ExplorerInterface
+from dataset_viber import BulkInterface
 from datasets import load_dataset
 
 ds = load_dataset("argilla/distilabel-capybara-dpo-7k-binarized", split="train[:1000]")
 df = ds.to_pandas()[["chosen"]]
 
-interface = ExplorerInterface.for_chat_classification(
+interface = BulkInterface.for_chat_classification(
     dataframe=df,
     chat_column='chosen',
     labels=["math", "science", "history", "question seeking"],
@@ -561,7 +562,7 @@ interface.launch()
 <summary><code>Embedder</code></summary>
 
 ```python
-from data_viber.embedder import Embedder
+from dataset_viber.embedder import Embedder
 
 embedder = Embedder(model_id="sentence-transformers/all-MiniLM-L6-v2")
 embedder.encode(["Anthony Bourdain was an amazing chef in New York."])
@@ -669,32 +670,6 @@ pre-commit install
 ```
 
 Follow this [guide on making first contributions](https://github.com/firstcontributions/first-contributions?tab=readme-ov-file#first-contributions).
-
-### ideas
-
-- add dataset task info tags for Argila.from_hub compatibility
-
-#### ideas CollectorInterface
-
-- collect data from a gr.ChatInterface
-
-#### ideas AnnotatorInterface
-
-- continuous chat preference
-
-WIP PR [here](https://github.com/davidberenstein1957/data-viber/pull/2)
-
-- show input-data and output-data in the interface
-- import data from the hub with oauth
-- import data from excel/csv
-- add buttons to sort on embeddings similarity and sort on random
-- data state based on csv or remote dataset (not redo on restart)
-
-#### ideas ExplorerInterface
-
-- fix hovers for dataframe
-- image support
-- file upload support
 
 ## References
 

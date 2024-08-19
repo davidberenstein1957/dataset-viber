@@ -19,8 +19,8 @@ import gradio
 import huggingface_hub
 from gradio.components import Component
 
-from data_viber._gradio._flagging import FixedHubDatasetSaver
-from data_viber._utils import _get_init_payload
+from dataset_viber._gradio._flagging import FixedHubDatasetSaver
+from dataset_viber._utils import _get_init_payload
 
 if TYPE_CHECKING:
     from transformers.pipelines import Pipeline
@@ -40,7 +40,7 @@ class CollectorInterface(gradio.Interface):
         flagging_options: Optional[List[str]] = None,
         show_embedded_viewer: Optional[bool] = True,
         **kwargs,
-    ):
+    ) -> None:
         """
         Load a CollectorInterface with data logging capabilities.
 
@@ -215,7 +215,7 @@ class CollectorInterface(gradio.Interface):
         instance: gradio.Interface,
         flagging_callback: Optional[gradio.HuggingFaceDatasetSaver] = None,
         show_embedded_viewer: bool = True,
-    ):
+    ) -> gradio.Interface:
         if flagging_callback:
             repo_url = cls._get_repo_url(flagging_callback)
             formatted_repo_url = (

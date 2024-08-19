@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import TYPE_CHECKING, Dict, List, Optional, Union, override
+import sys
+from typing import TYPE_CHECKING, Dict, List, Optional, Union
 
 import gradio
 import numpy as np
@@ -24,22 +25,14 @@ from gradio.components import (
 from gradio.events import Dependency
 from gradio.flagging import FlagMethod
 
-from data_viber._gradio.collector import CollectorInterface
+from dataset_viber._constants import COLORS
+from dataset_viber._gradio.collector import CollectorInterface
 
-__HIGHLIGHT_TEXT_COLORS = [
-    "#a6cee3",
-    "#1f78b4",
-    "#b2df8a",
-    "#33a02c",
-    "#fb9a99",
-    "#e31a1c",
-    "#fdbf6f",
-    "#ff7f00",
-    "#cab2d6",
-    "#6a3d9a",
-    "#ffff99",
-    "#b15928",
-]
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override
+
 _POP_INDEX = 0
 _MESSAGE_DONE_ANNOTATING = "No data left to annotate."
 _HIGHLIGHT_TEXT_KWARGS = {
@@ -181,9 +174,7 @@ class AnnotatorInterFace(CollectorInterface):
 
         # UI Config
         if isinstance(labels, list):
-            labels = {
-                label: color for label, color in zip(labels, __HIGHLIGHT_TEXT_COLORS)
-            }
+            labels = {label: color for label, color in zip(labels, COLORS)}
         text = next_input(None)
         inputs = [
             gradio.HighlightedText(
@@ -1074,6 +1065,7 @@ class AnnotatorInterFace(CollectorInterface):
         _clear_btn: ClearButton,
         _submit_event: Dependency,
     ) -> None:
+        """Override the attach_flagging_events method to attach the flagging events."""
         # before the flaffing because otherwise input is reset
         self.attach_submit_events(_submit_btn=_clear_btn, _stop_btn=None)
         super().attach_flagging_events(flag_btns, _clear_btn, _submit_event)
@@ -1096,18 +1088,22 @@ class AnnotatorInterFace(CollectorInterface):
 
     @override
     def render_flag_btns(self) -> list[Button]:
+        """Override the render_flag_btns method to return the flagging buttons with labels."""
         return [Button(label, variant="primary") for label, _ in self.flagging_options]
 
     @staticmethod
     def _update_message(items: list, start: int) -> None:
+        """Print the progress of the annotation."""
         gradio.Info(f"{(len(items) / start) * 100:.2f}% done {len(items)} left.")
 
     @staticmethod
     def _done_message() -> None:
+        """Print the done message."""
         gradio.Info(_MESSAGE_DONE_ANNOTATING)
 
     @staticmethod
     def _convert_to_tokens(text: str) -> List[tuple[str, None]]:
+        """Convert a string to a list of tokens for TextHighligh."""
         return [(char, None) for char in text]
 
     @staticmethod
@@ -1116,6 +1112,17 @@ class AnnotatorInterFace(CollectorInterface):
         with_turn=False,
         last_role=None,
     ) -> List[List[gradio.ChatMessage]]:
+        """
+        Convert a list of chat messages to a list of gradio.ChatMessage.
+
+        Args:
+            messages (Union[List[List[Dict[str, str]]], List[List[gradio.ChatMessage]]): List of chat messages.
+            with_turn (bool, optional): Whether to add turn information. Defaults to False.
+            last_role ([type], optional): Last role. Defaults to None.
+
+        Returns:
+            List[List[gradio.ChatMessage]]: List of chat messages.
+        """
         if not isinstance(messages[0][0], gradio.ChatMessage):
             messages = [
                 [gradio.ChatMessage(**msg) for msg in prompt] for prompt in messages
@@ -1143,6 +1150,18 @@ class AnnotatorInterFace(CollectorInterface):
 
     @staticmethod
     def _validate_preference(fn, prompts, completions_a, completions_b):
+        """
+        Validate the inputs for preference tasks.
+
+        Args:
+            fn: Prediction function.
+            prompts: List of prompts.
+            completions_a: List of completions for option A.
+            completions_b: List of completions for option B.
+
+        Returns:
+            Tuple: Tuple of prompts, completions_a, completions_b.
+        """
         if fn is not None and (completions_a is not None and completions_b is not None):
             raise ValueError("fn should be None when completions are provided.")
         if completions_a is None:

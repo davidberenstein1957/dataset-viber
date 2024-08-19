@@ -12,6 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from data_viber._gradio import CollectorInterface  # noqa
-from data_viber._gradio import AnnotatorInterFace  # noqa
-from data_viber._plotly import ExplorerInterface  # noqa
+from dataset_viber._gradio.collector import CollectorInterface  # noqa
+from dataset_viber._gradio.annotator import AnnotatorInterFace  # noqa

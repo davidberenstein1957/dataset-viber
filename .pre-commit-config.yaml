@@ -8,7 +8,7 @@ repos:
     rev: v0.4.8
     hooks:
       - id: ruff
-        files: 'src/data_viber/.*\.py$'
+        files: 'src/dataset_viber/.*\.py$'
         args:
           - --fix
   - repo: https://github.com/Lucas-C/pre-commit-hooks
@@ -16,7 +16,7 @@ repos:
     hooks:
       - id: insert-license
         name: "Insert license header in Python source files"
-        files: '^src/data_viber/.*\.py$'
+        files: '^src/dataset_viber/.*\.py$'
         args:
           - --license-filepath
           - LICENSE_HEADER
@@ -25,7 +25,7 @@ repos:
     rev: 0.7.1
     hooks:
       - id: nbstripout
-        files: '^src/data_viber/.*\.ipynb$'
+        files: '^src/dataset_viber/.*\.ipynb$'
         args:
           - --keep-count
           - --keep-output
