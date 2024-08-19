@@ -189,24 +189,25 @@ class CollectorInterface(gradio.Interface):
     def _get_repo_url(
         flagging_callback: gradio.HuggingFaceDatasetSaver,
     ) -> huggingface_hub.RepoUrl:
-        return f"https://huggingface.co/datasets/{huggingface_hub.create_repo(
+        repo_id = huggingface_hub.create_repo(
             repo_id=flagging_callback.dataset_id,
             token=flagging_callback.hf_token,
             private=flagging_callback.dataset_private,
             repo_type="dataset",
             exist_ok=True,
-        ).repo_id}"
+        ).repo_id
+        return f"https://huggingface.co/datasets/{repo_id}"
 
     @staticmethod
     def _get_embedded_dataset_viewer(repo_url: str) -> str:
         return f"""
-<iframe
-  src="{repo_url}/embed/viewer/default/train"
-  frameborder="0"
-  width="100%"
-  height="560px"
-></iframe>
-"""
+                <iframe
+                src="{repo_url}/embed/viewer/default/train"
+                frameborder="0"
+                width="100%"
+                height="560px"
+                ></iframe>
+                """
 
     @classmethod
     def _add_html_component_with_viewer(
