@@ -14,6 +14,8 @@
 
 import io
 import json
+import threading
+import time
 import uuid
 from pathlib import Path
 
@@ -117,15 +119,10 @@ class ImportExportMixin(ArgillaMixin):
             with gradio.Tab("Export to file"):
                 with gradio.Column():
                     export_button = gradio.Button("Export")
-                with gradio.Column():
-                    delete_button = gradio.Button("🗑️ delete file")
                 self.file = gradio.File(interactive=False, visible=False)
                 export_button.click(
                     fn=self._export_data,
                     outputs=self.file,
-                )
-                delete_button.click(
-                    self._delete_file, inputs=self.file, outputs=self.file
                 )
 
     def _set_data_hf_upload(self, repo_id, column_mapping, split="train"):
@@ -184,13 +181,15 @@ class ImportExportMixin(ArgillaMixin):
         Dataset.from_dict(self.output_data).push_to_hub(
             dataset_name, token=oauth_token.token
         )
-        try:
-            self.get_argilla_dataset().to_hub(
-                repo_id=dataset_name, with_records=False, token=oauth_token.token
-            )
-        except NotImplementedError:
-            pass
         gradio.Info(f"Exported the dataset to Hugging Face Hub as {dataset_name}.")
+
+    def delete_file_after_delay(self, file_path, delay=30):
+        def delete_file():
+            time.sleep(delay)
+            Path(Path(file_path).name).unlink()
+
+        thread = threading.Thread(target=delete_file)
+        thread.start()
 
     def _export_data(self, dataframe):
         id = uuid.uuid4()
@@ -200,11 +199,13 @@ class ImportExportMixin(ArgillaMixin):
         else:
             filename = f"{id}.csv"
             Dataset.from_dict(self.output_data).to_csv(filename)
+        self.delete_file_after_delay(filename, 30)
+        gradio.Info(
+            f"Exported the dataset to {filename}. It will be deleted in 30 seconds."
+        )
         return gradio.File(value=filename, visible=True)
 
     def _delete_file(self, _file):
-        self.file.delete()
-        Path(Path(_file).name).unlink()
         return gradio.File(interactive=False, visible=False)
 
     @staticmethod

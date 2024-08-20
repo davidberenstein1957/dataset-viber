@@ -17,9 +17,13 @@ import argilla as rg
 
 class ArgillaMixin:
     def get_argilla_dataset(self):
+        class MockClient:
+            a = "dataset"
+
+        client = MockClient()
+        client.api.datasets = "mock"
         return rg.Dataset(
-            name=self.name,
-            description=self.description,
+            name="fake-dataset",
             settings=self._get_argilla_settings(),
         )
 
