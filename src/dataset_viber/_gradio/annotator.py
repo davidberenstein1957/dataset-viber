@@ -14,12 +14,13 @@
 
 import random
 import sys
-from typing import TYPE_CHECKING, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
 import gradio
 import numpy as np
 import pandas as pd
 import PIL
+import PIL.Image
 from gradio.components import (
     Button,
     ClearButton,
@@ -36,6 +37,10 @@ if sys.version_info >= (3, 12):
 else:
     from typing_extensions import override
 
+if TYPE_CHECKING:
+    from transformers.pipelines import Pipeline
+
+
 _POP_INDEX = 0
 _MESSAGE_DONE_ANNOTATING = "No data left to annotate."
 _HIGHLIGHT_TEXT_KWARGS = {
@@ -46,12 +51,26 @@ _HIGHLIGHT_TEXT_KWARGS = {
 }
 _CHATBOT_KWARGS = {"type": "messages", "label": "prompt", "show_copy_button": True}
 _SUBMIT_BTN = gradio.Button("✍🏼 submit", variant="primary", visible=False)
-_CLEAR_BTN = gradio.Button("🗑️ discard", variant="stop")
-_PREFERENCE_OPTIONS = [("👆 A is better", "A"), ("👇 B is better", "B")]
+_CLEAR_BTN = gradio.Button("⏭️ Next", variant="stop")
+_PREFERENCE_OPTIONS = [
+    ("👆 A is better", "A"),
+    ("👇 B is better", "B"),
+    ("🤝 Tie", "tie"),
+]
 _SUBMIT_OPTIONS = [("✍🏼 submit", "")]
+_NEXT_INPUT_FUNCTION_MESSAGE = (
+    "You can only provide `fn_next_input` and not any other values."
+)
 
-if TYPE_CHECKING:
-    from transformers.pipelines import Pipeline
+
+def wrap_fn_next_input(fn_next_input, output_data, columns):
+    def wrapped_fn(*args, **kwargs):
+        result = fn_next_input(*args, **kwargs)
+        for col, res in zip(columns, result):
+            output_data[col].append(res)
+        return result
+
+    return wrapped_fn
 
 
 class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin):
@@ -63,10 +82,11 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         outputs,
         **kwargs,
     ):
+        self._set_equal_length_input_data()
         self._override_block_init_method(**kwargs)
         with self:
             gradio.LoginButton(
-                value="Sign in with Hugging Face - a login will reset the data!"
+                value="Sign in with Hugging Face - a login will reset the data!",
             ).activate()
             with gradio.Accordion(
                 open=False if self.start else True, label="Import and remaining data"
@@ -80,8 +100,9 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
                         fn=lambda x: pd.DataFrame.from_dict(self.input_data).head(100),
                         outputs=self.input_data_component,
                     )
-                self._set_text_classification_config(inputs)
-                self._configure_import()
+                if not list(self.input_data.values())[0]:
+                    self._set_text_classification_config(inputs)
+                    self._configure_import()
         super().__init__(
             *args,
             inputs=inputs,
@@ -90,16 +111,14 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         )
         with self:
             with gradio.Row():
-                # with gradio.Column():
-                #     sort = gradio.Button("Semantic Sort", variant="secondary")
                 with gradio.Column():
                     shuffle = gradio.Button("Shuffle", variant="secondary")
-                # sort.click(fn=self.sort_data, inputs=None, outputs=None)
                 shuffle.click(
                     fn=self.shuffle_data, inputs=None, outputs=self.input_data_component
                 )
             with gradio.Accordion(open=False, label="Export and completed data"):
                 with gradio.Tab("Completed data"):
+                    print(self.output_data)
                     self.output_data_component = gradio.Dataframe(
                         pd.DataFrame.from_dict(self.output_data).tail(100),
                         interactive=False,
@@ -117,7 +136,10 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         suggestions: Optional[List[str]] = None,
         labels: Optional[List[str]] = None,
         multi_label: Optional[bool] = False,
-        fn: Optional[Union["Pipeline", callable]] = None,
+        interactive: Optional[Union[bool, List[bool]]] = True,
+        fn_model: Optional[Union["Pipeline", callable]] = None,
+        fn_next_input: Optional[callable] = None,
+        csv_logger: Optional[bool] = False,
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
@@ -130,9 +152,16 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             suggestions (Optional[List[str]]): List of suggestions to correct for. Defaults to None.
             labels (Optional[List[str]]): List of labels to choose from.
             multi_label (Optional[bool]): Whether to allow multiple labels. Defaults to False.
-            fn (Optional[Union["Pipeline", callable]]): Prediction function to apply to the text before annotating.
+            interactive (Optional[Union[bool, List[bool]]]): Whether to allow interactive gradio components.
+                If a list is provided, it should be of the same length as the number of inputs.
+                Defaults to True.
+            fn_model (Optional[Union["Pipeline", callable]]): Prediction function to apply to the text before annotating.
                 Expecting it takes a `str` and returns [{"label": str, "score": float}].
                 Defaults to None.
+            fn_next_input (Optional[callable]): Custom function to forward the next input in an active setting.
+                Expecting it takes and return a Tuple[`str`, Union[str, List[str]]].
+                Defaults to None.
+            csv_logger (Optional[bool]): Whether to log the annotations to a CSV file. Defaults to False.
             dataset_name (Optional[str]): Name of the dataset to save the annotations. Defaults to None.
             hf_token (Optional[str]): Hugging Face API token to save the annotations. Defaults to None.
             private (Optional[bool]): Whether to save the annotations as private. Defaults to False.
@@ -151,39 +180,50 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         cls.output_columns = ["text", "label"]
         cls.input_data = {"text": texts or [], "suggestion": suggestions or []}
         cls.output_data = {label: [] for label in cls.output_columns}
-
-        # Process function
         cls.start = len(cls.input_data["text"])
 
-        def next_input(_text, _label):
-            if _text:
-                cls.output_data["text"].append(_text)
-                cls.output_data["label"].append(_label)
-            if cls.input_data["text"]:
-                cls._update_message(cls)
-                text = cls.input_data["text"].pop(_POP_INDEX)
-                label = ""
-                if "suggestion" in cls.input_data:
-                    label = cls.input_data["suggestion"].pop(_POP_INDEX)
-                label = label if fn is None or label else fn(text)
-                if fn is not None and not label:
-                    label = fn(text)
-                    if cls.task == "text-classification-multi-label":
-                        label = [
-                            str(lab["label"]) for lab in label if lab["score"] > 0.5
-                        ]
-                        return (text, label)
-                    return (text, str(label[0]["label"]))
+        # Process function
+        if fn_next_input is not None:
+            if any(
+                [item is not None for item in [texts, suggestions, labels, fn_model]]
+            ):
+                raise ValueError(_NEXT_INPUT_FUNCTION_MESSAGE)
+            next_input = wrap_fn_next_input(
+                fn_next_input, cls.output_data, cls.output_columns
+            )
+        else:
+
+            def next_input(
+                _text: str, _label: Union[str, List[str]]
+            ) -> Tuple[str, Union[str, List[str]]]:
+                if _text:
+                    cls.output_data["text"].append(_text)
+                    cls.output_data["label"].append(_label)
+                if cls.input_data["text"]:
+                    cls._update_message(cls)
+                    text = cls.input_data["text"].pop(_POP_INDEX)
+                    label = ""
+                    if cls.input_data["suggestion"]:
+                        label = cls.input_data["suggestion"].pop(_POP_INDEX)
+                    label = label if fn_model is None or label else fn_model(text)
+                    if fn_model is not None and not label:
+                        label = fn_model(text)
+                        if cls.task == "text-classification-multi-label":
+                            label = [
+                                str(lab["label"]) for lab in label if lab["score"] > 0.5
+                            ]
+                            return (text, label)
+                        return (text, str(label[0]["label"]))
+                    else:
+                        if cls.task == "text-classification-multi-label":
+                            label = [
+                                str(lab["label"]) for lab in label if lab["score"] > 0.5
+                            ]
+                            return (text, label)
+                        return (text, str(label))
                 else:
-                    if cls.task == "text-classification-multi-label":
-                        label = [
-                            str(lab["label"]) for lab in label if lab["score"] > 0.5
-                        ]
-                        return (text, label)
-                    return (text, str(label))
-            else:
-                cls._done_message()
-                return ("", [])
+                    cls._done_message()
+                    return ("", [])
 
         # UI Config
         text, label = next_input(None, None)
@@ -197,6 +237,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             gradio.Textbox(value=text, label="text"),
             check_box_group,
         ]
+        inputs = cls._validate_and_assign_interactive_inputs(inputs, interactive)
         return cls(
             fn=next_input,
             inputs=inputs,
@@ -205,6 +246,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             allow_flagging="manual",
             submit_btn=_SUBMIT_BTN,
             clear_btn=_CLEAR_BTN,
+            csv_logger=csv_logger,
             dataset_name=dataset_name,
             hf_token=hf_token,
             private=private,
@@ -215,7 +257,10 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         cls,
         texts: Optional[List[str]] = None,
         labels: Optional[List[str]] = None,
-        fn: Optional[Union["Pipeline", callable]] = None,
+        interactive: Optional[Union[bool, List[bool]]] = True,
+        fn_model: Optional[Union["Pipeline", callable]] = None,
+        fn_next_input: Optional[callable] = None,
+        csv_logger: Optional[bool] = False,
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
@@ -226,9 +271,16 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         Parameters:
             texts (Optional[List[str]]): List of texts to annotate.
             labels (Optional[List[str]]): List of labels to choose from.
-            fn (Optional[Union["Pipeline", callable]]): Prediction function to apply to the text before annotating.
+            interactive (Optional[Union[bool, List[bool]]]): Whether to allow interactive gradio components.
+                If a list is provided, it should be of the same length as the number of inputs.
+                Defaults to True.
+            fn_model (Optional[Union["Pipeline", callable]]): Prediction function to apply to the text before annotating.
                 Expecting it takes a `str` and returns List[Tuple[str, str]] [("text","label")].
                 Defaults to None.
+            fn_next_input (Optional[callable]): Custom function to forward the next input in an active setting.
+                Expecting it takes and return a Tuple[`str`,List[Tuple[str, str]]].
+                Defaults to None.
+            csv_logger (Optional[bool]): Whether to log the annotations to a CSV file. Defaults to False.
             dataset_name (Optional[str]): Name of the dataset to save the annotations. Defaults to None.
             hf_token (Optional[str]): Hugging Face API token to save the annotations. Defaults to None.
             private (Optional[bool]): Whether to save the annotations as private. Defaults to False.
@@ -243,22 +295,35 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         cls.output_columns = ["text", "spans"]
         cls.input_data = {"text": texts or []}
         cls.output_data = {label: [] for label in cls.output_columns}
-
-        # Process function
         cls.start = len(cls.input_data["text"])
 
-        def next_input(_text, _spans):
-            if _text:
-                cls.output_data["text"].append(_text)
-                cls.output_data["spans"].append(_spans)
-            if cls.input_data["text"]:
-                cls._update_message(cls)
-                text = cls.input_data["text"].pop(_POP_INDEX)
-                spans = cls._convert_to_tokens(text) if fn is None else fn(text)
-                return text, spans
-            else:
-                cls._done_message()
-                return "", cls._convert_to_tokens(" ")
+        # Process function
+        if fn_next_input is not None:
+            if any([item is not None for item in [texts, fn_model]]):
+                raise ValueError(_NEXT_INPUT_FUNCTION_MESSAGE)
+            next_input = wrap_fn_next_input(
+                fn_next_input, cls.output_data, cls.output_columns
+            )
+        else:
+
+            def next_input(
+                _text: str, _spans: List[Tuple[str, str]]
+            ) -> Tuple[str, List[Tuple[str, str]]]:
+                if _text:
+                    cls.output_data["text"].append(_text)
+                    cls.output_data["spans"].append(_spans)
+                if cls.input_data["text"]:
+                    cls._update_message(cls)
+                    text = cls.input_data["text"].pop(_POP_INDEX)
+                    spans = (
+                        cls._convert_to_tokens(text)
+                        if fn_model is None
+                        else fn_model(text)
+                    )
+                    return text, spans
+                else:
+                    cls._done_message()
+                    return "", cls._convert_to_tokens(" ")
 
         # UI Config
         text, spans = next_input(None, None)
@@ -270,6 +335,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
                 **_HIGHLIGHT_TEXT_KWARGS,
             ),
         ]
+        inputs = cls._validate_and_assign_interactive_inputs(inputs, interactive)
         return cls(
             fn=next_input,
             inputs=inputs,
@@ -278,6 +344,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             clear_btn=_CLEAR_BTN,
             flagging_options=_SUBMIT_OPTIONS,
             allow_flagging="manual",
+            csv_logger=csv_logger,
             dataset_name=dataset_name,
             hf_token=hf_token,
             private=private,
@@ -288,7 +355,10 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         cls,
         questions: Optional[List[str]] = None,
         contexts: Optional[List[str]] = None,
-        fn: Optional[Union["Pipeline", callable]] = None,
+        interactive: Optional[Union[bool, List[bool]]] = True,
+        fn_model: Optional[Union["Pipeline", callable]] = None,
+        fn_next_input: Optional[callable] = None,
+        csv_logger: Optional[bool] = False,
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
@@ -299,9 +369,16 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         Parameters:
             questions (Optional[List[str]]): List of questions to annotate.
             contexts (Optional[List[str]]): List of contexts to annotate.
-            fn (Optional[Union["Pipeline", callable]]): Prediction function to apply to the context before annotating.
-                Expecting it takes a `str` and returns [{"label": str, "score": float}].
+            interactive (Optional[Union[bool, List[bool]]]): Whether to allow interactive gradio components.
+                If a list is provided, it should be of the same length as the number of inputs.
+                Defaults to True.
+            fn_model (Optional[Union["Pipeline", callable]]): Prediction function to apply to the text before annotating.
+                Expecting it takes a `str` and returns List[Tuple[str, str]] [("text","label")].
                 Defaults to None.
+            fn_next_input (Optional[callable]): Custom function to forward the next input in an active setting.
+                Expecting it takes and return a Tuple[`str`,List[Tuple[str, str]]].
+                Defaults to None.
+            csv_logger (Optional[bool]): Whether to log the annotations to a CSV file. Defaults to False.
             dataset_name (Optional[str]): Name of the dataset to save the annotations. Defaults to None.
             hf_token (Optional[str]): Hugging Face API token to save the annotations. Defaults to None.
             private (Optional[bool]): Whether to save the annotations as private. Defaults to False.
@@ -317,30 +394,40 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         cls.output_data = {col: [] for col in cls.output_columns}
         cls.start = len(cls.input_data["question"])
 
-        # Input validation
-        cls.start = len(cls.input_data["question"])
-        if cls.input_data["question"] and cls.input_data["context"]:
-            if len(cls.input_data["question"]) != len(cls.input_data["context"]):
-                raise ValueError("Questions and contexts must be of the same length.")
-
         # Process function
-        def next_input(_question, _context):
-            if _question:
-                cls.output_data["question"].append(_question)
-                cls.output_data["context"].append(_context)
-            if cls.input_data["question"]:
-                cls._update_message(cls)
-                question = cls.input_data["question"].pop(_POP_INDEX)
-                context = cls.input_data["context"].pop(_POP_INDEX)
-                context = (
-                    cls._convert_to_tokens(context)
-                    if fn is None
-                    else fn(question, context)
-                )
-                return question, context
-            else:
-                cls._done_message()
-                return None, []
+        if fn_next_input is not None:
+            if any([item is not None for item in [questions, contexts, fn_model]]):
+                raise ValueError(_NEXT_INPUT_FUNCTION_MESSAGE)
+            next_input = wrap_fn_next_input(
+                fn_next_input, cls.output_data, cls.output_columns
+            )
+        else:
+            # Input validation
+            if cls.input_data["question"] and cls.input_data["context"]:
+                if len(cls.input_data["question"]) != len(cls.input_data["context"]):
+                    raise ValueError(
+                        "Questions and contexts must be of the same length."
+                    )
+
+            def next_input(
+                _question: str, _context: Union[str, List[Tuple[str, str]]]
+            ) -> Tuple[str, Union[str, List[Tuple[str, str]]]]:
+                if _question:
+                    cls.output_data["question"].append(_question)
+                    cls.output_data["context"].append(_context)
+                if cls.input_data["question"]:
+                    cls._update_message(cls)
+                    question = cls.input_data["question"].pop(_POP_INDEX)
+                    context = cls.input_data["context"].pop(_POP_INDEX)
+                    context = (
+                        cls._convert_to_tokens(context)
+                        if fn_model is None
+                        else fn_model(question, context)
+                    )
+                    return question, context
+                else:
+                    cls._done_message()
+                    return None, []
 
         # UI Config
         question, context = next_input(None, None)
@@ -354,6 +441,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             adjacent_separator="",
         )
         inputs = [input_question, input_context]
+        cls._validate_and_assign_interactive_inputs(inputs, interactive)
         return cls(
             fn=next_input,
             inputs=inputs,
@@ -362,6 +450,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             submit_btn=_SUBMIT_BTN,
             clear_btn=_CLEAR_BTN,
             flagging_options=_SUBMIT_OPTIONS,
+            csv_logger=csv_logger,
             dataset_name=dataset_name,
             hf_token=hf_token,
             private=private,
@@ -372,7 +461,10 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         cls,
         prompts: Optional[List[str]] = None,
         completions: Optional[List[str]] = None,
-        fn: Optional[Union["Pipeline", callable]] = None,
+        interactive: Optional[Union[bool, List[bool]]] = True,
+        fn_model: Optional[Union["Pipeline", callable]] = None,
+        fn_next_input: Optional[callable] = None,
+        csv_logger: Optional[bool] = False,
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
@@ -383,9 +475,16 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         Parameters:
             prompts (Optional[List[str]]): List of prompts to annotate.
             completions (Optional[List[str]]): List of completions to annotate. Defaults to None.
-            fn (Optional[Union["Pipeline", callable]]): Prediction function to apply to the prompt before annotating.
+            interactive (Optional[Union[bool, List[bool]]]): Whether to allow interactive gradio components.
+                If a list is provided, it should be of the same length as the number of inputs.
+                Defaults to True.
+            fn_model (Optional[Union["Pipeline", callable]]): Prediction function to apply to the prompt before annotating.
                 Expecting it takes a `str` and returns `str`.
                 Defaults to None.
+            fn_next_input (Optional[callable]): Custom function to forward the next input in an active setting.
+                Expecting it takes and return a Tuple[`str`, `str`].
+                Defaults to None.
+            csv_logger (Optional[bool]): Whether to log the annotations to a CSV file. Defaults to False.
             dataset_name (Optional[str]): Name of the dataset to save the annotations. Defaults to None.
             hf_token (Optional[str]): Hugging Face API token to save the annotations. Defaults to None.
             private (Optional[bool]): Whether to save the annotations as private. Defaults to False.
@@ -401,36 +500,44 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         cls.output_data = {col: [] for col in cls.output_columns}
         cls.start = len(cls.input_data["prompt"])
 
-        # Input validation
-        if cls.input_data["prompt"] and cls.input_data["completion"]:
-            if len(cls.input_data["prompt"]) != len(cls.input_data["completion"]):
-                raise ValueError(
-                    "Source and target must be of the same length. You can add empty strings to match the lengths."
-                )
-
         # Process function
-        def next_input(_prompt, _completion):
-            if _prompt:
-                cls.output_data["prompt"].append(_prompt)
-                cls.output_data["completion"].append(_completion)
-            if cls.input_data["prompt"]:
-                cls._update_message(cls)
-                prompt = cls.input_data["prompt"].pop(_POP_INDEX)
-                completion = (
-                    cls.output_data["completion"].pop(_POP_INDEX)
-                    if fn is None
-                    else fn(prompt)
-                )
-                return prompt, completion
-            else:
-                cls._done_message()
-                return None, None
+        if fn_next_input is not None:
+            if any([item is not None for item in [prompts, completions, fn_model]]):
+                raise ValueError(_NEXT_INPUT_FUNCTION_MESSAGE)
+            next_input = wrap_fn_next_input(
+                fn_next_input, cls.output_data, cls.output_columns
+            )
+        else:
+            # Input validation
+            if cls.input_data["prompt"] and cls.input_data["completion"]:
+                if len(cls.input_data["prompt"]) != len(cls.input_data["completion"]):
+                    raise ValueError(
+                        "Source and target must be of the same length. You can add empty strings to match the lengths."
+                    )
+
+            def next_input(_prompt: str, _completion: str) -> Tuple[str, str]:
+                if _prompt:
+                    cls.output_data["prompt"].append(_prompt)
+                    cls.output_data["completion"].append(_completion)
+                if cls.input_data["prompt"]:
+                    cls._update_message(cls)
+                    prompt = cls.input_data["prompt"].pop(_POP_INDEX)
+                    completion = (
+                        cls.output_data["completion"].pop(_POP_INDEX)
+                        if fn_model is None
+                        else fn_model(prompt)
+                    )
+                    return prompt, completion
+                else:
+                    cls._done_message()
+                    return None, None
 
         # UI Config
         prompt, completion = next_input(None, None)
         input_prompt = gradio.Textbox(value=prompt, label="prompt")
         input_completion = gradio.Textbox(value=completion, label="completion")
         inputs = [input_prompt, input_completion]
+        inputs = cls._validate_and_assign_interactive_inputs(inputs, interactive)
         return cls(
             fn=next_input,
             inputs=inputs,
@@ -439,6 +546,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             submit_btn=_SUBMIT_BTN,
             clear_btn=_CLEAR_BTN,
             flagging_options=_SUBMIT_OPTIONS,
+            csv_logger=csv_logger,
             dataset_name=dataset_name,
             hf_token=hf_token,
             private=private,
@@ -450,7 +558,10 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         prompts: Optional[List[str]] = None,
         completions_a: Optional[List[str]] = None,
         completions_b: Optional[List[str]] = None,
-        fn: Optional[Union["Pipeline", callable]] = None,
+        interactive: Optional[Union[bool, List[bool]]] = True,
+        fn_model: Optional[Union["Pipeline", callable]] = None,
+        fn_next_input: Optional[callable] = None,
+        csv_logger: Optional[bool] = False,
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
@@ -462,9 +573,16 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             prompts (Optional[List[str]]): List of prompts to annotate.
             completions_a (Optional[List[str]]): List of completions to annotate for option A. Defaults to None.
             completions_b (Optional[List[str]]): List of completions to annotate for option B. Defaults to None.
-            fn (Optional[Union["Pipeline", callable]]): Prediction function to apply to the prompt before annotating.
+            interactive (Optional[Union[bool, List[bool]]]): Whether to allow interactive gradio components.
+                If a list is provided, it should be of the same length as the number of inputs.
+                Defaults to True.
+            fn_model (Optional[Union["Pipeline", callable]]): Prediction function to apply to the prompt before annotating.
                 Expecting it takes a `str` and returns `str`.
                 Defaults to None.
+            fn_next_input (Optional[callable]): Custom function to forward the next input in an active setting.
+                Expecting it takes and return a Tuple[`str`, `str`, `str`].
+                Defaults to None.
+            csv_logger (Optional[bool]): Whether to log the annotations to a CSV file. Defaults to False.
             dataset_name (Optional[str]): Name of the dataset to save the annotations. Defaults to None.
             hf_token (Optional[str]): Hugging Face API token to save the annotations. Defaults to None.
             private (Optional[bool]): Whether to save the annotations as private. Defaults to False.
@@ -484,43 +602,61 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         cls.output_data = {col: [] for col in cls.output_columns}
         cls.start = len(cls.input_data["prompt"])
 
-        # Input validation
-        (
-            cls.input_data["promt"],
-            cls.input_data["completion_a"],
-            cls.input_data["completion_b"],
-        ) = cls._validate_preference(
-            fn,
-            cls.input_data["promt"],
-            cls.input_data["completion_a"],
-            cls.input_data["completion_b"],
-        )
-
         # Process function
-        def next_input(_prompt, _completion_a, _completion_b):
-            if _prompt:
-                cls.output_data["prompt"].append(_prompt)
-                if cls.output_data["flag"][-1] == "👆 A is better":
-                    cls.output_data["chosen"].append(_completion_a)
-                    cls.output_data["rejected"].append(_completion_b)
+        if fn_next_input is not None:
+            if any(
+                [item is not None for item in [prompts, completions_a, completions_b]]
+            ):
+                raise ValueError(_NEXT_INPUT_FUNCTION_MESSAGE)
+            next_input = wrap_fn_next_input(
+                fn_next_input, cls.output_data, cls.output_columns
+            )
+        else:
+            # Input validation
+            (
+                cls.input_data["prompt"],
+                cls.input_data["completion_a"],
+                cls.input_data["completion_b"],
+            ) = cls._validate_preference(
+                fn_model,
+                cls.input_data["prompt"],
+                cls.input_data["completion_a"],
+                cls.input_data["completion_b"],
+            )
+
+            def next_input(
+                _prompt: str, _completion_a: str, _completion_b: str
+            ) -> Tuple[str, str, str]:
+                if _prompt:
+                    cls.output_data["prompt"].append(_prompt)
+                    if cls.output_data["flag"][-1] == "👆 A is better":
+                        cls.output_data["chosen"].append(_completion_a)
+                        cls.output_data["rejected"].append(_completion_b)
+                    elif cls.output_data["flag"][-1] == "👇 B is better":
+                        cls.output_data["chosen"].append(_completion_b)
+                        cls.output_data["rejected"].append(_completion_a)
+                    else:
+                        cls.output_data["chosen"].append("")
+                        cls.output_data["rejected"].append("")
+                if cls.input_data["prompt"]:
+                    cls._update_message(cls)
+                    prompt = cls.input_data["prompt"].pop(_POP_INDEX)
+                    completion_a = cls.input_data["completion_a"].pop(_POP_INDEX)
+                    completion_b = cls.input_data["completion_b"].pop(_POP_INDEX)
+                    completion_a = (
+                        completion_a
+                        if fn_model is None or completion_a != ""
+                        else fn_model(prompt)
+                    )
+                    completion_b = (
+                        completion_b
+                        if fn_model is None or completion_b != ""
+                        else fn_model(prompt)
+                    )
+                    return prompt, completion_a, completion_b
                 else:
-                    cls.output_data["chosen"].append(_completion_b)
-                    cls.output_data["rejected"].append(_completion_a)
-            if cls.input_data["prompt"]:
-                cls._update_message(cls)
-                prompt = cls.input_data["prompt"].pop(_POP_INDEX)
-                completion_a = cls.input_data["completion_a"].pop(_POP_INDEX)
-                completion_b = cls.input_data["completion_b"].pop(_POP_INDEX)
-                completion_a = (
-                    completion_a if fn is None or completion_a != "" else fn(prompt)
-                )
-                completion_b = (
-                    completion_b if fn is None or completion_b != "" else fn(prompt)
-                )
-                return prompt, completion_a, completion_b
-            else:
-                cls._done_message()
-                return None, None, None
+                    cls._done_message()
+                    return None, None, None
 
         # UI Config
         prompt, completion_a, completion_b = next_input(None, None, None)
@@ -528,6 +664,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         input_completion_a = gradio.Textbox(value=completion_a, label="👆 completion A")
         input_completion_b = gradio.Textbox(value=completion_b, label="👇 completion B")
         inputs = [input_prompt, input_completion_a, input_completion_b]
+        inputs = cls._validate_and_assign_interactive_inputs(inputs, interactive)
         return cls(
             fn=next_input,
             inputs=inputs,
@@ -536,6 +673,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             submit_btn=_SUBMIT_BTN,
             flagging_options=_PREFERENCE_OPTIONS,
             clear_btn=_CLEAR_BTN,
+            csv_logger=csv_logger,
             dataset_name=dataset_name,
             hf_token=hf_token,
             private=private,
@@ -548,7 +686,10 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         suggestions: Optional[List[str]] = None,
         labels: Optional[List[str]] = None,
         multi_label: Optional[bool] = False,
-        fn: Optional[Union["Pipeline", callable]] = None,
+        interactive: Optional[Union[bool, List[bool]]] = True,
+        fn_model: Optional[Union["Pipeline", callable]] = None,
+        fn_next_input: Optional[callable] = None,
+        csv_logger: Optional[bool] = False,
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
@@ -561,9 +702,16 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             suggestions (Optional[List[str]]): List of suggestions to correct for. Defaults to None.
             labels (Optional[List[str]]): List of labels to choose from.
             multi_label (Optional[bool]): Whether to allow multiple labels. Defaults to False.
-            fn (Optional[Union["Pipeline", callable]]): Prediction function to apply to the chat messages before annotating.
+            interactive (Optional[Union[bool, List[bool]]]): Whether to allow interactive gradio components.
+                If a list is provided, it should be of the same length as the number of inputs.
+                Defaults to True.
+            fn_model (Optional[Union["Pipeline", callable]]): Prediction function to apply to the chat messages before annotating.
                 Expecting it takes a `str` and returns [{"label": str, "score": float}].
                 Defaults to None.
+            fn_next_input (Optional[callable]): Custom function to forward the next input in an active setting.
+                Expecting it takes and return a Tuple[`List[gradio.ChatMessage]`, List[str]].
+                Defaults to None.
+            csv_logger (Optional[bool]): Whether to log the annotations to a CSV file. Defaults to False.
             dataset_name (Optional[str]): Name of the dataset to save the annotations. Defaults to None.
             hf_token (Optional[str]): Hugging Face API token to save the annotations. Defaults to None.
             private (Optional[bool]): Whether to save the annotations as private. Defaults to False.
@@ -584,38 +732,47 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         cls.output_data = {col: [] for col in cls.output_columns}
         cls.start = len(cls.input_data["prompt"])
 
-        # Input validation
-        cls.input_data["prompt"] = cls._convert_to_chat_message(
-            cls.input_data["prompt"]
-        )
-
         # Process function
-        def next_input(_prompt, _label):
-            if _prompt:
-                cls.output_data["prompt"].append(_prompt)
-                cls.output_data["label"].append(_label)
-            if cls.input_data["prompt"]:
-                cls._update_message(cls)
-                prompt = cls.input_data["prompt"].pop(_POP_INDEX)
-                label = ""
-                if "suggestion" in cls.input_data:
-                    label = cls.input_data["suggestion"].pop(_POP_INDEX)
-                if fn is not None and not label:
-                    label = fn("\n".join([msg.content for msg in prompt]))
-                    if cls.task == "chat-classification-multi-label":
-                        label = [
-                            str(lab["label"]) for lab in label if lab["score"] > 0.5
-                        ]
-                        return (prompt, label)
-                    return (prompt, str(label[0]["label"]))
+        if fn_next_input is not None:
+            if any([item is not None for item in [prompts, suggestions, fn_model]]):
+                raise ValueError(_NEXT_INPUT_FUNCTION_MESSAGE)
+            next_input = wrap_fn_next_input(
+                fn_next_input, cls.output_data, cls.output_columns
+            )
+        else:
+            # Input validation
+            cls.input_data["prompt"] = cls._convert_to_chat_message(
+                cls.input_data["prompt"]
+            )
+
+            def next_input(
+                _prompt: List[gradio.ChatMessage], _label: Union[str, List[str]]
+            ) -> Tuple[List[gradio.ChatMessage], Union[str, List[str]]]:
+                if _prompt:
+                    cls.output_data["prompt"].append(_prompt)
+                    cls.output_data["label"].append(_label)
+                if cls.input_data["prompt"]:
+                    cls._update_message(cls)
+                    prompt = cls.input_data["prompt"].pop(_POP_INDEX)
+                    label = ""
+                    if cls.input_data["suggestion"]:
+                        label = cls.input_data["suggestion"].pop(_POP_INDEX)
+                    if fn_model is not None and not label:
+                        label = fn_model("\n".join([msg.content for msg in prompt]))
+                        if cls.task == "chat-classification-multi-label":
+                            label = [
+                                str(lab["label"]) for lab in label if lab["score"] > 0.5
+                            ]
+                            return (prompt, label)
+                        return (prompt, str(label[0]["label"]))
+                    else:
+                        if cls.task == "chat-classification-multi-label":
+                            label = [str(lab) for lab in label]
+                            return (prompt, label)
+                        return (prompt, str(label))
                 else:
-                    if cls.task == "chat-classification-multi-label":
-                        label = [str(lab) for lab in label]
-                        return (prompt, label)
-                    return (prompt, str(label))
-            else:
-                cls._done_message()
-                return (None, [])
+                    cls._done_message()
+                    return (None, [])
 
         # UI Config
         prompt, label = next_input(None, None)
@@ -632,6 +789,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             ),
             check_box_group,
         ]
+        inputs = cls._validate_and_assign_interactive_inputs(inputs, interactive)
         return cls(
             fn=next_input,
             inputs=inputs,
@@ -640,6 +798,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             allow_flagging="manual",
             submit_btn=_SUBMIT_BTN,
             clear_btn=_CLEAR_BTN,
+            csv_logger=csv_logger,
             dataset_name=dataset_name,
             hf_token=hf_token,
             private=private,
@@ -652,7 +811,10 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             Union[List[List[Dict[str, str]]], List[List[gradio.ChatMessage]]]
         ] = None,
         completions: Optional[List[str]] = None,
-        fn: Optional[Union["Pipeline", callable]] = None,
+        interactive: Optional[Union[bool, List[bool]]] = True,
+        fn_model: Optional[Union["Pipeline", callable]] = None,
+        fn_next_input: Optional[callable] = None,
+        csv_logger: Optional[bool] = False,
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
@@ -663,9 +825,16 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         Parameters:
             prompts (Optional[Union[List[List[Dict[str, str]]], List[List[gradio.ChatMessage]]]): List of chat messages to annotate.
             completions (Optional[List[str]]): List of completions to annotate. Defaults to None.
-            fn (Optional[Union["Pipeline", callable]]): Prediction function to apply to the chat messages before annotating.
+            interactive (Optional[Union[bool, List[bool]]]): Whether to allow interactive gradio components.
+                If a list is provided, it should be of the same length as the number of inputs.
+                Defaults to True.
+            fn_model (Optional[Union["Pipeline", callable]]): Prediction function to apply to the chat messages before annotating.
                 Expecting it takes a `List[gradio.ChatMessage]` and returns `str`.
                 Defaults to None.
+            fn_next_input (Optional[callable]): Custom function to forward the next input in an active setting.
+                Expecting it takes and return a Tuple[`List[gradio.ChatMessage]`, `str`].
+                Defaults to None.
+            csv_logger (Optional[bool]): Whether to log the annotations to a CSV file. Defaults to False.
             dataset_name (Optional[str]): Name of the dataset to save the annotations. Defaults to None.
             hf_token (Optional[str]): Hugging Face API token to save the annotations. Defaults to None.
             private (Optional[bool]): Whether to save the annotations as private. Defaults to False.
@@ -681,37 +850,45 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         cls.output_data = {col: [] for col in cls.output_columns}
         cls.start = len(cls.input_data["prompt"])
 
-        # Input validation
-        if cls.input_data["prompt"] and cls.input_data["completion"]:
-            if len(cls.input_data["prompt"]) != len(cls.input_data["completion"]):
-                raise ValueError(
-                    "Source and target must be of the same length. You can add empty strings to match the lengths."
-                )
-        cls.input_data["prompt"] = cls._convert_to_chat_message(
-            cls.input_data["prompt"]
-        )
-
         # Process function
-        def next_input(_prompt, _completion):
-            def _last_is_user(_prompt):
-                return _prompt[-1].role == "user"
+        if fn_next_input is not None:
+            if any([item is not None for item in [prompts, completions, fn_model]]):
+                raise ValueError(_NEXT_INPUT_FUNCTION_MESSAGE)
+            next_input = wrap_fn_next_input(
+                fn_next_input, cls.output_data, cls.output_columns
+            )
+        else:
+            # Input validation
+            if cls.input_data["prompt"] and cls.input_data["completion"]:
+                if len(cls.input_data["prompt"]) != len(cls.input_data["completion"]):
+                    raise ValueError(
+                        "Source and target must be of the same length. You can add empty strings to match the lengths."
+                    )
+            cls.input_data["prompt"] = cls._convert_to_chat_message(
+                cls.input_data["prompt"]
+            )
 
-            if _prompt:
-                cls.output_data["prompt"].append(_prompt)
-                cls.output_data["completion"].append(_completion)
-            if cls.input_data["prompt"]:
-                cls._update_message(cls)
-                prompt = cls.input_data["prompt"].pop(_POP_INDEX)
-                completion = cls.input_data["completion"].pop(_POP_INDEX)
-                completion = (
-                    completion
-                    if (fn is None or completion != "") and _last_is_user(prompt)
-                    else fn(prompt)
-                )
-                return prompt, completion
-            else:
-                cls._done_message()
-                return [], None
+            def next_input(_prompt: str, _completion: str) -> Tuple[str, str]:
+                def _last_is_user(_prompt):
+                    return _prompt[-1].role == "user"
+
+                if _prompt:
+                    cls.output_data["prompt"].append(_prompt)
+                    cls.output_data["completion"].append(_completion)
+                if cls.input_data["prompt"]:
+                    cls._update_message(cls)
+                    prompt = cls.input_data["prompt"].pop(_POP_INDEX)
+                    completion = cls.input_data["completion"].pop(_POP_INDEX)
+                    completion = (
+                        completion
+                        if (fn_model is None or completion != "")
+                        and _last_is_user(prompt)
+                        else fn_model(prompt)
+                    )
+                    return prompt, completion
+                else:
+                    cls._done_message()
+                    return [], None
 
         # UI Config
         prompt, completion = next_input(None, None)
@@ -721,6 +898,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         )
         input_completion = gradio.Textbox(value=completion, label="completion")
         inputs = [input_prompt, input_completion]
+        inputs = cls._validate_and_assign_interactive_inputs(inputs, interactive)
         return cls(
             fn=next_input,
             inputs=inputs,
@@ -729,6 +907,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             submit_btn=_SUBMIT_BTN,
             clear_btn=_CLEAR_BTN,
             flagging_options=_SUBMIT_OPTIONS,
+            csv_logger=csv_logger,
             dataset_name=dataset_name,
             hf_token=hf_token,
             private=private,
@@ -742,7 +921,10 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         ] = None,
         completions_a: Optional[List[str]] = None,
         completions_b: Optional[List[str]] = None,
-        fn: Optional[Union["Pipeline", callable]] = None,
+        interactive: Optional[Union[bool, List[bool]]] = True,
+        fn_model: Optional[Union["Pipeline", callable]] = None,
+        fn_next_input: Optional[callable] = None,
+        csv_logger: Optional[bool] = False,
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
@@ -754,9 +936,16 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             prompts (Optional[Union[List[List[Dict[str, str]]], List[List[gradio.ChatMessage]]]): List of chat messages to annotate.
             completions_a (Optional[List[str]]): List of completions to annotate for option A.
             completions_b (Optional[List[str]]): List of completions to annotate for option B.
-            fn (Optional[Union["Pipeline", callable]]): Prediction function to apply to the chat messages before annotating.
+            interactive (Optional[Union[bool, List[bool]]]): Whether to allow interactive gradio components.
+                If a list is provided, it should be of the same length as the number of inputs.
+                Defaults to True.
+            fn_model (Optional[Union["Pipeline", callable]]): Prediction function to apply to the chat messages before annotating.
                 Expecting it takes a `List[gradio.ChatMessage]` and returns `str`.
                 Defaults to None.
+            fn_next_input (Optional[callable]): Custom function to forward the next input in an active setting.
+                Expecting it takes and return a Tuple[`List[gradio.ChatMessage]`, `str`, `str`].
+                Defaults to None.
+            csv_logger (Optional[bool]): Whether to log the annotations to a CSV file. Defaults to False.
             dataset_name (Optional[str]): Name of the dataset to save the annotations. Defaults to None.
             hf_token (Optional[str]): Hugging Face API token to save the annotations. Defaults to None.
             private (Optional[bool]): Whether to save the annotations as private. Defaults to False.
@@ -776,46 +965,67 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         cls.output_data = {col: [] for col in cls.output_columns}
         cls.start = len(cls.input_data["prompt"])
 
-        # Input validation
-        (
-            cls.input_data["promt"],
-            cls.input_data["completion_a"],
-            cls.input_data["completion_b"],
-        ) = cls._validate_preference(
-            fn,
-            cls.input_data["promt"],
-            cls.input_data["completion_a"],
-            cls.input_data["completion_b"],
-        )
-        cls.input_data["prompt"] = cls._convert_to_chat_message(
-            cls.input_data["prompt"]
-        )
-
         # Process function
-        def next_input(_prompt, _completion_a, _completion_b):
-            if _prompt:
-                cls.output_data["prompt"].append(_prompt)
-                if cls.output_data["flag"][-1] == "👆 A is better":
-                    cls.output_data["chosen"].append(_completion_a)
-                    cls.output_data["rejected"].append(_completion_b)
+        if fn_next_input is not None:
+            if any(
+                [item is not None for item in [prompts, completions_a, completions_b]]
+            ):
+                raise ValueError(_NEXT_INPUT_FUNCTION_MESSAGE)
+            next_input = wrap_fn_next_input(
+                fn_next_input, cls.output_data, cls.output_columns
+            )
+        else:
+            # Input validation
+            (
+                cls.input_data["prompt"],
+                cls.input_data["completion_a"],
+                cls.input_data["completion_b"],
+            ) = cls._validate_preference(
+                fn_model,
+                cls.input_data["prompt"],
+                cls.input_data["completion_a"],
+                cls.input_data["completion_b"],
+            )
+            cls.input_data["prompt"] = cls._convert_to_chat_message(
+                cls.input_data["prompt"]
+            )
+
+            def next_input(
+                _prompt: List[gradio.ChatMessage],
+                _completion_a: str,
+                _completion_b: str,
+            ) -> Tuple[List[gradio.ChatMessage], str, str]:
+                if _prompt:
+                    print(cls.output_data)
+                    cls.output_data["prompt"].append(_prompt)
+                    if cls.output_data["flag"][-1] == "👆 A is better":
+                        cls.output_data["chosen"].append(_completion_a)
+                        cls.output_data["rejected"].append(_completion_b)
+                    elif cls.output_data["flag"][-1] == "👇 B is better":
+                        cls.output_data["chosen"].append(_completion_b)
+                        cls.output_data["rejected"].append(_completion_a)
+                    else:
+                        cls.output_data["chosen"].append("")
+                        cls.output_data["rejected"].append("")
+                if cls.input_data["prompt"]:
+                    cls._update_message(cls)
+                    prompt = cls.input_data["prompt"].pop(_POP_INDEX)
+                    completion_a = cls.input_data["completion_a"].pop(_POP_INDEX)
+                    completion_b = cls.input_data["completion_b"].pop(_POP_INDEX)
+                    completion_a = (
+                        completion_a
+                        if fn_model is None or completion_a != ""
+                        else fn_model(prompt)
+                    )
+                    completion_b = (
+                        completion_b
+                        if fn_model is None or completion_b != ""
+                        else fn_model(prompt)
+                    )
+                    return prompt, completion_a, completion_b
                 else:
-                    cls.output_data["chosen"].append(_completion_b)
-                    cls.output_data["rejected"].append(_completion_a)
-            if cls.input_data["prompt"]:
-                cls._update_message(cls)
-                prompt = cls.input_data["prompt"].pop(_POP_INDEX)
-                completion_a = cls.input_data["completion_a"].pop(_POP_INDEX)
-                completion_b = cls.input_data["completion_b"].pop(_POP_INDEX)
-                completion_a = (
-                    completion_a if fn is None or completion_a != "" else fn(prompt)
-                )
-                completion_b = (
-                    completion_b if fn is None or completion_b != "" else fn(prompt)
-                )
-                return prompt, completion_a, completion_b
-            else:
-                cls._done_message()
-                return [], None, None
+                    cls._done_message()
+                    return [], None, None
 
         # UI Config
         prompt, completion_a, completion_b = next_input(None, None, None)
@@ -823,6 +1033,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         input_completion_a = gradio.Textbox(value=completion_a, label="👆 completion A")
         input_completion_b = gradio.Textbox(value=completion_b, label="👇 completion B")
         inputs = [input_prompt, input_completion_a, input_completion_b]
+        inputs = cls._validate_and_assign_interactive_inputs(inputs, interactive)
         return cls(
             fn=next_input,
             inputs=inputs,
@@ -831,6 +1042,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             submit_btn=_SUBMIT_BTN,
             flagging_options=_PREFERENCE_OPTIONS,
             clear_btn=_CLEAR_BTN,
+            csv_logger=csv_logger,
             dataset_name=dataset_name,
             hf_token=hf_token,
             private=private,
@@ -843,7 +1055,10 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         suggestions: Optional[List[str]] = None,
         labels: Optional[List[str]] = None,
         multi_label: Optional[bool] = False,
-        fn: Optional[Union["Pipeline", callable]] = None,
+        interactive: Optional[Union[bool, List[bool]]] = True,
+        fn_model: Optional[Union["Pipeline", callable]] = None,
+        fn_next_input: Optional[callable] = None,
+        csv_logger: Optional[bool] = False,
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
@@ -853,10 +1068,19 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
 
         Parameters:
             images (List[Union[np.array, PIL.Image.Image, str]]): List of images to annotate.
+            suggestions (Optional[List[str]]): List of suggestions to correct for. Defaults to None.
             labels (List[str]): List of labels to choose from.
             multi_label (Optional[bool]): Whether to allow multiple labels. Defaults to False.
-            fn (Optional[Union["Pipeline", callable]]): Prediction function to apply to the image before annotating.
+            interactive (Optional[Union[bool, List[bool]]]): Whether to allow interactive gradio components.
+                If a list is provided, it should be of the same length as the number of inputs.
+                Defaults to True.
+            fn_model (Optional[Union["Pipeline", callable]]): Prediction function to apply to the image before annotating.
                 it should take an `np.array` or `PIL.Image.Image` and return `Union[str, List[Dict[str, Union[str, float]]]]`.
+                Defaults to None.
+            fn_next_input (Optional[callable]): Custom function to forward the next input in an active setting.
+                Expecting it takes and return a Tuple[PIL.Image.Image, Union[str, List[str]]].
+                Defaults to None.
+            csv_logger (Optional[bool]): Whether to log the annotations to a CSV file. Defaults to False.
             dataset_name (Optional[str]): Name of the dataset to save the annotations. Defaults to None.
             hf_token (Optional[str]): Hugging Face API token to save the annotations. Defaults to None.
             private (Optional[bool]): Whether to save the annotations as private. Defaults to False.
@@ -878,32 +1102,42 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         cls.start = len(cls.input_data["image"])
 
         # Process function
-        def next_input(_image, _label):
-            if _image is not None:
-                _image = cls.process_image_input(cls, _image)
-                cls.output_data["image"].append(_image)
-                cls.output_data["label"].append(_label)
-            if cls.input_data["image"]:
-                cls._update_message(cls)
-                image = cls.input_data["image"].pop(_POP_INDEX)
-                label = ""
-                if "suggestion" in cls.input_data:
-                    label = cls.input_data["suggestion"].pop(_POP_INDEX)
-                if fn is not None and not label:
-                    label = fn(image)
-                    if cls.task == "image-classification-multi-label":
-                        label = [
-                            str(lab["label"]) for lab in label if lab["score"] > 0.5
-                        ]
-                        return (image, label)
-                    return (image, str(label[0]["label"]))
+        if fn_next_input is not None:
+            if any([item is not None for item in [images, suggestions, fn_model]]):
+                raise ValueError(_NEXT_INPUT_FUNCTION_MESSAGE)
+            next_input = wrap_fn_next_input(
+                fn_next_input, cls.output_data, cls.output_columns
+            )
+        else:
+
+            def next_input(
+                _image: PIL.Image.Image, _label: str
+            ) -> Tuple[PIL.Image.Image, str]:
+                if _image is not None:
+                    _image = cls.process_image_input(cls, _image)
+                    cls.output_data["image"].append(_image)
+                    cls.output_data["label"].append(_label)
+                if cls.input_data["image"]:
+                    cls._update_message(cls)
+                    image = cls.input_data["image"].pop(_POP_INDEX)
+                    label = ""
+                    if cls.input_data["suggestion"]:
+                        label = cls.input_data["suggestion"].pop(_POP_INDEX)
+                    if fn_model is not None and not label:
+                        label = fn_model(image)
+                        if cls.task == "image-classification-multi-label":
+                            label = [
+                                str(lab["label"]) for lab in label if lab["score"] > 0.5
+                            ]
+                            return (image, label)
+                        return (image, str(label[0]["label"]))
+                    else:
+                        if cls.task == "image-classification-multi-label":
+                            label = [str(lab) for lab in label]
+                        return (image, str(label))
                 else:
-                    if cls.task == "image-classification-multi-label":
-                        label = [str(lab) for lab in label]
-                    return (image, str(label))
-            else:
-                cls._done_message()
-                return (None, [])
+                    cls._done_message()
+                    return (None, [])
 
         # UI Config
         image, label = next_input(None, None)
@@ -915,6 +1149,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         else:
             check_box_group = gradio.Radio(cls.labels, value=label, label="label")
         inputs = [inputs, check_box_group]
+        inputs = cls._validate_and_assign_interactive_inputs(inputs, interactive)
         return cls(
             fn=next_input,
             inputs=inputs,
@@ -923,6 +1158,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             allow_flagging="manual",
             submit_btn=_SUBMIT_BTN,
             clear_btn=_CLEAR_BTN,
+            csv_logger=csv_logger,
             dataset_name=dataset_name,
             hf_token=hf_token,
             private=private,
@@ -933,7 +1169,10 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         cls,
         prompts: Optional[List[str]] = None,
         completions: Optional[List[Union[np.array, PIL.Image.Image, str]]] = None,
-        fn: Optional[Union["Pipeline", callable]] = None,
+        interactive: Optional[Union[bool, List[bool]]] = True,
+        fn_model: Optional[Union["Pipeline", callable]] = None,
+        fn_next_input: Optional[callable] = None,
+        csv_logger: Optional[bool] = False,
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
@@ -944,8 +1183,16 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         Parameters:
             prompts (Optional[List[str]]): List of prompts to annotate.
             completions (Optional[List[Union[np.array, PIL.Image.Image, str]]]): List of completions to annotate. Defaults to None.
-            fn (Optional[Union["Pipeline", callable]]): Prediction function to apply to the prompt to generate an image.
+            interactive (Optional[Union[bool, List[bool]]]): Whether to allow interactive gradio components.
+                If a list is provided, it should be of the same length as the number of inputs.
+                Defaults to True.
+            fn_model (Optional[Union["Pipeline", callable]]): Prediction function to apply to the prompt to generate an image.
                 it takes a `str` and returns `Union[np.array, PIL.Image.Image, str]`.
+                Defaults to None.
+            fn_next_input (Optional[callable]): Custom function to forward the next input in an active setting.
+                Expecting it takes and return a Tuple[`str`, PIL.Image.Image]`.
+                Defaults to None.
+            csv_logger (Optional[bool]): Whether to log the annotations to a CSV file. Defaults to False.
             dataset_name (Optional[str]): Name of the dataset to save the annotations. Defaults to None.
             hf_token (Optional[str]): Hugging Face API token to save the annotations. Defaults to None.
             private (Optional[bool]): Whether to save the annotations as private. Defaults to False.
@@ -961,28 +1208,42 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         cls.output_data = {col: [] for col in cls.output_columns}
         cls.start: int = len(cls.input_data["prompt"])
 
+        # Process function
+        if fn_next_input is not None:
+            if any([item is not None for item in [prompts, completions, fn_model]]):
+                raise ValueError(_NEXT_INPUT_FUNCTION_MESSAGE)
+            next_input = wrap_fn_next_input(
+                fn_next_input, cls.output_data, cls.output_columns
+            )
+
         # Input validation
         if cls.input_data["prompt"] and cls.input_data["completion"]:
             if len(cls.input_data["prompt"]) != len(cls.input_data["completion"]):
                 raise ValueError(
                     "Source and target must be of the same length. You can add empty strings to match the lengths."
                 )
+        else:
 
-        # Process function
-        def next_input(_prompt, _completion):
-            if _prompt:
-                _completion = cls.process_image_input(cls, _completion)
-                cls.output_data["prompt"].append(_prompt)
-                cls.output_data["completion"].append(_completion)
-            if cls.input_data["prompt"]:
-                cls._update_message(cls)
-                prompt = cls.input_data["prompt"].pop(_POP_INDEX)
-                completion = cls.input_data["completion"].pop(_POP_INDEX)
-                completion = completion if fn is None or completion else fn(prompt)
-                return prompt, completion
-            else:
-                cls._done_message()
-                return None, None
+            def next_input(
+                _prompt: str, _completion: PIL.Image.Image
+            ) -> Tuple[str, PIL.Image.Image]:
+                if _prompt:
+                    _completion = cls.process_image_input(cls, _completion)
+                    cls.output_data["prompt"].append(_prompt)
+                    cls.output_data["completion"].append(_completion)
+                if cls.input_data["prompt"]:
+                    cls._update_message(cls)
+                    prompt = cls.input_data["prompt"].pop(_POP_INDEX)
+                    completion = cls.input_data["completion"].pop(_POP_INDEX)
+                    completion = (
+                        completion
+                        if fn_model is None or completion
+                        else fn_model(prompt)
+                    )
+                    return prompt, completion
+                else:
+                    cls._done_message()
+                    return None, None
 
         # UI Config
         prompt, completion = next_input(None, None)
@@ -991,6 +1252,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             value=completion, label="completion", height=400
         )
         inputs = [input_prompt, input_completion]
+        inputs = cls._validate_and_assign_interactive_inputs(inputs, interactive)
         return cls(
             fn=next_input,
             inputs=inputs,
@@ -999,6 +1261,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             submit_btn=_SUBMIT_BTN,
             clear_btn=_CLEAR_BTN,
             flagging_options=_SUBMIT_OPTIONS,
+            csv_logger=csv_logger,
             dataset_name=dataset_name,
             hf_token=hf_token,
             private=private,
@@ -1009,7 +1272,10 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         cls,
         images: Optional[List[Union[np.array, PIL.Image.Image, str]]] = None,
         descriptions: Optional[List[str]] = None,
-        fn: Optional[Union["Pipeline", callable]] = None,
+        interactive: Optional[Union[bool, List[bool]]] = True,
+        fn_model: Optional[Union["Pipeline", callable]] = None,
+        fn_next_input: Optional[callable] = None,
+        csv_logger: Optional[bool] = False,
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
@@ -1020,8 +1286,16 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         Parameters:
             images (List[Union[np.array, PIL.Image.Image, str]]): List of images to annotate.
             descriptions (Optional[List[str]]): List of descriptions to annotate. Defaults to None.
-            fn (Optional[Union["Pipeline", callable]]): Prediction function to apply to the image before annotating.
+            interactive (Optional[Union[bool, List[bool]]]): Whether to allow interactive gradio components.
+                If a list is provided, it should be of the same length as the number of inputs.
+                Defaults to True.
+            fn_model (Optional[Union["Pipeline", callable]]): Prediction function to apply to the image before annotating.
                 it should take an `np.array` or `PIL.Image.Image` and return `str`.
+                Defaults to None.
+            fn_next_input (Optional[callable]): Custom function to forward the next input in an active setting.
+                Expecting it takes and return a Tuple[PIL.Image.Image, str].
+                Defaults to None.
+            csv_logger (Optional[bool]): Whether to log the annotations to a CSV file. Defaults to False.
             dataset_name (Optional[str]): Name of the dataset to save the annotations. Defaults to None.
             hf_token (Optional[str]): Hugging Face API token to save the annotations. Defaults to None.
             private (Optional[bool]): Whether to save the annotations as private. Defaults to False.
@@ -1037,34 +1311,48 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         cls.output_data = {col: [] for col in cls.output_columns}
         cls.start = len(cls.input_data["image"])
 
-        # Input validation
-        if cls.input_data["prompt"] and cls.input_data["completion"]:
-            if len(cls.input_data["prompt"]) != len(cls.input_data["completion"]):
-                raise ValueError(
-                    "Source and target must be of the same length. You can add empty strings to match the lengths."
-                )
-
         # Process function
-        def next_input(_image, _description):
-            if _image is not None:
-                _image = cls.process_image_input(cls, _image)
-                cls.output_data["image"].append(_image)
-                cls.output_data["description"].append(_description)
-            if cls.input_data["image"]:
-                cls._update_message(cls)
-                image = cls.input_data["image"].pop(_POP_INDEX)
-                description = cls.input_data["description"].pop(_POP_INDEX)
-                description = description if fn is None or description else fn(image)
-                return image, description
-            else:
-                cls._done_message()
-                return None, ""
+        if fn_next_input is not None:
+            if any([item is not None for item in [images, descriptions, fn_model]]):
+                raise ValueError(_NEXT_INPUT_FUNCTION_MESSAGE)
+            next_input = wrap_fn_next_input(
+                fn_next_input, cls.output_data, cls.output_columns
+            )
+        else:
+            # Input validation
+            if cls.input_data["prompt"] and cls.input_data["completion"]:
+                if len(cls.input_data["prompt"]) != len(cls.input_data["completion"]):
+                    raise ValueError(
+                        "Source and target must be of the same length. You can add empty strings to match the lengths."
+                    )
+
+            def next_input(
+                _image: PIL.Image.Image, _description: str
+            ) -> Tuple[PIL.Image.Image, str]:
+                if _image is not None:
+                    _image = cls.process_image_input(cls, _image)
+                    cls.output_data["image"].append(_image)
+                    cls.output_data["description"].append(_description)
+                if cls.input_data["image"]:
+                    cls._update_message(cls)
+                    image = cls.input_data["image"].pop(_POP_INDEX)
+                    description = cls.input_data["description"].pop(_POP_INDEX)
+                    description = (
+                        description
+                        if fn_model is None or description
+                        else fn_model(image)
+                    )
+                    return image, description
+                else:
+                    cls._done_message()
+                    return None, ""
 
         # UI Config
         image, description = next_input(None, None)
         inputs = gradio.Image(value=image, label="image", height=400)
         outputs = gradio.Textbox(value=description, label="text")
         inputs = [inputs, outputs]
+        inputs = cls._validate_and_assign_interactive_inputs(inputs, interactive)
         return cls(
             fn=next_input,
             inputs=inputs,
@@ -1073,6 +1361,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             allow_flagging="manual",
             submit_btn=_SUBMIT_BTN,
             clear_btn=_CLEAR_BTN,
+            csv_logger=csv_logger,
             dataset_name=dataset_name,
             hf_token=hf_token,
             private=private,
@@ -1084,7 +1373,10 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         prompts: Optional[List[str]] = None,
         completions_a: Optional[List[Union[np.array, PIL.Image.Image, str]]] = None,
         completions_b: Optional[List[Union[np.array, PIL.Image.Image, str]]] = None,
-        fn: Optional[Union["Pipeline", callable]] = None,
+        interactive: Optional[Union[bool, List[bool]]] = True,
+        fn_model: Optional[Union["Pipeline", callable]] = None,
+        fn_next_input: Optional[callable] = None,
+        csv_logger: Optional[bool] = False,
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
@@ -1096,7 +1388,16 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             prompts (List[str]): List of prompts to annotate.
             completions_a (List[Union[np.array, PIL.Image.Image, str]]): List of completions to annotate for option A.
             completions_b (List[Union[np.array, PIL.Image.Image, str]]): List of completions to annotate for option B.
-            fn (Optional[Union["Pipeline", callable]]): NotImplementedError. Defaults to None.
+            interactive (Optional[Union[bool, List[bool]]]): Whether to allow interactive gradio components.
+                If a list is provided, it should be of the same length as the number of inputs.
+                Defaults to True.
+            fn_model (Optional[Union["Pipeline", callable]]): Prediction function to apply to the prompt to generate an image.
+                it should take a `str` and return `PIL.Image.Image`.
+                Defaults to None.
+            fn_next_input (Optional[callable]): Custom function to forward the next input in an active setting.
+                Expecting it takes and return a Tuple[`str`, PIL.Image.Image, PIL.Image.Image].
+                Defaults to None.
+            csv_logger (Optional[bool]): Whether to log the annotations to a CSV file. Defaults to False.
             dataset_name (Optional[str]): Name of the dataset to save the annotations. Defaults to None.
             hf_token (Optional[str]): Hugging Face API token to save the annotations. Defaults to None.
             private (Optional[bool]): Whether to save the annotations as private. Defaults to False.
@@ -1113,46 +1414,68 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         cls.output_data = {col: [] for col in cls.output_columns}
         cls.start = len(cls.input_data["prompt"])
 
-        # Input validation
-        if (
-            cls.input_data["prompt"]
-            and cls.input_data["completion_a"]
-            and cls.input_data["completion_b"]
-        ):
-            if (
-                len(cls.input_data["prompt"])
-                != len(cls.input_data["completion_a"])
-                != len(cls.input_data["completion_b"])
-            ):
-                raise ValueError("Prompts and completions must be of the same length")
-
         # Process function
-        def next_input(_prompt, _completion_a, _completion_b):
-            if _prompt:
-                _completion_a = cls.process_image_input(cls, _completion_a)
-                _completion_b = cls.process_image_input(cls, _completion_b)
-                cls.output_data["prompt"].append(_prompt)
-                if cls.output_data["flag"][-1] == "👆 A is better":
-                    cls.output_data["chosen"].append(_completion_a)
-                    cls.output_data["rejected"].append(_completion_b)
+        if fn_next_input is not None:
+            if any(
+                [item is not None for item in [prompts, completions_a, completions_b]]
+            ):
+                raise ValueError(_NEXT_INPUT_FUNCTION_MESSAGE)
+            next_input = wrap_fn_next_input(
+                fn_next_input, cls.output_data, cls.output_columns
+            )
+        else:
+            # Input validation
+            if (
+                cls.input_data["prompt"]
+                and cls.input_data["completion_a"]
+                and cls.input_data["completion_b"]
+            ):
+                if (
+                    len(cls.input_data["prompt"])
+                    != len(cls.input_data["completion_a"])
+                    != len(cls.input_data["completion_b"])
+                ):
+                    raise ValueError(
+                        "Prompts and completions must be of the same length"
+                    )
+
+            def next_input(
+                _prompt: str,
+                _completion_a: PIL.Image.Image,
+                _completion_b: PIL.Image.Image,
+            ) -> Tuple[str, PIL.Image.Image, PIL.Image.Image]:
+                if _prompt:
+                    _completion_a = cls.process_image_input(cls, _completion_a)
+                    _completion_b = cls.process_image_input(cls, _completion_b)
+                    cls.output_data["prompt"].append(_prompt)
+                    if cls.output_data["flag"][-1] == "👆 A is better":
+                        cls.output_data["chosen"].append(_completion_a)
+                        cls.output_data["rejected"].append(_completion_b)
+                    elif cls.output_data["flag"][-1] == "👇 B is better":
+                        cls.output_data["chosen"].append(_completion_b)
+                        cls.output_data["rejected"].append(_completion_a)
+                    else:
+                        cls.output_data["chosen"].append("")
+                        cls.output_data["rejected"].append("")
+                if cls.input_data["prompt"]:
+                    cls._update_message(cls)
+                    prompt = cls.input_data["prompt"].pop(_POP_INDEX)
+                    completion_a = cls.input_data["completion_a"].pop(_POP_INDEX)
+                    completion_b = cls.input_data["completion_b"].pop(_POP_INDEX)
+                    completion_a = (
+                        completion_a
+                        if fn_model is None or completion_a
+                        else fn_model(prompt)
+                    )
+                    completion_b = (
+                        completion_b
+                        if fn_model is None or completion_b
+                        else fn_model(prompt)
+                    )
+                    return prompt, completion_a, completion_b
                 else:
-                    cls.output_data["chosen"].append(_completion_b)
-                    cls.output_data["rejected"].append(_completion_a)
-            if cls.input_data["prompt"]:
-                cls._update_message(cls)
-                prompt = cls.input_data["prompt"].pop(_POP_INDEX)
-                completion_a = cls.input_data["completion_a"].pop(_POP_INDEX)
-                completion_b = cls.input_data["completion_b"].pop(_POP_INDEX)
-                completion_a = (
-                    completion_a if fn is None or completion_a else fn(prompt)
-                )
-                completion_b = (
-                    completion_b if fn is None or completion_b else fn(prompt)
-                )
-                return prompt, completion_a, completion_b
-            else:
-                cls._done_message()
-                return None, None, None
+                    cls._done_message()
+                    return None, None, None
 
         # UI Config
         prompt, completion_a, completion_b = next_input(None, None, None)
@@ -1164,6 +1487,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             value=completion_b, label="👇 completion B", height=400
         )
         inputs = [input_prompt, input_completion_a, input_completion_b]
+        inputs = cls._validate_and_assign_interactive_inputs(inputs, interactive)
         return cls(
             fn=next_input,
             inputs=inputs,
@@ -1172,6 +1496,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             submit_btn=_SUBMIT_BTN,
             flagging_options=_PREFERENCE_OPTIONS,
             clear_btn=_CLEAR_BTN,
+            csv_logger=csv_logger,
             dataset_name=dataset_name,
             hf_token=hf_token,
             private=private,
@@ -1183,7 +1508,10 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         images: List[Union[np.array, PIL.Image.Image, str]] = None,
         questions: Optional[List[str]] = None,
         answers: Optional[List[str]] = None,
-        fn: Optional[Union["Pipeline", callable]] = None,
+        interactive: Optional[Union[bool, List[bool]]] = True,
+        fn_model: Optional[Union["Pipeline", callable]] = None,
+        fn_next_input: Optional[callable] = None,
+        csv_logger: Optional[bool] = False,
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
@@ -1195,7 +1523,16 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             images (List[Union[np.array, PIL.Image.Image, str]]): List of images to annotate.
             questions (Optional[List[str]]): List of questions to annotate. Defaults to None.
             answers (Optional[List[str]]): List of answers to annotate. Defaults to None.
-            fn (Optional[Union["Pipeline", callable]]): NotImplementedError. Defaults to None.
+            interactive (Optional[Union[bool, List[bool]]]): Whether to allow interactive gradio components.
+                If a list is provided, it should be of the same length as the number of inputs.
+                Defaults to True.
+            fn_model (Optional[Union["Pipeline", callable]]): Prediction function to apply to the image before annotating.
+                it should take an `PIL.Image.Image` and `str` and return `str`.
+                Defaults to None.
+            fn_next_input (Optional[callable]): Custom function to forward the next input in an active setting.
+                Expecting it takes and return a Tuple[PIL.Image.Image, str, str].
+                Defaults to None.
+            csv_logger (Optional[bool]): Whether to log the annotations to a CSV file. Defaults to False.
             dataset_name (Optional[str]): Name of the dataset to save the annotations. Defaults to None.
             hf_token (Optional[str]): Hugging Face API token to save the annotations. Defaults to None.
             private (Optional[bool]): Whether to save the annotations as private. Defaults to False.
@@ -1203,44 +1540,57 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         Returns:
             AnnotatorInterFace: An instance of AnnotatorInterFace
         """
-        if fn:
-            raise NotImplementedError(
-                "Prediction function is not supported for this task."
-            )
         # IO Config
         cls.task = "image-question-answering"
         cls.input_columns = ["image", "question", "answer"]
         cls.output_columns = ["image", "question", "answer"]
-        cls.input_data = {"image": images or []}
+        cls.input_data = {
+            "image": images or [],
+            "question": questions or [],
+            "answer": answers or [],
+        }
         cls.output_data = {col: [] for col in cls.output_columns}
         cls.start = len(cls.input_data["image"])
 
-        # Input validation
-        if cls.input_data["image"]:
-            max_length = max(len(img) for img in cls.input_data["image"])
-            cls.input_data["question"] = [
-                question.ljust(max_length) for question in cls.input_data["question"]
-            ]
-            cls.input_data["answer"] = [
-                answer.ljust(max_length) for answer in cls.input_data["answer"]
-            ]
-
         # Process function
-        def next_input(_image, _question, _answer):
-            if _image is not None:
-                _image = cls.process_image_input(cls, _image)
-                cls.output_data["image"].append(_image)
-                cls.output_data["question"].append(_question)
-                cls.output_data["answer"].append(_answer)
+        if fn_next_input is not None:
+            if any(
+                [item is not None for item in [images, questions, answers, fn_model]]
+            ):
+                raise ValueError(_NEXT_INPUT_FUNCTION_MESSAGE)
+            next_input = wrap_fn_next_input(
+                fn_next_input, cls.output_data, cls.output_columns
+            )
+        else:
+            # Input validation
             if cls.input_data["image"]:
-                cls._update_message(cls)
-                image = cls.input_data["image"].pop(_POP_INDEX)
-                question = cls.input_data["question"].pop(_POP_INDEX)
-                answer = cls.input_data["answer"].pop(_POP_INDEX)
-                return image, question, answer
-            else:
-                cls._done_message()
-                return None, "", ""
+                max_length = max(len(img) for img in cls.input_data["image"])
+                cls.input_data["question"] = [
+                    question.ljust(max_length)
+                    for question in cls.input_data["question"]
+                ]
+                cls.input_data["answer"] = [
+                    answer.ljust(max_length) for answer in cls.input_data["answer"]
+                ]
+
+            def next_input(_image, _question, _answer):
+                if _image is not None:
+                    _image = cls.process_image_input(cls, _image)
+                    cls.output_data["image"].append(_image)
+                    cls.output_data["question"].append(_question)
+                    cls.output_data["answer"].append(_answer)
+                if cls.input_data["image"]:
+                    cls._update_message(cls)
+                    image = cls.input_data["image"].pop(_POP_INDEX)
+                    question = cls.input_data["question"].pop(_POP_INDEX)
+                    answer = cls.input_data["answer"].pop(_POP_INDEX)
+                    if image and question:
+                        if fn_model is not None and not answer:
+                            answer = fn_model(image, question)
+                    return image, question, answer
+                else:
+                    cls._done_message()
+                    return None, "", ""
 
         # UI Config
         image, question, answer = next_input(None, None, None)
@@ -1249,6 +1599,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             gradio.Textbox(value=question, label="question"),
             gradio.Textbox(value=answer, label="answer"),
         ]
+        inputs = cls._validate_and_assign_interactive_inputs(inputs, interactive)
         return cls(
             fn=next_input,
             inputs=inputs,
@@ -1257,6 +1608,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             allow_flagging="manual",
             submit_btn=_SUBMIT_BTN,
             clear_btn=_CLEAR_BTN,
+            csv_logger=csv_logger,
             dataset_name=dataset_name,
             hf_token=hf_token,
             private=private,
@@ -1341,10 +1693,21 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         """
         if not messages:
             return []
-        if not isinstance(messages[0][0], gradio.ChatMessage):
+        if isinstance(messages[0][0], dict):
             messages = [
                 [gradio.ChatMessage(**msg) for msg in prompt] for prompt in messages
             ]
+        elif isinstance(messages[0][0], str):
+            messages = [
+                [gradio.ChatMessage(role="user", content=msg) for msg in messages]
+            ]
+        elif isinstance(messages[0][0], gradio.ChatMessage):
+            pass
+        else:
+            raise ValueError(
+                "messages should be a list of list of dict or list of list of gradio.ChatMessage"
+            )
+
         if with_turn:
             messages = [
                 [
@@ -1391,6 +1754,28 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         ):
             raise ValueError("Prompts and completions must be of the same length")
         return prompts, completions_a, completions_b
+
+    @staticmethod
+    def _validate_and_assign_interactive_inputs(
+        inputs: List[gradio.component], interactive: Union[bool, List[bool]]
+    ) -> List[gradio.component]:
+        """
+        Validate and assign the interactive inputs.
+
+        Parameters:
+            inputs (List[gradio.component]): List of inputs.
+            interactive (Union[bool, List[bool]]): Interactive inputs.
+
+        Returns:
+            List[gradio.component]: List of inputs.
+        """
+        if isinstance(interactive, bool):
+            interactive = [interactive] * len(inputs)
+        if len(inputs) != len(interactive):
+            raise ValueError("inputs and interactive must be of the same length")
+        for input_, is_interactive in zip(inputs, interactive):
+            input_.interactive = is_interactive
+        return inputs
 
     def shuffle_data(self):
         if not self.input_data.values():
