@@ -33,6 +33,7 @@ class CollectorInterface(gradio.Interface):
         inputs: str | Component | Sequence[str | Component] | None,
         outputs: str | Component | Sequence[str | Component] | None,
         *,
+        csv_logger: Optional[bool] = False,
         dataset_name: str = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
@@ -48,6 +49,7 @@ class CollectorInterface(gradio.Interface):
             fn: the function to run
             inputs: the input component(s)
             outputs: the output component(s)
+            csv_logger: whether or not to log the data to a CSV file.
             dataset_name: the "org/dataset" to which the data needs to be logged
             hf_token: optional token to pass, otherwise will default to env var HF_TOKEN
             private: whether or not to create a private repo
@@ -57,17 +59,25 @@ class CollectorInterface(gradio.Interface):
         Return:
             an intialized CollectorInterface
         """
+        self.csv_logger = csv_logger
         self._validate_flagging_options(
             allow_flagging=allow_flagging, flagging_options=flagging_options
         )
-        flagging_callback = None or kwargs.pop("flagging_callback", None)
-        if dataset_name is not None and flagging_callback is None:
-            flagging_callback = kwargs.pop(
-                "flagging_callback",
-                self._get_flagging_callback(
-                    dataset_name=dataset_name, hf_token=hf_token, private=private
-                ),
+        flagging_callback = kwargs.pop("flagging_callback", None)
+        if dataset_name and flagging_callback is not None:
+            flagging_callback = self._get_flagging_callback(
+                dataset_name=dataset_name, hf_token=hf_token, private=private
             )
+
+        if csv_logger and not flagging_callback:
+            flagging_callback = None
+        elif csv_logger and flagging_callback:
+            warnings.warn("You are using 2 callbacks, the csv_logger will be ignored.")
+        else:
+            flagging_callback = gradio.CSVLogger()
+            flagging_callback.setup = lambda *args, **kwargs: None
+            flagging_callback.flag = lambda *args, **kwargs: 0
+
         kwargs.update(
             {
                 "flagging_callback": flagging_callback,
@@ -76,15 +86,16 @@ class CollectorInterface(gradio.Interface):
             }
         )
         super().__init__(fn=fn, inputs=inputs, outputs=outputs, **kwargs)
-        # self = self._add_html_component_with_viewer(
-        #     self, flagging_callback, show_embedded_viewer
-        # )
+        self = self._add_html_component_with_viewer(
+            self, flagging_callback, show_embedded_viewer
+        )
 
     @classmethod
     def from_pipeline(
         cls,
         pipeline: "Pipeline",
         *,
+        csv_logger: Optional[bool] = False,
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
@@ -98,6 +109,7 @@ class CollectorInterface(gradio.Interface):
 
         Parameters::
             pipeline: an initialized the transformers.pipeline
+            csv_logger: whether or not to log the data to a CSV file.
             dataset_name: the "org/dataset" to which the data needs to be logged
             hf_token: optional token to pass, otherwise will default to env var HF_TOKEN
             private: whether or not to create a private repo
@@ -123,6 +135,7 @@ class CollectorInterface(gradio.Interface):
         cls,
         interface: gradio.Interface,
         *,
+        csv_logger: Optional[bool] = False,
         dataset_name: Optional[str] = None,
         hf_token: Optional[str] = None,
         private: Optional[bool] = False,
@@ -136,6 +149,7 @@ class CollectorInterface(gradio.Interface):
 
         Parameters::
             interface: any initialized gradio.Interface
+            csv_logger: whether or not to log the data to a CSV file.
             dataset_name: the "org/dataset" to which the data needs to be logged
             hf_token: optional token to pass, otherwise will default to env var HF_TOKEN
             private: whether or not to create a private repo
@@ -219,7 +233,7 @@ class CollectorInterface(gradio.Interface):
         flagging_callback: Optional[gradio.HuggingFaceDatasetSaver] = None,
         show_embedded_viewer: bool = True,
     ) -> gradio.Interface:
-        if flagging_callback:
+        if isinstance(flagging_callback, gradio.HuggingFaceDatasetSaver):
             repo_url = cls._get_repo_url_fom_dataset_saver(flagging_callback)
             formatted_repo_url = (
                 f"Data is being written to [a dataset on the Hub]({repo_url})."
@@ -234,7 +248,4 @@ class CollectorInterface(gradio.Interface):
                             open=False,
                         ):
                             gradio.HTML(cls._get_embedded_dataset_viewer(repo_url))
-        else:
-            with instance:
-                gradio.Info("Data is stored locally in a CSV file")
         return instance
