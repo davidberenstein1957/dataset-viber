@@ -20,8 +20,9 @@ Need any tweaks or want to hear more about a specific tool? Just [open an issue]
 >
 > - Data is logged to a local CSV or directly to the Hugging Face Hub.
 > - All tools also run in `.ipynb` notebooks.
-> - You can use models in the loop.
+> - You can use models in the loop and define custom loaders for your data.
 > - It supports various tasks for `text`, `chat` and `image` modalities.
+> - Import and export from the Hugging Face Hub or CSV files.
 
 ## Installation
 
