@@ -1,6 +1,6 @@
 [project]
 name = "dataset-viber"
-version = "0.2.0rc3"
+version = "0.2.0"
 description = "Dataset Viber is your chill repo for data collection, annotation and vibe checks."
 authors = [
     {name = "davidberenstein1957", email = "david.m.berenstein@gmail.com"},
@@ -11,6 +11,11 @@ license = {text = "Apache 2.0"}
 dependencies = [
     "gradio[oauth]>=4.3,<5",
     "datasets>=2,<3",
+    "argilla>=2"
+]
+
+[project.optional-dependencies]
+bulk = [
     "sentence-transformers>=3",
     "optimum[onnxruntime]>=1.10",
     "tabulate>=0.9.0",
@@ -18,7 +23,7 @@ dependencies = [
     "plotly>=5,<6",
     "dash>=2.11,<3",
     "dash-bootstrap-components>=1.6.0",
-    "gradio-huggingfacehub-search>=0.0.7",
+    "gradio-huggingfacehub-search>=0.0.7"
 ]
 
 [build-system]

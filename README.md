@@ -31,6 +31,12 @@ You can install the package via pip:
 pip install dataset-viber
 ```
 
+Or install `BulkInterface` dependencies:
+
+```bash
+pip install dataset-viber[bulk]
+```
+
 ## How are we vibing?
 
 ### CollectorInterface
@@ -518,7 +524,7 @@ interface.launch()
 <summary><code>chat-visualization</code></summary>
 
 ```python
-from dataset_viber import BulkInterface
+from dataset_viber.bulk import BulkInterface
 from datasets import load_dataset
 
 ds = load_dataset("argilla/distilabel-capybara-dpo-7k-binarized", split="train[:1000]")
@@ -537,7 +543,7 @@ interface.launch()
 <summary><code>chat-classification</code></summary>
 
 ```python
-from dataset_viber import BulkInterface
+from dataset_viber.bulk import BulkInterface
 from datasets import load_dataset
 
 ds = load_dataset("argilla/distilabel-capybara-dpo-7k-binarized", split="train[:1000]")
