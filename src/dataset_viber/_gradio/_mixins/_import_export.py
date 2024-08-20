@@ -20,6 +20,7 @@ from pathlib import Path
 import gradio
 import numpy as np
 import pandas as pd
+from dataset_viber._gradio._mixins._argilla import ArgillaMixin
 from datasets import Dataset, load_dataset
 from gradio_huggingfacehub_search import HuggingfaceHubSearch
 from PIL import Image
@@ -32,7 +33,7 @@ CODE_KWARGS = {
 }
 
 
-class ImportExportMixin:
+class ImportExportMixin(ArgillaMixin):
     def _override_block_init_method(self, **kwargs):
         # Initialize the parent class
         gradio.Blocks.__init__(
@@ -130,7 +131,7 @@ class ImportExportMixin:
     def _set_data_hf_upload(self, repo_id, column_mapping, split="train"):
         gradio.Info("Started loading the dataset. This might take a while.")
         try:
-            column_mapping = self._load_json_as_dict(column_mapping)
+            column_mapping = self._json_to_dict(column_mapping)
             dataset = load_dataset(repo_id, split=split)
             for key, value in column_mapping.items():
                 if key != value:
@@ -155,14 +156,14 @@ class ImportExportMixin:
         except Exception as e:
             raise gradio.Error(f"An error occurred: {e}")
         gradio.Info(
-            "Data loaded successfully. Showing first 100 examples in 'remaing data' tab. Click on 🗑️ discard to get the next record."
+            "Data loaded successfully. Showing first 100 examples in 'remaing data' tab. Click on \"⏭️ Next\" to get the next record."
         )
         return dataframe.head(100)
 
     def _set_data(self, dataframe, column_mapping):
         gradio.Info("Started loading the dataset. This might take a while.")
         try:
-            column_mapping = self._load_json_as_dict(column_mapping)
+            column_mapping = self._json_to_dict(column_mapping)
             dataframe = dataframe[list(column_mapping.values())]
             dataframe.columns = list(column_mapping.keys())
             for column in column_mapping.keys():
@@ -183,16 +184,13 @@ class ImportExportMixin:
         Dataset.from_dict(self.output_data).push_to_hub(
             dataset_name, token=oauth_token.token
         )
+        try:
+            self.get_argilla_dataset().to_hub(
+                repo_id=dataset_name, with_records=False, token=oauth_token.token
+            )
+        except NotImplementedError:
+            pass
         gradio.Info(f"Exported the dataset to Hugging Face Hub as {dataset_name}.")
-
-    def _create_dataset_card(self, repo_id):
-        pass
-
-    def _get_autotrain_config(self):
-        pass
-
-    def _get_argilla_config(self):
-        pass
 
     def _export_data(self, dataframe):
         id = uuid.uuid4()
@@ -210,7 +208,7 @@ class ImportExportMixin:
         return gradio.File(interactive=False, visible=False)
 
     @staticmethod
-    def _load_json_as_dict(json_str):
+    def _json_to_dict(json_str):
         return json.loads(json_str)
 
     @staticmethod
