@@ -9,9 +9,9 @@ requires-python = ">=3.9,<3.13"
 readme = "README.md"
 license = {text = "Apache 2.0"}
 dependencies = [
-    "gradio[oauth]>=4.3,<5",
+    "gradio[oauth]>=4.38,<5",
     "datasets>=2,<3",
-    "argilla>=2"
+    "argilla>=2,<3"
 ]
 
 [project.optional-dependencies]
