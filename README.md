@@ -20,8 +20,8 @@ Need any tweaks or want to hear more about a specific tool? Just [open an issue]
 >
 > - Data is logged to a local CSV or directly to the Hugging Face Hub.
 > - All tools also run in `.ipynb` notebooks.
-> - Models in the loop.
-> - Next input data streamers.
+> - Models in the loop through `fn_model`.
+> - Input data streamers through `fn_next_input`.
 > - It supports various tasks for `text`, `chat` and `image` modalities.
 > - Import and export from the Hugging Face Hub or CSV files.
 
