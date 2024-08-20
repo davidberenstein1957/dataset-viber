@@ -1772,7 +1772,9 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         if isinstance(interactive, bool):
             interactive = [interactive] * len(inputs)
         if len(inputs) != len(interactive):
-            raise ValueError("inputs and interactive must be of the same length")
+            raise ValueError(
+                f"inputs and interactive must be of the same length. Interactive is of length {len(interactive)} but should be {len(inputs)}."
+            )
         for input_, is_interactive in zip(inputs, interactive):
             input_.interactive = is_interactive
         return inputs
