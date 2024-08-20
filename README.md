@@ -71,6 +71,7 @@ interface = CollectorInterface(
     fn=calculator,
     inputs=inputs,
     outputs=outputs,
+    csv_logger=False, # True if you want to log to a CSV
     dataset_name="<my_hf_org>/<my_dataset>"
 )
 interface.launch()
@@ -89,6 +90,7 @@ interface = gr.Interface(
 )
 interface = CollectorInterface.from_interface(
    interface=interface,
+   csv_logger=False, # True if you want to log to a CSV
    dataset_name="<my_hf_org>/<my_dataset>"
 )
 interface.launch()
@@ -106,6 +108,7 @@ from dataset_viber import CollectorInterface
 pipeline = pipeline("text-classification", model="mrm8488/bert-tiny-finetuned-sms-spam-detection")
 interface = CollectorInterface.from_pipeline(
     pipeline=pipeline,
+    csv_logger=False, # True if you want to log to a CSV
     dataset_name="<my_hf_org>/<my_dataset>"
 )
 interface.launch()
@@ -139,9 +142,11 @@ labels = ["positive", "negative"]
 interface = AnnotatorInterFace.for_text_classification(
     texts=texts,
     labels=labels,
-    fn=None, # a callable e.g. (function or transformers pipelines) that returns [{"label": str, "score": float}]
-    dataset_name=None, # "<my_hf_org>/<my_dataset>" if you want to log to the hub
-    multi_label=False # True if you have multi-label data
+    multi_label=False, # True if you have multi-label data
+    fn_model=None, # a callable e.g. (function or transformers pipelines) that returns `str`
+    fn_next_input=None, # a function that feeds gradio components actively with the next input
+    csv_logger=False, # True if you want to log to a CSV
+    dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
 interface.launch()
 ```
@@ -160,7 +165,9 @@ labels = ["NAME", "LOC"]
 interface = AnnotatorInterFace.for_token_classification(
     texts=texts,
     labels=labels,
-    fn=None, # a callable e.g. (function or transformers pipelines) that returns [("text", "label")]
+    fn_model=None, # a callable e.g. (function or transformers pipelines) that returns `str`
+    fn_next_input=None, # a function that feeds gradio components actively with the next input
+    csv_logger=False, # True if you want to log to a CSV
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
 interface.launch()
@@ -180,7 +187,9 @@ contexts = ["Anthony Bourdain was an amazing chef in New York."]
 interface = AnnotatorInterFace.for_question_answering(
     questions=questions,
     contexts=contexts,
-    fn=None, # a callable e.g. (function or transformers pipelines) that returns [("text", "label")]
+    fn_model=None, # a callable e.g. (function or transformers pipelines) that returns `str`
+    fn_next_input=None, # a function that feeds gradio components actively with the next input
+    csv_logger=False, # True if you want to log to a CSV
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
 interface.launch()
@@ -200,7 +209,9 @@ completions = ["Anthony Michael Bourdain was an American celebrity chef, author,
 interface = AnnotatorInterFace.for_text_generation(
     prompts=prompts, # source
     completions=completions, # optional to show initial completion / target
-    fn=None, # a callable e.g. (function or transformers pipelines) that returns `str`
+    fn_model=None, # a callable e.g. (function or transformers pipelines) that returns `str`
+    fn_next_input=None, # a function that feeds gradio components actively with the next input
+    csv_logger=False, # True if you want to log to a CSV
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
 interface.launch()
@@ -222,7 +233,9 @@ interface = AnnotatorInterFace.for_text_generation_preference(
     prompts=prompts,
     completions_a=completions_a,
     completions_b=completions_b,
-    fn=None, # a callable e.g. (function or transformers pipelines) that returns `str`
+    fn_model=None, # a callable e.g. (function or transformers pipelines) that returns `str`
+    fn_next_input=None, # a function that feeds gradio components actively with the next input
+    csv_logger=False, # True if you want to log to a CSV
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
 interface.launch()
@@ -261,7 +274,10 @@ prompts = [
 interface = AnnotatorInterFace.for_chat_classification(
     prompts=prompts,
     labels=["toxic", "non-toxic"],
-    fn=None, # a callable e.g. (function or transformers pipelines) that returns [{"label": str, "score": float}]
+    multi_label=False, # True if you have multi-label data
+    fn_model=None, # a callable e.g. (function or transformers pipelines) that returns `str`
+    fn_next_input=None, # a function that feeds gradio components actively with the next input
+    csv_logger=False, # True if you want to log to a CSV
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
 interface.launch()
@@ -291,7 +307,9 @@ completions = [
 interface = AnnotatorInterFace.for_chat_generation(
     prompts=prompts,
     completions=completions,
-    fn=None, # a callable e.g. (function or transformers pipelines) that returns `str`
+    fn_model=None, # a callable e.g. (function or transformers pipelines) that returns `str`
+    fn_next_input=None, # a function that feeds gradio components actively with the next input
+    csv_logger=False, # True if you want to log to a CSV
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
 interface.launch()
@@ -324,7 +342,9 @@ interface = AnnotatorInterFace.for_chat_generation_preference(
     prompts=prompts,
     completions_a=completions_a,
     completions_b=completions_b,
-    fn=None, # a callable e.g. (function or transformers pipelines) that returns `str`
+    fn_model=None, # a callable e.g. (function or transformers pipelines) that returns `str`
+    fn_next_input=None, # a function that feeds gradio components actively with the next input
+    csv_logger=False, # True if you want to log to a CSV
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
 interface.launch()
@@ -356,7 +376,10 @@ labels = ["anthony-bourdain", "not-anthony-bourdain"]
 interface = AnnotatorInterFace.for_image_classification(
     images=images,
     labels=labels,
-    fn=None, # NotImplementedError("Not implemented yet")
+    multi_label=False, # True if you have multi-label data
+    fn_model=None, # a callable e.g. (function or transformers pipelines) that returns `str`
+    fn_next_input=None, # a function that feeds gradio components actively with the next input
+    csv_logger=False, # True if you want to log to a CSV
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
 interface.launch()
@@ -382,7 +405,9 @@ images = [
 interface = AnnotatorInterFace.for_image_generation(
     prompts=prompts,
     completions=images,
-    fn=None, # NotImplementedError("Not implemented yet")
+    fn_model=None, # a callable e.g. (function or transformers pipelines) that returns `str`
+    fn_next_input=None, # a function that feeds gradio components actively with the next input
+    csv_logger=False, # True if you want to log to a CSV
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
 
@@ -406,7 +431,9 @@ descriptions = ["Anthony Bourdain laughing", "David Chang wearing a suit"]
 interface = AnnotatorInterFace.for_image_description(
     images=images,
     descriptions=descriptions, # optional to show initial descriptions
-    fn=None, # NotImplementedError("Not implemented yet")
+    fn_model=None, # a callable e.g. (function or transformers pipelines) that returns `str`
+    fn_next_input=None, # a function that feeds gradio components actively with the next input
+    csv_logger=False, # True if you want to log to a CSV
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
 interface.launch()
@@ -431,7 +458,9 @@ interface = AnnotatorInterFace.for_image_question_answering(
     images=images,
     questions=questions, # optional to show initial questions
     answers=answers, # optional to show initial answers
-    fn=None, # NotImplementedError("Not implemented yet")
+    fn_model=None, # a callable e.g. (function or transformers pipelines) that returns `str`
+    fn_next_input=None, # a function that feeds gradio components actively with the next input
+    csv_logger=False, # True if you want to log to a CSV
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
 interface.launch()
@@ -464,7 +493,9 @@ interface = AnnotatorInterFace.for_image_generation_preference(
     prompts=prompts,
     completions_a=images_a,
     completions_b=images_b,
-    fn=None, # NotImplementedError("Not implemented yet")
+    fn_model=None, # a callable e.g. (function or transformers pipelines) that returns `str`
+    fn_next_input=None, # a function that feeds gradio components actively with the next input
+    csv_logger=False, # True if you want to log to a CSV
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
 interface.launch()
