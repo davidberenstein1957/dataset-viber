@@ -119,7 +119,6 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
                 )
             with gradio.Accordion(open=False, label="Export and completed data"):
                 with gradio.Tab("Completed data"):
-                    print(self.output_data)
                     self.output_data_component = gradio.Dataframe(
                         pd.DataFrame.from_dict(self.output_data).tail(100),
                         interactive=False,
@@ -997,7 +996,6 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
                 _completion_b: str,
             ) -> Tuple[List[gradio.ChatMessage], str, str]:
                 if _prompt:
-                    print(cls.output_data)
                     cls.output_data["prompt"].append(_prompt)
                     if cls.output_data["flag"][-1] == "👆 A is better":
                         cls.output_data["chosen"].append(_completion_a)
