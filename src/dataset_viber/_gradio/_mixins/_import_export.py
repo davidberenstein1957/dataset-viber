@@ -199,9 +199,9 @@ class ImportExportMixin(ArgillaMixin):
         else:
             filename = f"{id}.csv"
             Dataset.from_dict(self.output_data).to_csv(filename)
-        self.delete_file_after_delay(filename, 30)
+        self.delete_file_after_delay(filename, 20)
         gradio.Info(
-            f"Exported the dataset to {filename}. It will be deleted in 30 seconds."
+            f"Exported the dataset to {filename}. It will be deleted in 20 seconds."
         )
         return gradio.File(value=filename, visible=True)
 
