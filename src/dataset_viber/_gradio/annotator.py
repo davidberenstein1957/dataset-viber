@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import random
 import sys
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
@@ -1624,13 +1625,14 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         """Override the attach_flagging_events method to attach the flagging events."""
         # before the flaffing because otherwise input is reset
         self.attach_submit_events(_submit_btn=_clear_btn, _stop_btn=None)
+
+        def add_label(value):
+            if "flag" in self.output_data:
+                self.output_data["flag"].append(value)
+
         for btn in flag_btns:
-
-            def add_label():
-                if "flag" in self.output_data:
-                    self.output_data["flag"].append(str(btn.value))
-
-            btn.click(fn=add_label)
+            partial = functools.partial(add_label, btn.value)
+            btn.click(fn=partial)
         super().attach_flagging_events(flag_btns, _clear_btn, _submit_event)
         if self.allow_flagging == "manual":
             for flag_btn in flag_btns:
