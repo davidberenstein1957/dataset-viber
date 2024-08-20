@@ -20,8 +20,9 @@ Need any tweaks or want to hear more about a specific tool? Just [open an issue]
 >
 > - Data is logged to a local CSV or directly to the Hugging Face Hub.
 > - All tools also run in `.ipynb` notebooks.
-> - You can use models in the loop.
+> - You can use models in the loop and define custom loaders for your data.
 > - It supports various tasks for `text`, `chat` and `image` modalities.
+> - Import and export from the Hugging Face Hub or CSV files.
 
 ## Installation
 
@@ -29,6 +30,12 @@ You can install the package via pip:
 
 ```bash
 pip install dataset-viber
+```
+
+Or install `BulkInterface` dependencies:
+
+```bash
+pip install dataset-viber[bulk]
 ```
 
 ## How are we vibing?
@@ -65,6 +72,7 @@ interface = CollectorInterface(
     fn=calculator,
     inputs=inputs,
     outputs=outputs,
+    csv_logger=False, # True if you want to log to a CSV
     dataset_name="<my_hf_org>/<my_dataset>"
 )
 interface.launch()
@@ -83,6 +91,7 @@ interface = gr.Interface(
 )
 interface = CollectorInterface.from_interface(
    interface=interface,
+   csv_logger=False, # True if you want to log to a CSV
    dataset_name="<my_hf_org>/<my_dataset>"
 )
 interface.launch()
@@ -100,6 +109,7 @@ from dataset_viber import CollectorInterface
 pipeline = pipeline("text-classification", model="mrm8488/bert-tiny-finetuned-sms-spam-detection")
 interface = CollectorInterface.from_pipeline(
     pipeline=pipeline,
+    csv_logger=False, # True if you want to log to a CSV
     dataset_name="<my_hf_org>/<my_dataset>"
 )
 interface.launch()
@@ -133,9 +143,11 @@ labels = ["positive", "negative"]
 interface = AnnotatorInterFace.for_text_classification(
     texts=texts,
     labels=labels,
-    fn=None, # a callable e.g. (function or transformers pipelines) that returns [{"label": str, "score": float}]
-    dataset_name=None, # "<my_hf_org>/<my_dataset>" if you want to log to the hub
-    multi_label=False # True if you have multi-label data
+    multi_label=False, # True if you have multi-label data
+    fn_model=None, # a callable e.g. (function or transformers pipelines) that returns `str`
+    fn_next_input=None, # a function that feeds gradio components actively with the next input
+    csv_logger=False, # True if you want to log to a CSV
+    dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
 interface.launch()
 ```
@@ -154,7 +166,9 @@ labels = ["NAME", "LOC"]
 interface = AnnotatorInterFace.for_token_classification(
     texts=texts,
     labels=labels,
-    fn=None, # a callable e.g. (function or transformers pipelines) that returns [("text", "label")]
+    fn_model=None, # a callable e.g. (function or transformers pipelines) that returns `str`
+    fn_next_input=None, # a function that feeds gradio components actively with the next input
+    csv_logger=False, # True if you want to log to a CSV
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
 interface.launch()
@@ -174,7 +188,9 @@ contexts = ["Anthony Bourdain was an amazing chef in New York."]
 interface = AnnotatorInterFace.for_question_answering(
     questions=questions,
     contexts=contexts,
-    fn=None, # a callable e.g. (function or transformers pipelines) that returns [("text", "label")]
+    fn_model=None, # a callable e.g. (function or transformers pipelines) that returns `str`
+    fn_next_input=None, # a function that feeds gradio components actively with the next input
+    csv_logger=False, # True if you want to log to a CSV
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
 interface.launch()
@@ -194,10 +210,12 @@ completions = ["Anthony Michael Bourdain was an American celebrity chef, author,
 interface = AnnotatorInterFace.for_text_generation(
     prompts=prompts, # source
     completions=completions, # optional to show initial completion / target
-    fn=None, # a callable e.g. (function or transformers pipelines) that returns `str`
+    fn_model=None, # a callable e.g. (function or transformers pipelines) that returns `str`
+    fn_next_input=None, # a function that feeds gradio components actively with the next input
+    csv_logger=False, # True if you want to log to a CSV
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
-
+interface.launch()
 ```
 
 </details>
@@ -216,9 +234,12 @@ interface = AnnotatorInterFace.for_text_generation_preference(
     prompts=prompts,
     completions_a=completions_a,
     completions_b=completions_b,
-    fn=None, # a callable e.g. (function or transformers pipelines) that returns `str`
+    fn_model=None, # a callable e.g. (function or transformers pipelines) that returns `str`
+    fn_next_input=None, # a function that feeds gradio components actively with the next input
+    csv_logger=False, # True if you want to log to a CSV
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
+interface.launch()
 ```
 
 </details>
@@ -254,37 +275,10 @@ prompts = [
 interface = AnnotatorInterFace.for_chat_classification(
     prompts=prompts,
     labels=["toxic", "non-toxic"],
-    fn=None, # a callable e.g. (function or transformers pipelines) that returns [{"label": str, "score": float}]
-    dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
-)
-interface.launch()
-```
-
-</details>
-
-<details>
-<summary><code>chat-classification-per-message</code></summary>
-
-```python
-from dataset_viber import AnnotatorInterFace
-
-prompts = [
-    [
-        {
-            "role": "user",
-            "content": "Tell me something about Anthony Bourdain."
-        },
-        {
-            "role": "assistant",
-            "content": "Anthony Michael Bourdain was an American celebrity chef, author, and travel documentarian."
-        }
-    ]
-]
-
-interface = AnnotatorInterFace.for_chat_classification_per_message(
-    prompts=prompts,
-    labels=["toxic", "non-toxic"],
-    fn=None, # a callable e.g. (function or transformers pipelines) that returns [{"label": str, "score": float}]
+    multi_label=False, # True if you have multi-label data
+    fn_model=None, # a callable e.g. (function or transformers pipelines) that returns `str`
+    fn_next_input=None, # a function that feeds gradio components actively with the next input
+    csv_logger=False, # True if you want to log to a CSV
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
 interface.launch()
@@ -314,7 +308,9 @@ completions = [
 interface = AnnotatorInterFace.for_chat_generation(
     prompts=prompts,
     completions=completions,
-    fn=None, # a callable e.g. (function or transformers pipelines) that returns `str`
+    fn_model=None, # a callable e.g. (function or transformers pipelines) that returns `str`
+    fn_next_input=None, # a function that feeds gradio components actively with the next input
+    csv_logger=False, # True if you want to log to a CSV
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
 interface.launch()
@@ -347,7 +343,9 @@ interface = AnnotatorInterFace.for_chat_generation_preference(
     prompts=prompts,
     completions_a=completions_a,
     completions_b=completions_b,
-    fn=None, # a callable e.g. (function or transformers pipelines) that returns `str`
+    fn_model=None, # a callable e.g. (function or transformers pipelines) that returns `str`
+    fn_next_input=None, # a function that feeds gradio components actively with the next input
+    csv_logger=False, # True if you want to log to a CSV
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
 interface.launch()
@@ -379,9 +377,41 @@ labels = ["anthony-bourdain", "not-anthony-bourdain"]
 interface = AnnotatorInterFace.for_image_classification(
     images=images,
     labels=labels,
-    fn=None, # NotImplementedError("Not implemented yet")
+    multi_label=False, # True if you have multi-label data
+    fn_model=None, # a callable e.g. (function or transformers pipelines) that returns `str`
+    fn_next_input=None, # a function that feeds gradio components actively with the next input
+    csv_logger=False, # True if you want to log to a CSV
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
+interface.launch()
+```
+
+</details>
+
+<details>
+<summary><code>image-generation</code></summary>
+
+```python
+from dataset_viber import AnnotatorInterFace
+
+prompts = [
+    "Anthony Bourdain laughing",
+    "David Chang wearing a suit"
+]
+images = [
+    "https://upload.wikimedia.org/wikipedia/commons/8/85/David_Chang_David_Shankbone_2010.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Anthony_Bourdain_Peabody_2014b.jpg/440px-Anthony_Bourdain_Peabody_2014b.jpg",
+]
+
+interface = AnnotatorInterFace.for_image_generation(
+    prompts=prompts,
+    completions=images,
+    fn_model=None, # a callable e.g. (function or transformers pipelines) that returns `str`
+    fn_next_input=None, # a function that feeds gradio components actively with the next input
+    csv_logger=False, # True if you want to log to a CSV
+    dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
+)
+
 interface.launch()
 ```
 
@@ -402,11 +432,14 @@ descriptions = ["Anthony Bourdain laughing", "David Chang wearing a suit"]
 interface = AnnotatorInterFace.for_image_description(
     images=images,
     descriptions=descriptions, # optional to show initial descriptions
-    fn=None, # NotImplementedError("Not implemented yet")
+    fn_model=None, # a callable e.g. (function or transformers pipelines) that returns `str`
+    fn_next_input=None, # a function that feeds gradio components actively with the next input
+    csv_logger=False, # True if you want to log to a CSV
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
 interface.launch()
 ```
+
 </details>
 
 <details>
@@ -426,7 +459,9 @@ interface = AnnotatorInterFace.for_image_question_answering(
     images=images,
     questions=questions, # optional to show initial questions
     answers=answers, # optional to show initial answers
-    fn=None, # NotImplementedError("Not implemented yet")
+    fn_model=None, # a callable e.g. (function or transformers pipelines) that returns `str`
+    fn_next_input=None, # a function that feeds gradio components actively with the next input
+    csv_logger=False, # True if you want to log to a CSV
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
 interface.launch()
@@ -459,7 +494,9 @@ interface = AnnotatorInterFace.for_image_generation_preference(
     prompts=prompts,
     completions_a=images_a,
     completions_b=images_b,
-    fn=None, # NotImplementedError("Not implemented yet")
+    fn_model=None, # a callable e.g. (function or transformers pipelines) that returns `str`
+    fn_next_input=None, # a function that feeds gradio components actively with the next input
+    csv_logger=False, # True if you want to log to a CSV
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
 )
 interface.launch()
@@ -519,7 +556,7 @@ interface.launch()
 <summary><code>chat-visualization</code></summary>
 
 ```python
-from dataset_viber import BulkInterface
+from dataset_viber.bulk import BulkInterface
 from datasets import load_dataset
 
 ds = load_dataset("argilla/distilabel-capybara-dpo-7k-binarized", split="train[:1000]")
@@ -538,7 +575,7 @@ interface.launch()
 <summary><code>chat-classification</code></summary>
 
 ```python
-from dataset_viber import BulkInterface
+from dataset_viber.bulk import BulkInterface
 from datasets import load_dataset
 
 ds = load_dataset("argilla/distilabel-capybara-dpo-7k-binarized", split="train[:1000]")

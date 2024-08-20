@@ -14,4 +14,3 @@
 
 from dataset_viber._gradio import CollectorInterface  # noqa
 from dataset_viber._gradio import AnnotatorInterFace  # noqa
-from dataset_viber._plotly import BulkInterface  # noqa
