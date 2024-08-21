@@ -42,6 +42,12 @@ Or install `BulkInterface` dependencies:
 pip install dataset-viber[bulk]
 ```
 
+Or install `oauth` dependencies for Hugging Face Spaces OAuth support.
+
+```bash
+pip install dataset-viber[bulk]
+```
+
 ## How are we vibing?
 
 ### CollectorInterface
