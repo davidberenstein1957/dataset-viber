@@ -255,3 +255,14 @@ class ImportExportMixin(ArgillaMixin):
                 self.input_data[column].extend(
                     [""] * (max_column_len - len(self.input_data[column]))
                 )
+
+    def _set_equal_length_output_data(self):
+        # assert all columns for self.output_data are a similar length and fille with "" if not
+        max_column_len = max(
+            [len(self.output_data[column]) for column in self.output_data.keys()]
+        )
+        for column in self.output_data.keys():
+            if len(self.output_data[column]) < max_column_len:
+                self.output_data[column].extend(
+                    [""] * (max_column_len - len(self.output_data[column]))
+                )

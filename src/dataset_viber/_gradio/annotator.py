@@ -66,9 +66,12 @@ _NEXT_INPUT_FUNCTION_MESSAGE = (
 
 def wrap_fn_next_input(fn_next_input, output_data, columns):
     def wrapped_fn(*args, **kwargs):
+        if args[0]:
+            for col, res in zip(columns, args):
+                if isinstance(res, np.ndarray):
+                    res = PIL.Image.fromarray(res)
+                output_data[col].append(res)
         result = fn_next_input(*args, **kwargs)
-        for col, res in zip(columns, result):
-            output_data[col].append(res)
         return result
 
     return wrapped_fn
@@ -83,7 +86,6 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         outputs,
         **kwargs,
     ):
-        self._set_equal_length_input_data()
         self._override_block_init_method(**kwargs)
         with self:
             gradio.LoginButton(
@@ -93,12 +95,17 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
                 open=False if self.start else True, label="Import and remaining data"
             ):
                 with gradio.Tab("Remaining data"):
+
+                    def _get_input_data():
+                        self._set_equal_length_input_data()
+                        return pd.DataFrame.from_dict(self.input_data).head(100)
+
                     self.input_data_component = gradio.Dataframe(
-                        pd.DataFrame.from_dict(self.input_data).head(100),
+                        _get_input_data,
                         interactive=False,
                     )
                     inputs[0].change(
-                        fn=lambda x: pd.DataFrame.from_dict(self.input_data).head(100),
+                        fn=_get_input_data,
                         outputs=self.input_data_component,
                     )
                 if not list(self.input_data.values())[0]:
@@ -117,14 +124,20 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
                 shuffle.click(
                     fn=self.shuffle_data, inputs=None, outputs=self.input_data_component
                 )
+
             with gradio.Accordion(open=False, label="Export and completed data"):
+
+                def _get_output_data():
+                    self._set_equal_length_output_data()
+                    return pd.DataFrame.from_dict(self.output_data).tail(100)
+
                 with gradio.Tab("Completed data"):
                     self.output_data_component = gradio.Dataframe(
-                        pd.DataFrame.from_dict(self.output_data).tail(100),
+                        _get_output_data,
                         interactive=False,
                     )
                     inputs[0].change(
-                        fn=lambda x: pd.DataFrame.from_dict(self.output_data).tail(100),
+                        fn=_get_output_data,
                         outputs=self.output_data_component,
                     )
                 self._configure_export()
@@ -593,7 +606,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         # IO Config
         cls.task = "text-generation-preference"
         cls.input_columns = ["prompt", "completion_a", "completion_b"]
-        cls.output_columns = ["prompt", "chosen", "rejected", "flag"]
+        cls.output_columns = ["prompt", "completion_a", "completion_b", "flag"]
         cls.input_data = {
             "prompt": prompts or [],
             "completion_a": completions_a or [],
@@ -629,15 +642,8 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             ) -> Tuple[str, str, str]:
                 if _prompt:
                     cls.output_data["prompt"].append(_prompt)
-                    if cls.output_data["flag"][-1] == "👆 A is better":
-                        cls.output_data["chosen"].append(_completion_a)
-                        cls.output_data["rejected"].append(_completion_b)
-                    elif cls.output_data["flag"][-1] == "👇 B is better":
-                        cls.output_data["chosen"].append(_completion_b)
-                        cls.output_data["rejected"].append(_completion_a)
-                    else:
-                        cls.output_data["chosen"].append("")
-                        cls.output_data["rejected"].append("")
+                    cls.output_data["completion_a"].append(_completion_a)
+                    cls.output_data["completion_b"].append(_completion_b)
                 if cls.input_data["prompt"]:
                     cls._update_message(cls)
                     prompt = cls.input_data["prompt"].pop(_POP_INDEX)
@@ -955,8 +961,8 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         """
         # IO Config
         cls.task = "chat-generation-preference"
-        cls.input_columns = ["prompt", "completion_a", "completion_b"]
-        cls.output_columns = ["prompt", "chosen", "rejected", "flag"]
+        cls.input_columns = ["prompt", "completion_a", "completion_a"]
+        cls.output_columns = ["prompt", "completion_a", "completion_a", "flag"]
         cls.input_data = {
             "prompt": prompts or [],
             "completion_a": completions_a or [],
@@ -997,15 +1003,8 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             ) -> Tuple[List[gradio.ChatMessage], str, str]:
                 if _prompt:
                     cls.output_data["prompt"].append(_prompt)
-                    if cls.output_data["flag"][-1] == "👆 A is better":
-                        cls.output_data["chosen"].append(_completion_a)
-                        cls.output_data["rejected"].append(_completion_b)
-                    elif cls.output_data["flag"][-1] == "👇 B is better":
-                        cls.output_data["chosen"].append(_completion_b)
-                        cls.output_data["rejected"].append(_completion_a)
-                    else:
-                        cls.output_data["chosen"].append("")
-                        cls.output_data["rejected"].append("")
+                    cls.output_data["completion_a"].append(_completion_a)
+                    cls.output_data["completion_b"].append(_completion_b)
                 if cls.input_data["prompt"]:
                     cls._update_message(cls)
                     prompt = cls.input_data["prompt"].pop(_POP_INDEX)
@@ -1404,7 +1403,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         # IO Config
         cls.task = "image-generation-preference"
         cls.input_columns = ["prompt", "completion_a", "completion_b"]
-        cls.output_columns = ["prompt", "chosen", "rejected", "flag"]
+        cls.output_columns = ["prompt", "completion_a", "completion_b", "flag"]
         cls.input_data = {
             "prompt": prompts or [],
             "completion_a": completions_a or [],
@@ -1446,16 +1445,8 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
                 if _prompt:
                     _completion_a = cls.process_image_input(cls, _completion_a)
                     _completion_b = cls.process_image_input(cls, _completion_b)
-                    cls.output_data["prompt"].append(_prompt)
-                    if cls.output_data["flag"][-1] == "👆 A is better":
-                        cls.output_data["chosen"].append(_completion_a)
-                        cls.output_data["rejected"].append(_completion_b)
-                    elif cls.output_data["flag"][-1] == "👇 B is better":
-                        cls.output_data["chosen"].append(_completion_b)
-                        cls.output_data["rejected"].append(_completion_a)
-                    else:
-                        cls.output_data["chosen"].append("")
-                        cls.output_data["rejected"].append("")
+                    cls.output_data["completion_a"].append(_completion_a)
+                    cls.output_data["completion_b"].append(_completion_b)
                 if cls.input_data["prompt"]:
                     cls._update_message(cls)
                     prompt = cls.input_data["prompt"].pop(_POP_INDEX)
@@ -1621,7 +1612,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         _submit_event: Dependency,
     ) -> None:
         """Override the attach_flagging_events method to attach the flagging events."""
-        # before the flaffing because otherwise input is reset
+        # before the flagging because otherwise input is reset
         self.attach_submit_events(_submit_btn=_clear_btn, _stop_btn=None)
 
         def add_label(value):
