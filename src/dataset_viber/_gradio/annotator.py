@@ -68,6 +68,8 @@ def wrap_fn_next_input(fn_next_input, output_data, columns):
     def wrapped_fn(*args, **kwargs):
         if args[0]:
             for col, res in zip(columns, args):
+                if isinstance(res, np.ndarray):
+                    res = PIL.Image.fromarray(res)
                 output_data[col].append(res)
         result = fn_next_input(*args, **kwargs)
         return result
