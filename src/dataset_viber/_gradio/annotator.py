@@ -88,15 +88,9 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
     ):
         self._override_block_init_method(**kwargs)
         with self:
-            try:
-                gradio.LoginButton(
-                    value="Sign in with Hugging Face - a login will reset the data!",
-                ).activate()
-            except ValueError:
-                gradio.Textbox(
-                    value="Login button is not available. Set `hf_oauth: true`, and `hf_oauth_scopes: read-repos, write-repos, inference-api` in the Gradio Readme.md file.",
-                    interactive=False,
-                )
+            gradio.LoginButton(
+                value="Sign in with Hugging Face - a login will reset the data!",
+            ).activate()
             with gradio.Accordion(
                 open=False if self.start else True, label="Import and remaining data"
             ):

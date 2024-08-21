@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import importlib
 import io
 import json
 import threading
@@ -26,6 +27,11 @@ from dataset_viber._gradio._mixins._argilla import ArgillaMixin
 from datasets import Dataset, load_dataset
 from gradio_huggingfacehub_search import HuggingfaceHubSearch
 from PIL import Image
+
+if importlib.util.find_spec("gradio.oauth") is not None:
+    from gradio.oauth import OAuthToken
+else:
+    OAuthToken = None
 
 CODE_KWARGS = {
     "language": "json",
@@ -110,6 +116,9 @@ class ImportExportMixin(ArgillaMixin):
                         placeholder="Dataset Name", label="Dataset Name"
                     )
                 with gradio.Row():
+                    gradio.Info(
+                        "Ensure HF_TOKEN env var has been set or gradio allows for login through OAuth."
+                    )
                     export_button_hf = gradio.Button("Export")
                     export_button_hf.click(
                         fn=self._export_data_hf,
@@ -176,7 +185,7 @@ class ImportExportMixin(ArgillaMixin):
         )
         return dataframe.head(100)
 
-    def _export_data_hf(self, dataset_name, oauth_token: gradio.OAuthToken | None):
+    def _export_data_hf(self, dataset_name, oauth_token: OAuthToken | None):
         gradio.Info("Started exporting the dataset. This may take a while.")
         Dataset.from_dict(self.output_data).push_to_hub(
             dataset_name, token=oauth_token.token
