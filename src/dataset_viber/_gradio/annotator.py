@@ -28,6 +28,13 @@ from gradio.components import (
 )
 from gradio.events import Dependency
 from gradio.flagging import FlagMethod
+from gradio.oauth import (
+    OAUTH_CLIENT_ID,
+    OAUTH_CLIENT_SECRET,
+    OAUTH_SCOPES,
+    OPENID_PROVIDER_URL,
+    get_space,
+)
 
 from dataset_viber._gradio._mixins._import_export import ImportExportMixin
 from dataset_viber._gradio._mixins._task_config import TaskConfigMixin
@@ -88,13 +95,21 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
     ):
         self._override_block_init_method(**kwargs)
         with self:
-            try:
-                from starlette.middleware.sessions import SessionMiddleware  # noqa
-
+            if (
+                all(
+                    [
+                        OAUTH_CLIENT_ID,
+                        OAUTH_CLIENT_SECRET,
+                        OAUTH_SCOPES,
+                        OPENID_PROVIDER_URL,
+                    ]
+                )
+                or get_space() is None
+            ):
                 gradio.LoginButton(
                     value="Sign in with Hugging Face - a login will reset the data!",
                 ).activate()
-            except ImportError:
+            else:
                 pass
 
             with gradio.Accordion(open=False, label="Import and remaining data"):

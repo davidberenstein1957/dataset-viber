@@ -64,15 +64,15 @@ class CollectorInterface(gradio.Interface):
             allow_flagging=allow_flagging, flagging_options=flagging_options
         )
         flagging_callback = kwargs.pop("flagging_callback", None)
-        if dataset_name and flagging_callback is not None:
+
+        if dataset_name and flagging_callback is None:
             flagging_callback = self._get_flagging_callback(
                 dataset_name=dataset_name, hf_token=hf_token, private=private
             )
-
-        if csv_logger and not flagging_callback:
+        if flagging_callback:
+            pass
+        elif csv_logger:
             flagging_callback = None
-        elif csv_logger and flagging_callback:
-            warnings.warn("You are using 2 callbacks, the csv_logger will be ignored.")
         else:
             flagging_callback = gradio.CSVLogger()
             flagging_callback.setup = lambda *args, **kwargs: None
@@ -239,13 +239,14 @@ class CollectorInterface(gradio.Interface):
                 f"Data is being written to [a dataset on the Hub]({repo_url})."
             )
             with instance:
-                with gradio.Row(equal_height=False):
-                    gradio.Markdown(formatted_repo_url)
-                if show_embedded_viewer and not flagging_callback.dataset_private:
-                    with gradio.Row():
-                        with gradio.Accordion(
-                            "dataset viewer - do an (empty) search to refresh",
-                            open=False,
-                        ):
-                            gradio.HTML(cls._get_embedded_dataset_viewer(repo_url))
+                with gradio.Accordion("Data is synced to Hugging Face Hub", open=False):
+                    with gradio.Row(equal_height=False):
+                        gradio.Markdown(formatted_repo_url)
+                    if show_embedded_viewer and not flagging_callback.dataset_private:
+                        with gradio.Row():
+                            with gradio.Accordion(
+                                "dataset viewer - do an (empty) search to refresh",
+                                open=False,
+                            ):
+                                gradio.HTML(cls._get_embedded_dataset_viewer(repo_url))
         return instance

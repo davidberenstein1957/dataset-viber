@@ -24,15 +24,31 @@ import gradio
 import numpy as np
 import pandas as pd
 from datasets import Dataset, load_dataset
+from gradio.oauth import (
+    OAUTH_CLIENT_ID,
+    OAUTH_CLIENT_SECRET,
+    OAUTH_SCOPES,
+    OPENID_PROVIDER_URL,
+    get_space,
+)
 from gradio_huggingfacehub_search import HuggingfaceHubSearch
 from PIL import Image
 
 from dataset_viber._gradio._mixins._argilla import ArgillaMixin
 
-try:
+if (
+    all(
+        [
+            OAUTH_CLIENT_ID,
+            OAUTH_CLIENT_SECRET,
+            OAUTH_SCOPES,
+            OPENID_PROVIDER_URL,
+        ]
+    )
+    or get_space() is None
+):
     from gradio.oauth import OAuthToken
-    from starlette.middleware.sessions import SessionMiddleware  # noqa
-except ImportError:
+else:
     OAuthToken = str
 
 CODE_KWARGS = {
@@ -122,15 +138,23 @@ class ImportExportMixin(ArgillaMixin):
                         "Ensure HF_TOKEN env var has been set or gradio allows for login through OAuth."
                     )
                     export_button_hf = gradio.Button("Export")
-                    try:
-                        from starlette.middleware.sessions import SessionMiddleware  # noqa
-
+                    if (
+                        all(
+                            [
+                                OAUTH_CLIENT_ID,
+                                OAUTH_CLIENT_SECRET,
+                                OAUTH_SCOPES,
+                                OPENID_PROVIDER_URL,
+                            ]
+                        )
+                        or get_space() is None
+                    ):
                         export_button_hf.click(
                             fn=self._export_data_hf,
                             inputs=dataset_name,
                             outputs=dataset_name,
                         )
-                    except ImportError:
+                    else:
                         token = gradio.Textbox(
                             value=os.getenv("HF_TOKEN"),
                             type="password",
