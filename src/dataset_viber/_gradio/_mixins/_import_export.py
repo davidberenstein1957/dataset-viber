@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import importlib
 import io
 import json
+import os
 import threading
 import time
 import uuid
@@ -23,15 +23,17 @@ from pathlib import Path
 import gradio
 import numpy as np
 import pandas as pd
-from dataset_viber._gradio._mixins._argilla import ArgillaMixin
 from datasets import Dataset, load_dataset
 from gradio_huggingfacehub_search import HuggingfaceHubSearch
 from PIL import Image
 
-if importlib.util.find_spec("gradio.oauth") is not None:
+from dataset_viber._gradio._mixins._argilla import ArgillaMixin
+
+try:
     from gradio.oauth import OAuthToken
-else:
-    OAuthToken = None
+    from starlette.middleware.sessions import SessionMiddleware  # noqa
+except ImportError:
+    OAuthToken = str
 
 CODE_KWARGS = {
     "language": "json",
@@ -120,11 +122,27 @@ class ImportExportMixin(ArgillaMixin):
                         "Ensure HF_TOKEN env var has been set or gradio allows for login through OAuth."
                     )
                     export_button_hf = gradio.Button("Export")
-                    export_button_hf.click(
-                        fn=self._export_data_hf,
-                        inputs=dataset_name,
-                        outputs=dataset_name,
-                    )
+                    try:
+                        from starlette.middleware.sessions import SessionMiddleware  # noqa
+
+                        export_button_hf.click(
+                            fn=self._export_data_hf,
+                            inputs=dataset_name,
+                            outputs=dataset_name,
+                        )
+                    except ImportError:
+                        token = gradio.Textbox(
+                            value=os.getenv("HF_TOKEN"),
+                            type="password",
+                            label=f"OAuth Token HF_TOKEN={'HF_TOKEN' in os.environ}",
+                            interactive=True,
+                        )
+                        export_button_hf.click(
+                            fn=self._export_data_hf,
+                            inputs=[dataset_name, token],
+                            outputs=dataset_name,
+                        )
+
             with gradio.Tab("Export to file"):
                 with gradio.Column():
                     export_button = gradio.Button("Export")
@@ -187,9 +205,9 @@ class ImportExportMixin(ArgillaMixin):
 
     def _export_data_hf(self, dataset_name, oauth_token: OAuthToken | None):
         gradio.Info("Started exporting the dataset. This may take a while.")
-        Dataset.from_dict(self.output_data).push_to_hub(
-            dataset_name, token=oauth_token.token
-        )
+        if not isinstance(oauth_token, str):
+            oauth_token = oauth_token.token
+        Dataset.from_dict(self.output_data).push_to_hub(dataset_name, token=oauth_token)
         gradio.Info(f"Exported the dataset to Hugging Face Hub as {dataset_name}.")
 
     def delete_file_after_delay(self, file_path, delay=30):

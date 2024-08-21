@@ -18,8 +18,9 @@ import random
 import time
 
 import requests
-from dataset_viber import AnnotatorInterFace
 from PIL import Image
+
+from dataset_viber import AnnotatorInterFace
 
 HF_TOKEN = os.environ["HF_TOKEN"]
 HEADERS = {"Authorization": f"Bearer {HF_TOKEN}"}

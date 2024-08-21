@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import functools
-import importlib
 import random
 import sys
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
@@ -89,16 +88,16 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
     ):
         self._override_block_init_method(**kwargs)
         with self:
-            if importlib.util.find_spec("gradio.oauth") is not None:
+            try:
+                from starlette.middleware.sessions import SessionMiddleware  # noqa
+
                 gradio.LoginButton(
                     value="Sign in with Hugging Face - a login will reset the data!",
                 ).activate()
-            else:
+            except ImportError:
                 pass
 
-            with gradio.Accordion(
-                open=False if self.start else True, label="Import and remaining data"
-            ):
+            with gradio.Accordion(open=False, label="Import and remaining data"):
                 with gradio.Tab("Remaining data"):
 
                     def _get_input_data():
