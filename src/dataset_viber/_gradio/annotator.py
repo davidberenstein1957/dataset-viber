@@ -1322,8 +1322,8 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             )
         else:
             # Input validation
-            if cls.input_data["prompt"] and cls.input_data["completion"]:
-                if len(cls.input_data["prompt"]) != len(cls.input_data["completion"]):
+            if cls.input_data["image"] and cls.input_data["description"]:
+                if len(cls.input_data["image"]) != len(cls.input_data["description"]):
                     raise ValueError(
                         "Source and target must be of the same length. You can add empty strings to match the lengths."
                     )
