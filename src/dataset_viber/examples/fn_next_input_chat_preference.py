@@ -54,6 +54,5 @@ if __name__ == "__main__":
     interface = AnnotatorInterFace.for_chat_generation_preference(
         fn_next_input=next_input,
         interactive=[False, True, True],
-        dataset_name="dataset-viber-chat-generation-preference-inference-endpoints-battle",
     )
     interface.launch()

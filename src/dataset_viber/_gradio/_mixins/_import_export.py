@@ -158,7 +158,7 @@ class ImportExportMixin(ArgillaMixin):
                         token = gradio.Textbox(
                             value=os.getenv("HF_TOKEN"),
                             type="password",
-                            label=f"OAuth Token HF_TOKEN={'HF_TOKEN' in os.environ}",
+                            label=f"OAuth Token token_present={'HF_TOKEN' in os.environ}",
                             interactive=True,
                         )
                         export_button_hf.click(

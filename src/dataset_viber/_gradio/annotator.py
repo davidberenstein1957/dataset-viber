@@ -1158,7 +1158,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
 
         # UI Config
         image, label = next_input(None, None)
-        inputs = gradio.Image(value=image, label="image", height=400)
+        inputs = gradio.Image(value=image, label="image")
         if cls.task == "image-classification-multi-label":
             check_box_group = gradio.CheckboxGroup(
                 cls.labels, value=label, label="label"
@@ -1265,9 +1265,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         # UI Config
         prompt, completion = next_input(None, None)
         input_prompt = gradio.Textbox(value=prompt, label="prompt")
-        input_completion = gradio.Image(
-            value=completion, label="completion", height=400
-        )
+        input_completion = gradio.Image(value=completion, label="completion")
         inputs = [input_prompt, input_completion]
         inputs = cls._validate_and_assign_interactive_inputs(inputs, interactive)
         return cls(
@@ -1366,7 +1364,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
 
         # UI Config
         image, description = next_input(None, None)
-        inputs = gradio.Image(value=image, label="image", height=400)
+        inputs = gradio.Image(value=image, label="image")
         outputs = gradio.Textbox(value=description, label="text")
         inputs = [inputs, outputs]
         inputs = cls._validate_and_assign_interactive_inputs(inputs, interactive)
@@ -1489,12 +1487,8 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         # UI Config
         prompt, completion_a, completion_b = next_input(None, None, None)
         input_prompt = gradio.Textbox(value=prompt, label="prompt")
-        input_completion_a = gradio.Image(
-            value=completion_a, label="👆 completion A", height=400
-        )
-        input_completion_b = gradio.Image(
-            value=completion_b, label="👇 completion B", height=400
-        )
+        input_completion_a = gradio.Image(value=completion_a, label="👆 completion A")
+        input_completion_b = gradio.Image(value=completion_b, label="👇 completion B")
         inputs = [input_prompt, input_completion_a, input_completion_b]
         inputs = cls._validate_and_assign_interactive_inputs(inputs, interactive)
         return cls(
@@ -1604,7 +1598,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         # UI Config
         image, question, answer = next_input(None, None, None)
         inputs = [
-            gradio.Image(value=image, label="image", height=400),
+            gradio.Image(value=image, label="image"),
             gradio.Textbox(value=question, label="question"),
             gradio.Textbox(value=answer, label="answer"),
         ]
