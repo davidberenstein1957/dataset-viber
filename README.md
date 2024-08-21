@@ -25,6 +25,9 @@ Need any tweaks or want to hear more about a specific tool? Just [open an issue]
 > - It supports various tasks for `text`, `chat` and `image` modalities.
 > - Import and export from the Hugging Face Hub or CSV files.
 
+> [!TIP]
+> Examples can be found in [src/dataset_viber/examples](https://github.com/davidberenstein1957/dataset-viber/tree/main/src/dataset_viber/examples).
+
 ## Installation
 
 You can install the package via pip:
