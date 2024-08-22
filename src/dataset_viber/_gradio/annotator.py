@@ -95,24 +95,30 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
     ):
         self._override_block_init_method(**kwargs)
         with self:
-            if get_space() is not None:
-                gradio.DuplicateButton(value="Duplicate to private space!", size="lg")
-            if (
-                all(
-                    [
-                        OAUTH_CLIENT_ID,
-                        OAUTH_CLIENT_SECRET,
-                        OAUTH_SCOPES,
-                        OPENID_PROVIDER_URL,
-                    ]
-                )
-                or get_space() is None
-            ):
-                gradio.LoginButton(
-                    value="Sign in with Hugging Face - a login will reset the data!",
-                ).activate()
-            else:
-                pass
+            with gradio.Row():
+                with gradio.Column():
+                    if (
+                        all(
+                            [
+                                OAUTH_CLIENT_ID,
+                                OAUTH_CLIENT_SECRET,
+                                OAUTH_SCOPES,
+                                OPENID_PROVIDER_URL,
+                            ]
+                        )
+                        or get_space() is None
+                    ):
+                        gradio.LoginButton(
+                            value="Sign in with Hugging Face - a login will reset the data!",
+                            size="lg",
+                        ).activate()
+                    else:
+                        pass
+                with gradio.Column():
+                    if get_space() is not None:
+                        gradio.DuplicateButton(
+                            value="Duplicate to private space!", size="lg"
+                        )
 
             with gradio.Accordion(open=False, label="Import and remaining data"):
                 with gradio.Tab("Remaining data"):
