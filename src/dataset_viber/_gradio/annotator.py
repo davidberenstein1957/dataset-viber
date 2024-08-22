@@ -95,6 +95,8 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
     ):
         self._override_block_init_method(**kwargs)
         with self:
+            if get_space() is not None:
+                gradio.DuplicateButton(value="Duplicate to private space!", size="lg")
             if (
                 all(
                     [
