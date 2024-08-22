@@ -51,18 +51,21 @@ class TaskConfigMixin:
                         unique_labels = (
                             _input_data_component["suggestion"].unique().tolist()
                         )
+                        if _label_selector:
+                            unique_labels = _label_selector + unique_labels
                     else:
                         unique_labels = _label_selector
                     if unique_labels is None:
                         return gradio.Dropdown(
-                            choices=[],
+                            choices=_label_selector,
                             label="label",
                             allow_custom_value=True,
                             multiselect=True,
                         )
                     else:
                         labels = [str(label) for label in unique_labels]
-                        labels = sorted(labels)
+                        labels = set(labels)
+                        labels = sorted(list(labels))
                         return gradio.Dropdown(
                             choices=labels,
                             value=labels,

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import concurrent.futures
 import io
 import os
 import random
@@ -54,7 +55,7 @@ def generate_response(prompt):
         }
         response = requests.post(MODEL_URL, headers=HEADERS, json=payload)
         if response.status_code != 200:
-            time.sleep(10)
+            time.sleep(5)
             return _get_response(prompt)
         return response
 
@@ -64,9 +65,11 @@ def generate_response(prompt):
 
 
 def next_input(_prompt, _completion_a, _completion_b):
-    random_idx = random.randint(0, get_rows()) - 1
-    img_url, prompt = retrieve_sample(random_idx)
-    generated_image = generate_response(prompt)
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        random_idx = random.randint(0, get_rows()) - 1
+        future = executor.submit(retrieve_sample, random_idx)
+        img_url, prompt = future.result()
+        generated_image = generate_response(prompt)
     return (prompt, img_url, generated_image)
 
 
