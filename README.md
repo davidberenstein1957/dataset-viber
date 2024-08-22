@@ -26,7 +26,9 @@ Need any tweaks or want to hear more about a specific tool? Just [open an issue]
 > - Import and export from the Hugging Face Hub or CSV files.
 
 > [!TIP]
-> Examples can be found in [src/dataset_viber/examples](https://github.com/davidberenstein1957/dataset-viber/tree/main/src/dataset_viber/examples).
+>
+> - Code examples: [src/dataset_viber/examples](https://github.com/davidberenstein1957/dataset-viber/tree/main/src/dataset_viber/examples).
+> - Hub examples: [https://huggingface.co/dataset-viber](https://huggingface.co/dataset-viber).
 
 ## Installation
 
