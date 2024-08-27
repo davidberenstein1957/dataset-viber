@@ -11,6 +11,7 @@ I've cooked up Dataset Viber, a cool set of tools to make your life easier when 
 
 - **CollectorInterface**: Lazily collect data of model interactions without human annotation.
 - **AnnotatorInterface**: Walk through your data and annotate it with models in the loop.
+- **Synthesizer**: Synthesize data with `distilabel` in the loop.
 - **BulkInterface**: Explore your data distribution and annotate in bulk.
 - **Embdedder**: Efficiently embed data with ONNX-optimized speeds.
 
@@ -36,6 +37,12 @@ You can install the package via pip:
 
 ```bash
 pip install dataset-viber
+```
+
+Or install `Synthesizer` dependencies:
+
+```bash
+pip install dataset-viber[synthesizer]
 ```
 
 Or install `BulkInterface` dependencies:
@@ -509,6 +516,98 @@ interface.launch()
 ```
 
 </details>
+
+### Synthesizer
+
+> Built on top of the `distilabel` to synthesize data with models in the loop.
+
+<details>
+<summary><code>text-classification</code></summary>
+
+```python
+from dataset_viber import AnnotatorInterFace
+from dataset_viber.synthesizer import Synthesizer
+
+synthesizer = Synthesizer.for_text_classification(task="IMDB movie reviews")
+
+interface = AnnotatorInterFace.for_text_classification(
+    fn_next_input=synthesizer,
+    labels=["positive", "negative"]
+)
+interface.launch()
+```
+
+</details>
+
+<details>
+<summary><code>text-generation</code></summary>
+
+```python
+from dataset_viber import AnnotatorInterFace
+from dataset_viber.synthesizer import Synthesizer
+
+synthesizer = Synthesizer.for_text_generation(task="IMDB movie reviews")
+
+interface = AnnotatorInterFace.for_text_generation(
+    fn_next_input=synthesizer
+)
+interface.launch()
+```
+
+</details>
+
+<details>
+<summary><code>chat-classification</code></summary>
+
+```python
+from dataset_viber import AnnotatorInterFace
+from dataset_viber.synthesizer import Synthesizer
+
+synthesizer = Synthesizer.for_chat_classification(task="IMDB movie reviews")
+
+interface = AnnotatorInterFace.for_chat_classification(
+    fn_next_input=synthesizer,
+    labels=["positive", "negative"]
+)
+interface.launch()
+```
+
+</details>
+
+<details>
+<summary><code>chat-generation</code></summary>
+
+```python
+from dataset_viber import AnnotatorInterFace
+from dataset_viber.synthesizer import Synthesizer
+
+synthesizer = Synthesizer.for_chat_generation(task="IMDB movie reviews")
+
+interface = AnnotatorInterFace.for_chat_generation(
+    fn_next_input=synthesizer
+)
+interface.launch()
+```
+
+</details>
+
+<details>
+<summary><code>chat-generation-preference</code></summary>
+
+```python
+from dataset_viber import AnnotatorInterFace
+from dataset_viber.synthesizer import Synthesizer
+
+synthesizer = Synthesizer.for_chat_generation_preference(task="IMDB movie reviews")
+
+interface = AnnotatorInterFace.for_chat_generation_preference(
+    fn_next_input=synthesizer
+)
+interface.launch()
+```
+
+</details>
+
 
 ### BulkInterface
 
