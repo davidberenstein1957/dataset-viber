@@ -38,7 +38,7 @@ class Synthesizer:
     @classmethod
     def for_text_classification(
         cls,
-        task: str,
+        task_description: str,
         llm: Optional[LLM] = None,
         difficulty: Optional[str] = "high school",
         clarity: Optional[str] = "understandable with some effort",
@@ -53,24 +53,23 @@ class Synthesizer:
         task_generator.load()
 
         def next_input(_text, _label):
-            inputs: list[dict[str, str]] = [{"task": task}]
+            inputs: list[dict[str, str]] = [{"task": task_description}]
             data = next(task_generator.process(inputs))[0]
             return data["input_text"], None
 
         return cls(next_input)
 
     @classmethod
-    def for_text_generation(cls, task: str, llm: Optional[LLM] = None):
-        task_generator = Magpie(
-            llm=llm or DEFAULT_LLM,
-            n_turns=1,
-        )
+    def for_text_generation(cls, task_description: str, llm: Optional[LLM] = None):
+        task_generator = Magpie(llm=llm or DEFAULT_LLM)
         task_generator.load()
-
-        task_generator.process([{"system_prompt": task}])
+        task_generator.set_runtime_parameters({"n_turns": 1, "end_with_user": False})
+        task_generator.process([{"system_prompt": task_description}])
 
         def next_input(_instruction, _response):
-            data = next(task_generator.process([{"system_prompt": task}]))[0]
+            data = next(task_generator.process([{"system_prompt": task_description}]))[
+                0
+            ]
             return data["instruction"], data["response"]
 
         return cls(next_input)
@@ -78,18 +77,21 @@ class Synthesizer:
     @classmethod
     def for_chat_generation(
         cls,
-        task: str,
+        task_description: str,
         llm: Optional[LLM] = None,
         n_turns: int = 2,
     ):
         assert n_turns > 1, "n_turns must be greater than 1"
-        task_generator = Magpie(
-            llm=llm or DEFAULT_LLM, n_turns=n_turns, end_with_user=True
-        )
+        task_generator = Magpie(llm=llm or DEFAULT_LLM)
         task_generator.load()
+        task_generator.set_runtime_parameters(
+            {"n_turns": n_turns, "end_with_user": False}
+        )
 
         def next_input(_conversation, _response):
-            data = next(task_generator.process([{"system_prompt": task}]))[0]
+            data = next(task_generator.process([{"system_prompt": task_description}]))[
+                0
+            ]
             conversation = data["conversation"][:-1]
             response = data["conversation"][-1]["content"]
 
@@ -100,18 +102,21 @@ class Synthesizer:
     @classmethod
     def for_chat_classification(
         cls,
-        task: str,
+        task_description: str,
         llm: Optional[LLM] = None,
         n_turns: int = 2,
     ):
         assert n_turns > 1, "n_turns must be greater than 1"
-        task_generator = Magpie(
-            llm=llm or DEFAULT_LLM, n_turns=n_turns, end_with_user=True
-        )
+        task_generator = Magpie(llm=llm or DEFAULT_LLM)
         task_generator.load()
+        task_generator.set_runtime_parameters(
+            {"n_turns": n_turns, "end_with_user": False}
+        )
 
         def next_input(_conversation, _label):
-            data = next(task_generator.process([{"system_prompt": task}]))[0]
+            data = next(task_generator.process([{"system_prompt": task_description}]))[
+                0
+            ]
             return data["conversation"], None
 
         return cls(next_input)
@@ -119,18 +124,21 @@ class Synthesizer:
     @classmethod
     def for_chat_generation_preference(
         cls,
-        task: str,
+        task_description: str,
         llm: Optional[LLM] = None,
         n_turns: int = 2,
     ):
         assert n_turns > 1, "n_turns must be greater than 1"
-        task_generator = Magpie(
-            llm=llm or DEFAULT_LLM, n_turns=n_turns, end_with_user=True
-        )
+        task_generator = Magpie(llm=llm or DEFAULT_LLM)
         task_generator.load()
+        task_generator.set_runtime_parameters(
+            {"n_turns": n_turns, "end_with_user": False}
+        )
 
         def next_input(_conversation, _response_1, _response_2):
-            data = next(task_generator.process([{"system_prompt": task}]))[0]
+            data = next(task_generator.process([{"system_prompt": task_description}]))[
+                0
+            ]
             conversation = data["conversation"][:-1]
             response_1 = data["conversation"][-1]["content"]
             response_2 = llm.generate(inputs=[conversation])[-1]["content"]
