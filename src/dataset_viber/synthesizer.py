@@ -18,15 +18,15 @@ from typing import Any, Optional
 from distilabel.llms import LLM, InferenceEndpointsLLM
 from distilabel.steps.tasks import GenerateTextClassificationData, Magpie
 
-DEFAULT_MODEL_ID = "meta-llama/Meta-Llama-3.1-8B-Instruct"
+_DEFAULT_MODEL_ID = "meta-llama/Meta-Llama-3.1-8B-Instruct"
 
-DEFAULT_LLM = InferenceEndpointsLLM(
-    model_id=DEFAULT_MODEL_ID,
-    tokenizer_id=DEFAULT_MODEL_ID,
+_DEFAULT_LLM = InferenceEndpointsLLM(
+    model_id=_DEFAULT_MODEL_ID,
+    tokenizer_id=_DEFAULT_MODEL_ID,
     magpie_pre_query_template="llama3",
     generation_kwargs={"max_new_tokens": 4000, "temperature": 1},
 )
-TEXT_RANDOM_ID = ". Random hash: "
+_TEXT_RANDOM_ID = ". Random hash: "
 
 
 class Synthesizer:
@@ -47,9 +47,31 @@ class Synthesizer:
         clarity: Optional[str] = "understandable with some effort",
         language: Optional[str] = "english",
     ) -> "Synthesizer":
-        """Create a Synthesizer for text classification tasks."""
+        """Create a Synthesizer for text classification tasks.
+
+        Args:
+            task_description: The description of the task.
+            llm: The distilabel LLM to use for the task.
+            difficulty: The difficulty of the task.
+            clarity: The clarity of the task.
+            language: The language of the task.
+
+        Examples:
+
+            ```python
+            synthesizer = Synthesizer.for_text_classification(
+                task_description="A phone company customer support expert"
+                llm=distilabel.llms.vLLM(
+                    model_id="meta-llama/Meta-Llama-3.1-8B-Instruct",
+                )
+            )
+            ```
+
+        Returns:
+            A Synthesizer for text classification tasks.
+        """
         task_generator = GenerateTextClassificationData(
-            llm=llm or DEFAULT_LLM,
+            llm=llm or _DEFAULT_LLM,
             language=language,
             difficulty=difficulty,
             clarity=clarity,
@@ -58,7 +80,7 @@ class Synthesizer:
 
         def next_input(_text, _label):
             inputs: list[dict[str, str]] = [
-                {"task": f"{task_description} {TEXT_RANDOM_ID} {str(uuid.uuid4())}"}
+                {"task": f"{task_description} {_TEXT_RANDOM_ID} {str(uuid.uuid4())}"}
             ]
             data = next(task_generator.process(inputs))[0]
             return data["input_text"], None
@@ -69,8 +91,31 @@ class Synthesizer:
     def for_text_generation(
         cls, task_description: str, llm: Optional[LLM] = None
     ) -> "Synthesizer":
-        """Create a Synthesizer for text generation tasks."""
-        task_generator = Magpie(llm=llm or DEFAULT_LLM)
+        """Create a Synthesizer for text generation tasks.
+
+        Args:
+            task_description: The description of the task.
+            llm: The distilabel LLM to use for the task.
+                Note that the LLM must support the Magpie chat and requires a tokenizer.
+
+        Examples:
+
+            ```python
+            synthesizer = Synthesizer.for_text_generation(
+                task_description="A phone company customer support expert"
+                llm=distilabel.llms.vLLM(
+                    model_id="meta-llama/Meta-Llama-3.1-8B-Instruct",
+                    tokenizer_id="meta-llama/Meta-Llama-3.1-8B-Instruct",
+                    generation_kwargs={"max_new_tokens": 4000, "temperature": 1},
+                    magpie_pre_query_template="llama3",
+                )
+            )
+            ```
+
+        Returns:
+            A Synthesizer for text generation tasks.
+        """
+        task_generator = Magpie(llm=llm or _DEFAULT_LLM)
         task_generator.load()
         task_generator.set_runtime_parameters({"n_turns": 1, "end_with_user": False})
         task_generator.process([{"system_prompt": task_description}])
@@ -80,12 +125,11 @@ class Synthesizer:
                 task_generator.process(
                     [
                         {
-                            "system_prompt": f"{task_description}. {TEXT_RANDOM_ID} {str(uuid.uuid4())}"
+                            "system_prompt": f"{task_description}. {_TEXT_RANDOM_ID} {str(uuid.uuid4())}"
                         }
                     ]
                 )
             )[0]
-            print(data)
             return data["instruction"], data["response"]
 
         return cls(next_input)
@@ -97,9 +141,33 @@ class Synthesizer:
         llm: Optional[LLM] = None,
         n_turns: int = 2,
     ) -> "Synthesizer":
-        """Create a Synthesizer for chat generation tasks."""
+        """Create a Synthesizer for chat generation tasks.
+
+        Args:
+            task_description: The description of the task.
+            llm: The distilabel LLM to use for the task.
+                Note that the LLM must support the Magpie chat and requires a tokenizer.
+            n_turns: The number of turns in the chat.
+
+        Examples:
+
+            ```python
+            synthesizer = Synthesizer.for_chat_generation(
+                task_description="A phone company customer support expert"
+                llm=distilabel.llms.vLLM(
+                    model_id="meta-llama/Meta-Llama-3.1-8B-Instruct",
+                    tokenizer_id="meta-llama/Meta-Llama-3.1-8B-Instruct",
+                    generation_kwargs={"max_new_tokens": 4000, "temperature": 1},
+                    magpie_pre_query_template="llama3",
+                )
+            )
+            ```
+
+        Returns:
+            A Synthesizer for chat generation tasks.
+        """
         assert n_turns > 1, "n_turns must be greater than 1"
-        task_generator = Magpie(llm=llm or DEFAULT_LLM)
+        task_generator = Magpie(llm=llm or _DEFAULT_LLM)
         task_generator.load()
         task_generator.set_runtime_parameters(
             {"n_turns": n_turns, "end_with_user": False}
@@ -110,7 +178,7 @@ class Synthesizer:
                 task_generator.process(
                     [
                         {
-                            "system_prompt": f"{task_description}. {TEXT_RANDOM_ID} {str(uuid.uuid4())}"
+                            "system_prompt": f"{task_description}. {_TEXT_RANDOM_ID} {str(uuid.uuid4())}"
                         }
                     ]
                 )
@@ -129,9 +197,31 @@ class Synthesizer:
         llm: Optional[LLM] = None,
         n_turns: int = 2,
     ) -> "Synthesizer":
-        """Create a Synthesizer for chat classification tasks."""
+        """Create a Synthesizer for chat classification tasks.
+
+        Args:
+            task_description: The description of the task.
+            llm: The distilabel LLM to use for the task.
+                Note that the LLM must support the Magpie chat and requires a tokenizer.
+            n_turns: The number of turns in the chat.
+
+        Examples:
+
+            ```python
+            synthesizer = Synthesizer.for_chat_classification(
+                task_description="A phone company customer support expert"
+                llm=distilabel.llms.vLLM(
+                    model_id="meta-llama/Meta-Llama-3.1-8B-Instruct",
+                    tokenizer_id="meta-llama/Meta-Llama-3.1-8B-Instruct",
+                    generation_kwargs={"max_new_tokens": 4000, "temperature": 1},
+                    magpie_pre_query_template="llama3",
+                )
+
+        Returns:
+            A Synthesizer for chat classification tasks.
+        """
         assert n_turns > 1, "n_turns must be greater than 1"
-        task_generator = Magpie(llm=llm or DEFAULT_LLM)
+        task_generator = Magpie(llm=llm or _DEFAULT_LLM)
         task_generator.load()
         task_generator.set_runtime_parameters(
             {"n_turns": n_turns, "end_with_user": False}
@@ -142,7 +232,7 @@ class Synthesizer:
                 task_generator.process(
                     [
                         {
-                            "system_prompt": f"{task_description}. {TEXT_RANDOM_ID} {str(uuid.uuid4())}"
+                            "system_prompt": f"{task_description}. {_TEXT_RANDOM_ID} {str(uuid.uuid4())}"
                         }
                     ]
                 )
@@ -158,9 +248,30 @@ class Synthesizer:
         llm: Optional[LLM] = None,
         n_turns: int = 2,
     ) -> "Synthesizer":
-        """Create a Synthesizer for chat generation with preference tasks."""
+        """Create a Synthesizer for chat generation with preference tasks.
+
+        Args:
+            task_description: The description of the task.
+            llm: The distilabel LLM to use for the task.
+                Note that the LLM must support the Magpie chat and requires a tokenizer.
+            n_turns: The number of turns in the chat.
+
+        Examples:
+
+            ```python
+            synthesizer = Synthesizer.for_chat_generation_preference(
+                task_description="A phone company customer support expert"
+                llm=distilabel.llms.vLLM(
+                    model_id="meta-llama/Meta-Llama-3.1-8B-Instruct",
+                    tokenizer_id="meta-llama/Meta-Llama-3.1-8B-Instruct",
+                    generation_kwargs={"max_new_tokens": 4000, "temperature": 1},
+                    magpie_pre_query_template="llama3",
+                )
+        Returns:
+            A Synthesizer for chat generation with preference tasks.
+        """
         assert n_turns > 1, "n_turns must be greater than 1"
-        task_generator = Magpie(llm=llm or DEFAULT_LLM)
+        task_generator = Magpie(llm=llm or _DEFAULT_LLM)
         task_generator.load()
         task_generator.set_runtime_parameters(
             {"n_turns": n_turns, "end_with_user": False}
@@ -171,7 +282,7 @@ class Synthesizer:
                 task_generator.process(
                     [
                         {
-                            "system_prompt": f"{task_description}. {TEXT_RANDOM_ID} {str(uuid.uuid4())}"
+                            "system_prompt": f"{task_description}. {_TEXT_RANDOM_ID} {str(uuid.uuid4())}"
                         }
                     ]
                 )
