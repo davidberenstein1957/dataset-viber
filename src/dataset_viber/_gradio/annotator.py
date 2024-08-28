@@ -224,9 +224,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
 
         # Process function
         if fn_next_input is not None:
-            if any(
-                [item is not None for item in [texts, suggestions, labels, fn_model]]
-            ):
+            if any([item is not None for item in [texts, suggestions, fn_model]]):
                 raise ValueError(_NEXT_INPUT_FUNCTION_MESSAGE)
             next_input = wrap_fn_next_input(
                 fn_next_input, cls.output_data, cls.output_columns

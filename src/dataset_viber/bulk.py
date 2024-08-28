@@ -238,10 +238,12 @@ class BulkInterface:
                 device = "mps"
             elif torch.cuda.is_available():
                 device = "cuda"
-            if importlib.util.find_spec("onnxruntime") is not None:
-                from dataset_viber.embedder import Embedder
+            if importlib.util.find_spec("fast_sentence_transformers") is not None:
+                from fast_sentence_transformers import FastSentenceTransformer
 
-                self.embedding_model = Embedder(model_id=embedding_model, device=device)
+                self.embedding_model = FastSentenceTransformer(
+                    model_id=embedding_model, device=device
+                )
             else:
                 self.embedding_model = SentenceTransformer(
                     model_name_or_path=embedding_model, device=device
