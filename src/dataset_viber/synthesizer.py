@@ -12,27 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import uuid
 from typing import Any, Optional
 
 from distilabel.llms import LLM, InferenceEndpointsLLM
 from distilabel.steps.tasks import GenerateTextClassificationData, Magpie
 
 DEFAULT_MODEL_ID = "meta-llama/Meta-Llama-3.1-8B-Instruct"
-DEFAULT_TOKENIZER_ID = "meta-llama/Meta-Llama-3.1-8B-Instruct"
 
 DEFAULT_LLM = InferenceEndpointsLLM(
     model_id=DEFAULT_MODEL_ID,
-    tokenizer_id=DEFAULT_TOKENIZER_ID,
+    tokenizer_id=DEFAULT_MODEL_ID,
     magpie_pre_query_template="llama3",
     generation_kwargs={"max_new_tokens": 4000, "temperature": 1},
 )
+TEXT_RANDOM_ID = ". Random hash: "
 
 
 class Synthesizer:
     def __init__(self, next_input: callable):
+        """Initialize the Synthesizer with a callable for input processing."""
         self.next_input = next_input
 
     def __call__(self, *args: Any, **kwds: Any) -> Any:
+        """Invoke the next input callable with provided arguments."""
         return self.next_input(*args, **kwds)
 
     @classmethod
@@ -43,7 +46,8 @@ class Synthesizer:
         difficulty: Optional[str] = "high school",
         clarity: Optional[str] = "understandable with some effort",
         language: Optional[str] = "english",
-    ):
+    ) -> "Synthesizer":
+        """Create a Synthesizer for text classification tasks."""
         task_generator = GenerateTextClassificationData(
             llm=llm or DEFAULT_LLM,
             language=language,
@@ -53,23 +57,35 @@ class Synthesizer:
         task_generator.load()
 
         def next_input(_text, _label):
-            inputs: list[dict[str, str]] = [{"task": task_description}]
+            inputs: list[dict[str, str]] = [
+                {"task": f"{task_description} {TEXT_RANDOM_ID} {str(uuid.uuid4())}"}
+            ]
             data = next(task_generator.process(inputs))[0]
             return data["input_text"], None
 
         return cls(next_input)
 
     @classmethod
-    def for_text_generation(cls, task_description: str, llm: Optional[LLM] = None):
+    def for_text_generation(
+        cls, task_description: str, llm: Optional[LLM] = None
+    ) -> "Synthesizer":
+        """Create a Synthesizer for text generation tasks."""
         task_generator = Magpie(llm=llm or DEFAULT_LLM)
         task_generator.load()
         task_generator.set_runtime_parameters({"n_turns": 1, "end_with_user": False})
         task_generator.process([{"system_prompt": task_description}])
 
         def next_input(_instruction, _response):
-            data = next(task_generator.process([{"system_prompt": task_description}]))[
-                0
-            ]
+            data = next(
+                task_generator.process(
+                    [
+                        {
+                            "system_prompt": f"{task_description}. {TEXT_RANDOM_ID} {str(uuid.uuid4())}"
+                        }
+                    ]
+                )
+            )[0]
+            print(data)
             return data["instruction"], data["response"]
 
         return cls(next_input)
@@ -80,7 +96,8 @@ class Synthesizer:
         task_description: str,
         llm: Optional[LLM] = None,
         n_turns: int = 2,
-    ):
+    ) -> "Synthesizer":
+        """Create a Synthesizer for chat generation tasks."""
         assert n_turns > 1, "n_turns must be greater than 1"
         task_generator = Magpie(llm=llm or DEFAULT_LLM)
         task_generator.load()
@@ -89,9 +106,15 @@ class Synthesizer:
         )
 
         def next_input(_conversation, _response):
-            data = next(task_generator.process([{"system_prompt": task_description}]))[
-                0
-            ]
+            data = next(
+                task_generator.process(
+                    [
+                        {
+                            "system_prompt": f"{task_description}. {TEXT_RANDOM_ID} {str(uuid.uuid4())}"
+                        }
+                    ]
+                )
+            )[0]
             conversation = data["conversation"][:-1]
             response = data["conversation"][-1]["content"]
 
@@ -105,7 +128,8 @@ class Synthesizer:
         task_description: str,
         llm: Optional[LLM] = None,
         n_turns: int = 2,
-    ):
+    ) -> "Synthesizer":
+        """Create a Synthesizer for chat classification tasks."""
         assert n_turns > 1, "n_turns must be greater than 1"
         task_generator = Magpie(llm=llm or DEFAULT_LLM)
         task_generator.load()
@@ -114,9 +138,15 @@ class Synthesizer:
         )
 
         def next_input(_conversation, _label):
-            data = next(task_generator.process([{"system_prompt": task_description}]))[
-                0
-            ]
+            data = next(
+                task_generator.process(
+                    [
+                        {
+                            "system_prompt": f"{task_description}. {TEXT_RANDOM_ID} {str(uuid.uuid4())}"
+                        }
+                    ]
+                )
+            )[0]
             return data["conversation"], None
 
         return cls(next_input)
@@ -127,7 +157,8 @@ class Synthesizer:
         task_description: str,
         llm: Optional[LLM] = None,
         n_turns: int = 2,
-    ):
+    ) -> "Synthesizer":
+        """Create a Synthesizer for chat generation with preference tasks."""
         assert n_turns > 1, "n_turns must be greater than 1"
         task_generator = Magpie(llm=llm or DEFAULT_LLM)
         task_generator.load()
@@ -136,15 +167,18 @@ class Synthesizer:
         )
 
         def next_input(_conversation, _response_1, _response_2):
-            data = next(task_generator.process([{"system_prompt": task_description}]))[
-                0
-            ]
+            data = next(
+                task_generator.process(
+                    [
+                        {
+                            "system_prompt": f"{task_description}. {TEXT_RANDOM_ID} {str(uuid.uuid4())}"
+                        }
+                    ]
+                )
+            )[0]
             conversation = data["conversation"][:-1]
             response_1 = data["conversation"][-1]["content"]
             response_2 = llm.generate(inputs=[conversation])[-1]["content"]
             return conversation, response_1, response_2
 
         return cls(next_input)
-
-
-synthesizer = Synthesizer.for_chat_generation("long IMDB movie reviews")
