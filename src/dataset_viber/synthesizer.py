@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import uuid
 from typing import Any, Optional
 
 from distilabel.llms import LLM, InferenceEndpointsLLM
@@ -24,9 +23,8 @@ _DEFAULT_LLM = InferenceEndpointsLLM(
     model_id=_DEFAULT_MODEL_ID,
     tokenizer_id=_DEFAULT_MODEL_ID,
     magpie_pre_query_template="llama3",
-    generation_kwargs={"max_new_tokens": 4000, "temperature": 1},
+    generation_kwargs={"max_new_tokens": 4000, "temperature": 1, "do_sample": True},
 )
-_TEXT_RANDOM_ID = ". Random hash: "
 
 
 class Synthesizer:
@@ -63,6 +61,7 @@ class Synthesizer:
                 task_description="A phone company customer support expert"
                 llm=distilabel.llms.vLLM(
                     model_id="meta-llama/Meta-Llama-3.1-8B-Instruct",
+                    generation_kwargs={"max_new_tokens": 4000, "temperature": 1, "do_sample": True},
                 )
             )
             ```
@@ -79,9 +78,7 @@ class Synthesizer:
         task_generator.load()
 
         def next_input(_text, _label):
-            inputs: list[dict[str, str]] = [
-                {"task": f"{task_description} {_TEXT_RANDOM_ID} {str(uuid.uuid4())}"}
-            ]
+            inputs: list[dict[str, str]] = [{"task": task_description}]
             data = next(task_generator.process(inputs))[0]
             return data["input_text"], None
 
@@ -106,7 +103,7 @@ class Synthesizer:
                 llm=distilabel.llms.vLLM(
                     model_id="meta-llama/Meta-Llama-3.1-8B-Instruct",
                     tokenizer_id="meta-llama/Meta-Llama-3.1-8B-Instruct",
-                    generation_kwargs={"max_new_tokens": 4000, "temperature": 1},
+                    generation_kwargs={"max_new_tokens": 4000, "temperature": 1, "do_sample": True},
                     magpie_pre_query_template="llama3",
                 )
             )
@@ -121,15 +118,9 @@ class Synthesizer:
         task_generator.process([{"system_prompt": task_description}])
 
         def next_input(_instruction, _response):
-            data = next(
-                task_generator.process(
-                    [
-                        {
-                            "system_prompt": f"{task_description}. {_TEXT_RANDOM_ID} {str(uuid.uuid4())}"
-                        }
-                    ]
-                )
-            )[0]
+            data = next(task_generator.process([{"system_prompt": task_description}]))[
+                0
+            ]
             return data["instruction"], data["response"]
 
         return cls(next_input)
@@ -157,7 +148,7 @@ class Synthesizer:
                 llm=distilabel.llms.vLLM(
                     model_id="meta-llama/Meta-Llama-3.1-8B-Instruct",
                     tokenizer_id="meta-llama/Meta-Llama-3.1-8B-Instruct",
-                    generation_kwargs={"max_new_tokens": 4000, "temperature": 1},
+                    generation_kwargs={"max_new_tokens": 4000, "temperature": 1, "do_sample": True},
                     magpie_pre_query_template="llama3",
                 )
             )
@@ -174,15 +165,9 @@ class Synthesizer:
         )
 
         def next_input(_conversation, _response):
-            data = next(
-                task_generator.process(
-                    [
-                        {
-                            "system_prompt": f"{task_description}. {_TEXT_RANDOM_ID} {str(uuid.uuid4())}"
-                        }
-                    ]
-                )
-            )[0]
+            data = next(task_generator.process([{"system_prompt": task_description}]))[
+                0
+            ]
             conversation = data["conversation"][:-1]
             response = data["conversation"][-1]["content"]
 
@@ -213,7 +198,7 @@ class Synthesizer:
                 llm=distilabel.llms.vLLM(
                     model_id="meta-llama/Meta-Llama-3.1-8B-Instruct",
                     tokenizer_id="meta-llama/Meta-Llama-3.1-8B-Instruct",
-                    generation_kwargs={"max_new_tokens": 4000, "temperature": 1},
+                    generation_kwargs={"max_new_tokens": 4000, "temperature": 1, "do_sample": True},
                     magpie_pre_query_template="llama3",
                 )
 
@@ -228,15 +213,9 @@ class Synthesizer:
         )
 
         def next_input(_conversation, _label):
-            data = next(
-                task_generator.process(
-                    [
-                        {
-                            "system_prompt": f"{task_description}. {_TEXT_RANDOM_ID} {str(uuid.uuid4())}"
-                        }
-                    ]
-                )
-            )[0]
+            data = next(task_generator.process([{"system_prompt": task_description}]))[
+                0
+            ]
             return data["conversation"], None
 
         return cls(next_input)
@@ -264,7 +243,7 @@ class Synthesizer:
                 llm=distilabel.llms.vLLM(
                     model_id="meta-llama/Meta-Llama-3.1-8B-Instruct",
                     tokenizer_id="meta-llama/Meta-Llama-3.1-8B-Instruct",
-                    generation_kwargs={"max_new_tokens": 4000, "temperature": 1},
+                    generation_kwargs={"max_new_tokens": 4000, "temperature": 1, "do_sample": True},
                     magpie_pre_query_template="llama3",
                 )
         Returns:
@@ -278,15 +257,9 @@ class Synthesizer:
         )
 
         def next_input(_conversation, _response_1, _response_2):
-            data = next(
-                task_generator.process(
-                    [
-                        {
-                            "system_prompt": f"{task_description}. {_TEXT_RANDOM_ID} {str(uuid.uuid4())}"
-                        }
-                    ]
-                )
-            )[0]
+            data = next(task_generator.process([{"system_prompt": task_description}]))[
+                0
+            ]
             conversation = data["conversation"][:-1]
             response_1 = data["conversation"][-1]["content"]
             response_2 = llm.generate(inputs=[conversation])[-1]["content"]
