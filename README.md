@@ -521,7 +521,7 @@ interface.launch()
 > Built on top of the `distilabel` to synthesize data with models in the loop.
 
 > [!TIP]
-> You can use also call the synthesizer directly to generate data. `synthesizer()` return a tuple of `Gradio` inputs for the various tasks. So, you can first generate a batch and label those when ready.
+> You can use also call the synthesizer directly to generate data. `synthesizer() -> Tuple` or `Synthesizer.batch_synthesize(n) -> List[Tuple]` to get inputs for the various tasks.
 
 <details>
 <summary><code>text-classification</code></summary>
