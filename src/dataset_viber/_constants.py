@@ -27,3 +27,102 @@ COLORS = [
     "#ffff99",
     "#b15928",
 ]
+
+TASK_MAPPING = {
+    "text-classification": {
+        "input_columns": ["text", "suggestion"],
+        "output_columns": ["text", "label"],
+        "fn_model_output": "List[Dict[str, Union[str, float]]]",
+        "fn_next_input_output": "Tuple[str, str]",
+    },
+    "text-classification-multi-label": {
+        "input_columns": ["text", "suggestion"],
+        "output_columns": ["text", "label"],
+        "fn_model_output": "List[Dict[str, Union[str, float]]]",
+        "fn_next_input_output": "Tuple[str, List[str]]",
+    },
+    "token-classification": {
+        "input_columns": ["text"],
+        "output_columns": ["text", "spans"],
+        "fn_model_output": "List[Tuple[str, str]]",
+        "fn_next_input_output": "Tuple[str, List[Tuple[str, str]]]",
+    },
+    "question-answering": {
+        "input_columns": ["question", "context"],
+        "output_columns": ["question", "context"],
+        "fn_model_output": "List[Tuple[str, str]]",
+        "fn_next_input_output": "Tuple[str, Union[str, List[Tuple[str, str]]]]",
+    },
+    "text-generation": {
+        "input_columns": ["prompt", "completion"],
+        "output_columns": ["prompt", "completion"],
+        "fn_model_output": "str",
+        "fn_next_input_output": "Tuple[str, str]",
+    },
+    "text-generation-preference": {
+        "input_columns": ["prompt", "completion_a", "completion_b"],
+        "output_columns": ["prompt", "completion_a", "completion_b", "flag"],
+        "fn_model_output": "str",
+        "fn_next_input_output": "Tuple[str, str, str]",
+    },
+    "chat-classification": {
+        "input_columns": ["prompt", "suggestion"],
+        "output_columns": ["prompt", "label"],
+        "fn_model_output": "List[Dict[str, Union[str, float]]]",
+        "fn_next_input_output": "Tuple[List[gradio.ChatMessage], str]",
+    },
+    "chat-classification-multi-label": {
+        "input_columns": ["prompt", "suggestion"],
+        "output_columns": ["prompt", "label"],
+        "fn_model_output": "List[Dict[str, Union[str, float]]]",
+        "fn_next_input_output": "Tuple[List[gradio.ChatMessage], List[str]]",
+    },
+    "chat-generation": {
+        "input_columns": ["prompt", "completion"],
+        "output_columns": ["prompt", "completion"],
+        "fn_model_output": "str",
+        "fn_next_input_output": "Tuple[List[gradio.ChatMessage], str]",
+    },
+    "chat-generation-preference": {
+        "input_columns": ["prompt", "completion_a", "completion_b"],
+        "output_columns": ["prompt", "completion_a", "completion_b", "flag"],
+        "fn_model_output": "str",
+        "fn_next_input_output": "Tuple[List[gradio.ChatMessage], str, str]",
+    },
+    "image-classification": {
+        "input_columns": ["image", "suggestion"],
+        "output_columns": ["image", "label"],
+        "fn_model_output": "Union[str, List[Dict[str, Union[str, float]]]]",
+        "fn_next_input_output": "Tuple[PIL.Image.Image, str]",
+    },
+    "image-classification-multi-label": {
+        "input_columns": ["image", "suggestion"],
+        "output_columns": ["image", "label"],
+        "fn_model_output": "List[Dict[str, Union[str, float]]]",
+        "fn_next_input_output": "Tuple[PIL.Image.Image, List[str]]",
+    },
+    "image-generation": {
+        "input_columns": ["prompt", "completion"],
+        "output_columns": ["prompt", "completion"],
+        "fn_model_output": "Union[np.array, PIL.Image.Image, str]",
+        "fn_next_input_output": "Tuple[str, PIL.Image.Image]",
+    },
+    "image-description": {
+        "input_columns": ["image", "description"],
+        "output_columns": ["image", "description"],
+        "fn_model_output": "str",
+        "fn_next_input_output": "Tuple[PIL.Image.Image, str]",
+    },
+    "image-generation-preference": {
+        "input_columns": ["prompt", "completion_a", "completion_b"],
+        "output_columns": ["prompt", "completion_a", "completion_b", "flag"],
+        "fn_model_output": "PIL.Image.Image",
+        "fn_next_input_output": "Tuple[str, PIL.Image.Image, PIL.Image.Image]",
+    },
+    "image-question-answering": {
+        "input_columns": ["image", "question", "answer"],
+        "output_columns": ["image", "question", "answer"],
+        "fn_model_output": "str",
+        "fn_next_input_output": "Tuple[PIL.Image.Image, str, str]",
+    },
+}

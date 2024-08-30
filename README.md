@@ -38,6 +38,12 @@ You can install the package via pip:
 pip install dataset-viber
 ```
 
+Or install `Synthesizer` dependencies. Note, that the `Synthesizer` relies on `distilabel[hf-inference-endpoints]`, but you can use other [LLMs available to distilabel](https://distilabel.argilla.io) too, like for example `distilabel[ollama]`.
+
+```bash
+pip install dataset-viber[synthesizer]
+```
+
 Or install `BulkInterface` dependencies:
 
 ```bash
@@ -504,6 +510,100 @@ interface = AnnotatorInterFace.for_image_generation_preference(
     fn_next_input=None, # a function that feeds gradio components actively with the next input
     csv_logger=False, # True if you want to log to a CSV
     dataset_name=None # "<my_hf_org>/<my_dataset>" if you want to log to the hub
+)
+interface.launch()
+```
+
+</details>
+
+### Synthesizer
+
+> Built on top of the `distilabel` to synthesize data with models in the loop.
+
+> [!TIP]
+> You can use also call the synthesizer directly to generate data. `synthesizer()` return a tuple of `Gradio` inputs for the various tasks. So, you can first generate a batch and label those when ready.
+
+<details>
+<summary><code>text-classification</code></summary>
+
+```python
+from dataset_viber import AnnotatorInterFace
+from dataset_viber.synthesizer import Synthesizer
+
+synthesizer = Synthesizer.for_text_classification(task_description="IMDB movie reviews")
+
+interface = AnnotatorInterFace.for_text_classification(
+    fn_next_input=synthesizer,
+    labels=["positive", "negative"]
+)
+interface.launch()
+```
+
+</details>
+
+<details>
+<summary><code>text-generation</code></summary>
+
+```python
+from dataset_viber import AnnotatorInterFace
+from dataset_viber.synthesizer import Synthesizer
+
+synthesizer = Synthesizer.for_text_generation(task_description="A phone company customer support expert")
+
+interface = AnnotatorInterFace.for_text_generation(
+    fn_next_input=synthesizer
+)
+interface.launch()
+```
+
+</details>
+
+<details>
+<summary><code>chat-classification</code></summary>
+
+```python
+from dataset_viber import AnnotatorInterFace
+from dataset_viber.synthesizer import Synthesizer
+
+synthesizer = Synthesizer.for_chat_classification(task_description="A phone company customer support expert")
+
+interface = AnnotatorInterFace.for_chat_classification(
+    fn_next_input=synthesizer,
+    labels=["positive", "negative"]
+)
+interface.launch()
+```
+
+</details>
+
+<details>
+<summary><code>chat-generation</code></summary>
+
+```python
+from dataset_viber import AnnotatorInterFace
+from dataset_viber.synthesizer import Synthesizer
+
+synthesizer = Synthesizer.for_chat_generation(task_description="A phone company customer support expert")
+
+interface = AnnotatorInterFace.for_chat_generation(
+    fn_next_input=synthesizer
+)
+interface.launch()
+```
+
+</details>
+
+<details>
+<summary><code>chat-generation-preference</code></summary>
+
+```python
+from dataset_viber import AnnotatorInterFace
+from dataset_viber.synthesizer import Synthesizer
+
+synthesizer = Synthesizer.for_chat_generation_preference(task_description="A phone company customer support expert")
+
+interface = AnnotatorInterFace.for_chat_generation_preference(
+    fn_next_input=synthesizer
 )
 interface.launch()
 ```
