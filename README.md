@@ -11,8 +11,8 @@ I've cooked up Dataset Viber, a cool set of tools to make your life easier when 
 
 - **CollectorInterface**: Lazily collect data of model interactions without human annotation.
 - **AnnotatorInterface**: Walk through your data and annotate it with models in the loop.
+- **Synthesizer**: Synthesize data with `distilabel` in the loop.
 - **BulkInterface**: Explore your data distribution and annotate in bulk.
-- **Embdedder**: Efficiently embed data with ONNX-optimized speeds.
 
 Need any tweaks or want to hear more about a specific tool? Just [open an issue](https://github.com/davidberenstein1957/dataset-viber/issues/new) or give me a shout!
 
@@ -21,7 +21,7 @@ Need any tweaks or want to hear more about a specific tool? Just [open an issue]
 > - Data is logged to a local CSV or directly to the Hugging Face Hub.
 > - All tools also run in `.ipynb` notebooks.
 > - Models in the loop through `fn_model`.
-> - Input data streamers through `fn_next_input`.
+> - Input with custom data streamers or pre-built `Synthesizer` classes with the `fn_next_input` argument.
 > - It supports various tasks for `text`, `chat` and `image` modalities.
 > - Import and export from the Hugging Face Hub or CSV files.
 
@@ -612,7 +612,7 @@ interface.launch()
 
 ### BulkInterface
 
-> Built on top of the `Dash`, `plotly-express`, `umap-learn`, and `Embedder` to embed and understand your distribution and annotate your data.
+> Built on top of the `Dash`, `plotly-express`, `umap-learn`, and `fast-sentence-transformers` to embed and understand your distribution and annotate your data.
 
 https://github.com/user-attachments/assets/5e96c06d-e37f-45a0-9633-1a8e714d71ed
 
@@ -693,22 +693,6 @@ interface = BulkInterface.for_chat_classification(
     labels=["math", "science", "history", "question seeking"],
 )
 interface.launch()
-```
-
-</details>
-
-### Embedder
-
-> Built on top of the `onnx` and `optimum` to [efficiently embed data](https://www.philschmid.de/optimize-sentence-transformers).
-
-<details>
-<summary><code>Embedder</code></summary>
-
-```python
-from dataset_viber.embedder import Embedder
-
-embedder = Embedder(model_id="sentence-transformers/all-MiniLM-L6-v2")
-embedder.encode(["Anthony Bourdain was an amazing chef in New York."])
 ```
 
 </details>

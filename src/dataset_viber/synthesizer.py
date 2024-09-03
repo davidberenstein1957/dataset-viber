@@ -21,15 +21,14 @@ from distilabel.steps.tasks import GenerateTextClassificationData, Magpie
 from dataset_viber._constants import TASK_MAPPING
 
 _DEFAULT_MODEL_ID = "meta-llama/Meta-Llama-3.1-8B-Instruct"
-
 _DEFAULT_LLM = InferenceEndpointsLLM(
     model_id=_DEFAULT_MODEL_ID,
     tokenizer_id=_DEFAULT_MODEL_ID,
     magpie_pre_query_template="llama3",
     generation_kwargs={"max_new_tokens": 4000, "temperature": 1, "do_sample": True},
 )
-
 DO_SAMPLE_ARGS = {"llm": {"generation_kwargs": {"do_sample": True}}}
+
 
 
 class Synthesizer:
@@ -88,6 +87,7 @@ class Synthesizer:
         task_config = TASK_MAPPING["text-classification"]
         cls.input_columns = task_config["input_columns"]
         cls.output_columns = task_config["output_columns"]
+
         task_generator = GenerateTextClassificationData(
             llm=llm or _DEFAULT_LLM,
             language=language,
@@ -187,6 +187,7 @@ class Synthesizer:
         task_config = TASK_MAPPING["chat-generation"]
         cls.input_columns = task_config["input_columns"]
         cls.output_columns = task_config["output_columns"]
+        
         assert n_turns > 1, "n_turns must be greater than 1"
         task_generator = Magpie(llm=llm or _DEFAULT_LLM)
         task_generator.load()
@@ -238,6 +239,7 @@ class Synthesizer:
         task_config = TASK_MAPPING["chat-classification"]
         cls.input_columns = task_config["input_columns"]
         cls.output_columns = task_config["output_columns"]
+      
         assert n_turns > 1, "n_turns must be greater than 1"
         task_generator = Magpie(llm=llm or _DEFAULT_LLM)
         task_generator.load()
@@ -289,6 +291,7 @@ class Synthesizer:
         task_config = TASK_MAPPING["chat-generation-preference"]
         cls.input_columns = task_config["input_columns"]
         cls.output_columns = task_config["output_columns"]
+
         assert n_turns > 1, "n_turns must be greater than 1"
         task_generator = Magpie(llm=llm or _DEFAULT_LLM)
         task_generator.load()
