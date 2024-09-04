@@ -530,7 +530,9 @@ interface.launch()
 from dataset_viber import AnnotatorInterFace
 from dataset_viber.synthesizer import Synthesizer
 
-synthesizer = Synthesizer.for_text_classification(prompt_context="IMDB movie reviews")
+synthesizer = Synthesizer.for_text_classification(
+    prompt_context="IMDB movie reviews"
+)
 
 interface = AnnotatorInterFace.for_text_classification(
     fn_next_input=synthesizer,
@@ -606,7 +608,9 @@ interface.launch()
 from dataset_viber import AnnotatorInterFace
 from dataset_viber.synthesizer import Synthesizer
 
-synthesizer = Synthesizer.for_chat_generation_preference(prompt_context="A phone company customer support expert")
+synthesizer = Synthesizer.for_chat_generation_preference(
+    prompt_context="A phone company customer support expert"
+)
 
 interface = AnnotatorInterFace.for_chat_generation_preference(
     fn_next_input=synthesizer
@@ -623,7 +627,9 @@ interface.launch()
 from dataset_viber import AnnotatorInterFace
 from dataset_viber.synthesizer import Synthesizer
 
-synthesizer = Synthesizer.for_image_classification(prompt_context="A phone company customer support expert")
+synthesizer = Synthesizer.for_image_classification(
+    prompt_context="A phone company customer support expert"
+)
 
 interface = AnnotatorInterFace.for_image_classification(
     fn_next_input=synthesizer,
@@ -642,7 +648,9 @@ interface.launch()
 from dataset_viber import AnnotatorInterFace
 from dataset_viber.synthesizer import Synthesizer
 
-synthesizer = Synthesizer.for_image_generation(prompt_context="A phone company customer support expert")
+synthesizer = Synthesizer.for_image_generation(
+    prompt_context="A phone company customer support expert"
+)
 
 interface = AnnotatorInterFace.for_image_generation(
     fn_next_input=synthesizer
@@ -660,7 +668,9 @@ interface.launch()
 from dataset_viber import AnnotatorInterFace
 from dataset_viber.synthesizer import Synthesizer
 
-synthesizer = Synthesizer.for_image_description(prompt_context="A phone company customer support expert")
+synthesizer = Synthesizer.for_image_description(
+    prompt_context="A phone company customer support expert"
+)
 
 interface = AnnotatorInterFace.for_image_description(
     fn_next_input=synthesizer
@@ -678,7 +688,9 @@ interface.launch()
 from dataset_viber import AnnotatorInterFace
 from dataset_viber.synthesizer import Synthesizer
 
-synthesizer = Synthesizer.for_image_question_answering(prompt_context="A phone company customer support expert")
+synthesizer = Synthesizer.for_image_question_answering(
+    prompt_context="A phone company customer support expert"
+)
 
 interface = AnnotatorInterFace.for_image_question_answering(
     fn_next_input=synthesizer
@@ -696,7 +708,9 @@ interface.launch()
 from dataset_viber import AnnotatorInterFace
 from dataset_viber.synthesizer import Synthesizer
 
-synthesizer = Synthesizer.for_image_generation_preference(prompt_context="A phone company customer support expert")
+synthesizer = Synthesizer.for_image_generation_preference(
+    prompt_context="A phone company customer support expert"
+)
 
 interface = AnnotatorInterFace.for_image_generation_preference(
     fn_next_input=synthesizer
