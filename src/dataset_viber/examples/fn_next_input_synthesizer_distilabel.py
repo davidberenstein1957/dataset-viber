@@ -16,7 +16,7 @@ from dataset_viber import AnnotatorInterFace
 from dataset_viber.synthesizer import Synthesizer
 
 synthesizer = Synthesizer.for_text_generation(
-    task_description="An expert in the field of AI"
+    prompt_context="An expert in the field of AI"
 )
 
 interface = AnnotatorInterFace.for_text_generation(fn_next_input=synthesizer)

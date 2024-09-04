@@ -16,7 +16,7 @@ from dataset_viber import AnnotatorInterFace
 from dataset_viber.synthesizer import Synthesizer
 
 synthesizer = Synthesizer.for_chat_generation(
-    task_description="A phone company customer support expert"
+    prompt_context="A phone company customer support expert"
 )
 
 interface = AnnotatorInterFace.for_chat_generation(fn_next_input=synthesizer)

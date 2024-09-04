@@ -40,6 +40,7 @@ from dataset_viber._constants import TASK_MAPPING
 from dataset_viber._gradio._mixins._import_export import ImportExportMixin
 from dataset_viber._gradio._mixins._task_config import TaskConfigMixin
 from dataset_viber._gradio.collector import CollectorInterface
+from dataset_viber.synthesizer import Synthesizer
 
 if sys.version_info >= (3, 12):
     from typing import override
@@ -79,8 +80,7 @@ def wrap_fn_next_input(fn_next_input, output_data, columns):
                 if isinstance(res, np.ndarray):
                     res = PIL.Image.fromarray(res)
                 output_data[col].append(res)
-        result = fn_next_input(*args, **kwargs)
-        return result
+        return fn_next_input(*args, **kwargs)
 
     return wrapped_fn
 
@@ -220,16 +220,19 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         cls.labels = labels or []
         cls.input_columns = task_config["input_columns"]
         cls.output_columns = task_config["output_columns"]
+        if isinstance(fn_next_input, Synthesizer):
+            cls.output_columns.append("context")
         cls.input_data = {col: [] for col in cls.input_columns}
         cls.input_data["text"] = texts or []
         cls.input_data["suggestion"] = suggestions or []
-        cls.output_data = {col: [] for col in cls.output_columns}
+        cls.output_data = {label: [] for label in cls.output_columns}
         cls.start = len(cls.input_data["text"])
 
         # Process function
         if fn_next_input is not None:
             if any([item is not None for item in [texts, suggestions, fn_model]]):
                 raise ValueError(_NEXT_INPUT_FUNCTION_MESSAGE)
+
             next_input = wrap_fn_next_input(
                 fn_next_input, cls.output_data, cls.output_columns
             )
@@ -268,18 +271,22 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
                     return ("", [])
 
         # UI Config
-        text, label = next_input(None, None)
+        args = next_input(*[None] * len(cls.output_columns))
         if cls.task == "text-classification-multi-label":
             check_box_group = gradio.CheckboxGroup(
-                cls.labels, value=label, label="label"
+                cls.labels, value=args[1], label="label"
             )
         else:
-            check_box_group = gradio.Radio(cls.labels, value=label, label="label")
+            check_box_group = gradio.Radio(cls.labels, value=args[1], label="label")
         inputs: List[gradio.Textbox] = [
-            gradio.Textbox(value=text, label="text"),
+            gradio.Textbox(value=args[0], label="text"),
             check_box_group,
         ]
         inputs = cls._validate_and_assign_interactive_inputs(inputs, interactive)
+        if isinstance(fn_next_input, Synthesizer):
+            inputs.append(
+                gradio.Textbox(label="context", value=fn_next_input.prompt_context)
+            )
         return cls(
             fn=next_input,
             inputs=inputs,
@@ -370,11 +377,11 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
                     return "", cls._convert_to_tokens(" ")
 
         # UI Config
-        text, spans = next_input(None, None)
+        args = next_input(*[None] * len(cls.output_columns))
         inputs = [
-            gradio.Textbox(value=text, label="text", interactive=False),
+            gradio.Textbox(value=args[0], label="text", interactive=False),
             gradio.HighlightedText(
-                value=spans,
+                value=args[1],
                 label="spans",
                 **_HIGHLIGHT_TEXT_KWARGS,
             ),
@@ -477,10 +484,10 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
                     return None, []
 
         # UI Config
-        question, context = next_input(None, None)
-        input_question = gradio.Textbox(value=question, label="question")
+        args = next_input(*[None] * len(cls.output_columns))
+        input_question = gradio.Textbox(value=args[0], label="question")
         input_context = gradio.HighlightedText(
-            value=context,
+            value=args[1],
             label="context",
             interactive=True,
             show_legend=False,
@@ -547,6 +554,9 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         cls.input_data = {col: [] for col in cls.input_columns}
         cls.input_data["prompt"] = prompts or []
         cls.input_data["completion"] = completions or []
+        if isinstance(fn_next_input, Synthesizer):
+            cls.output_columns.append("context")
+        cls.input_data = {col: [] for col in cls.input_columns}
         cls.output_data = {col: [] for col in cls.output_columns}
         cls.start = len(cls.input_data["prompt"])
 
@@ -583,11 +593,15 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
                     return None, None
 
         # UI Config
-        prompt, completion = next_input(None, None)
-        input_prompt = gradio.Textbox(value=prompt, label="prompt")
-        input_completion = gradio.Textbox(value=completion, label="completion")
+        args = next_input(*[None] * len(cls.output_columns))
+        input_prompt = gradio.Textbox(value=args[0], label="prompt")
+        input_completion = gradio.Textbox(value=args[1], label="completion")
         inputs = [input_prompt, input_completion]
         inputs = cls._validate_and_assign_interactive_inputs(inputs, interactive)
+        if isinstance(fn_next_input, Synthesizer):
+            inputs.append(
+                gradio.Textbox(label="context", value=fn_next_input.prompt_context)
+            )
         return cls(
             fn=next_input,
             inputs=inputs,
@@ -645,6 +659,14 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         task_config = TASK_MAPPING[cls.task]
         cls.input_columns = task_config["input_columns"]
         cls.output_columns = task_config["output_columns"]
+        if isinstance(fn_next_input, Synthesizer):
+            cls.output_columns = [
+                "prompt",
+                "completion_a",
+                "completion_b",
+                "context",
+                "flag",
+            ]
         cls.input_data = {col: [] for col in cls.input_columns}
         cls.input_data["prompt"] = prompts or []
         cls.input_data["completion_a"] = completions_a or []
@@ -702,12 +724,16 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
                     return None, None, None
 
         # UI Config
-        prompt, completion_a, completion_b = next_input(None, None, None)
-        input_prompt = gradio.Textbox(value=prompt, label="prompt")
-        input_completion_a = gradio.Textbox(value=completion_a, label="👆 completion A")
-        input_completion_b = gradio.Textbox(value=completion_b, label="👇 completion B")
+        args = next_input(*[None] * (len(cls.output_columns) - 1))
+        input_prompt = gradio.Textbox(value=args[0], label="prompt")
+        input_completion_a = gradio.Textbox(value=args[1], label="👆 completion A")
+        input_completion_b = gradio.Textbox(value=args[2], label="👇 completion B")
         inputs = [input_prompt, input_completion_a, input_completion_b]
         inputs = cls._validate_and_assign_interactive_inputs(inputs, interactive)
+        if isinstance(fn_next_input, Synthesizer):
+            inputs.append(
+                gradio.Textbox(label="context", value=fn_next_input.prompt_context)
+            )
         return cls(
             fn=next_input,
             inputs=inputs,
@@ -771,7 +797,9 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         task_config = TASK_MAPPING[cls.task]
         cls.labels = labels or []
         cls.input_columns = task_config["input_columns"]
-        cls.output_columns = task_config["output_columns"]
+        cls.output_columns = task_config["output_columns"]   
+        if isinstance(fn_next_input, Synthesizer):
+            cls.output_columns.append("context")
         cls.input_data = {col: [] for col in cls.input_columns}
         cls.input_data["prompt"] = prompts or []
         cls.input_data["suggestion"] = suggestions or []
@@ -821,21 +849,25 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
                     return (None, [])
 
         # UI Config
-        prompt, label = next_input(None, None)
+        args = next_input(*[None] * len(cls.output_columns))
         if cls.task == "chat-classification-multi-label":
             check_box_group = gradio.CheckboxGroup(
-                cls.labels, value=label, label="label"
+                cls.labels, value=args[1], label="label"
             )
         else:
-            check_box_group = gradio.Radio(cls.labels, value=label, label="label")
+            check_box_group = gradio.Radio(cls.labels, value=args[1], label="label")
         inputs = [
             gradio.Chatbot(
-                value=prompt,
+                value=args[0],
                 **_CHATBOT_KWARGS,
             ),
             check_box_group,
         ]
         inputs = cls._validate_and_assign_interactive_inputs(inputs, interactive)
+        if isinstance(fn_next_input, Synthesizer):
+            inputs.append(
+                gradio.Textbox(label="context", value=fn_next_input.prompt_context)
+            )
         return cls(
             fn=next_input,
             inputs=inputs,
@@ -893,6 +925,8 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         task_config = TASK_MAPPING[cls.task]
         cls.input_columns = task_config["input_columns"]
         cls.output_columns = task_config["output_columns"]
+        if isinstance(fn_next_input, Synthesizer):
+            cls.output_columns.append("context")
         cls.input_data = {col: [] for col in cls.input_columns}
         cls.input_data["prompt"] = prompts or []
         cls.input_data["completion"] = completions or []
@@ -940,14 +974,18 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
                     return [], None
 
         # UI Config
-        prompt, completion = next_input(None, None)
+        args = next_input(*[None] * len(cls.output_columns))
         input_prompt = gradio.Chatbot(
-            value=prompt,
+            value=args[0],
             **_CHATBOT_KWARGS,
         )
-        input_completion = gradio.Textbox(value=completion, label="completion")
+        input_completion = gradio.Textbox(value=args[1], label="completion")
         inputs = [input_prompt, input_completion]
         inputs = cls._validate_and_assign_interactive_inputs(inputs, interactive)
+        if isinstance(fn_next_input, Synthesizer):
+            inputs.append(
+                gradio.Textbox(label="context", value=fn_next_input.prompt_context)
+            )
         return cls(
             fn=next_input,
             inputs=inputs,
@@ -1007,6 +1045,14 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         task_config = TASK_MAPPING[cls.task]
         cls.input_columns = task_config["input_columns"]
         cls.output_columns = task_config["output_columns"]
+        if isinstance(fn_next_input, Synthesizer):
+            cls.output_columns = [
+                "prompt",
+                "completion_a",
+                "completion_b",
+                "context",
+                "flag",
+            ]
         cls.input_data = {col: [] for col in cls.input_columns}
         cls.input_data["prompt"] = prompts or []
         cls.input_data["completion_a"] = completions_a or []
@@ -1069,12 +1115,17 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
                     return [], None, None
 
         # UI Config
-        prompt, completion_a, completion_b = next_input(None, None, None)
-        input_prompt = gradio.Chatbot(value=prompt, **_CHATBOT_KWARGS)
-        input_completion_a = gradio.Textbox(value=completion_a, label="👆 completion A")
-        input_completion_b = gradio.Textbox(value=completion_b, label="👇 completion B")
+        args = next_input(*[None] * (len(cls.output_columns) - 1))
+        prompt, completion_a, completion_b = args
+        input_prompt = gradio.Chatbot(value=args[0], **_CHATBOT_KWARGS)
+        input_completion_a = gradio.Textbox(value=args[1], label="👆 completion A")
+        input_completion_b = gradio.Textbox(value=args[2], label="👇 completion B")
         inputs = [input_prompt, input_completion_a, input_completion_b]
         inputs = cls._validate_and_assign_interactive_inputs(inputs, interactive)
+        if isinstance(fn_next_input, Synthesizer):
+            inputs.append(
+                gradio.Textbox(label="context", value=fn_next_input.prompt_context)
+            )
         return cls(
             fn=next_input,
             inputs=inputs,
@@ -1184,14 +1235,14 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
                     return (None, [])
 
         # UI Config
-        image, label = next_input(None, None)
-        inputs = gradio.Image(value=image, label="image")
+        args = next_input(*[None] * len(cls.output_columns))
+        inputs = gradio.Image(value=args[0], label="image")
         if cls.task == "image-classification-multi-label":
             check_box_group = gradio.CheckboxGroup(
-                cls.labels, value=label, label="label"
+                cls.labels, value=args[1], label="label"
             )
         else:
-            check_box_group = gradio.Radio(cls.labels, value=label, label="label")
+            check_box_group = gradio.Radio(cls.labels, value=args[1], label="label")
         inputs = [inputs, check_box_group]
         inputs = cls._validate_and_assign_interactive_inputs(inputs, interactive)
         return cls(
@@ -1293,9 +1344,9 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
                     return None, None
 
         # UI Config
-        prompt, completion = next_input(None, None)
-        input_prompt = gradio.Textbox(value=prompt, label="prompt")
-        input_completion = gradio.Image(value=completion, label="completion")
+        args = next_input(*[None] * len(cls.output_columns))
+        input_prompt = gradio.Textbox(value=args[0], label="prompt")
+        input_completion = gradio.Image(value=args[1], label="completion")
         inputs = [input_prompt, input_completion]
         inputs = cls._validate_and_assign_interactive_inputs(inputs, interactive)
         return cls(
@@ -1396,9 +1447,9 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
                     return None, ""
 
         # UI Config
-        image, description = next_input(None, None)
-        inputs = gradio.Image(value=image, label="image")
-        outputs = gradio.Textbox(value=description, label="text")
+        args = next_input(*[None] * len(cls.output_columns))
+        inputs = gradio.Image(value=args[0], label="image")
+        outputs = gradio.Textbox(value=args[1], label="text")
         inputs = [inputs, outputs]
         inputs = cls._validate_and_assign_interactive_inputs(inputs, interactive)
         return cls(
@@ -1518,10 +1569,10 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
                     return None, None, None
 
         # UI Config
-        prompt, completion_a, completion_b = next_input(None, None, None)
-        input_prompt = gradio.Textbox(value=prompt, label="prompt")
-        input_completion_a = gradio.Image(value=completion_a, label="👆 completion A")
-        input_completion_b = gradio.Image(value=completion_b, label="👇 completion B")
+        args = next_input(*[None] * len(cls.output_columns))
+        input_prompt = gradio.Textbox(value=args[0], label="prompt")
+        input_completion_a = gradio.Image(value=args[1], label="👆 completion A")
+        input_completion_b = gradio.Image(value=args[2], label="👇 completion B")
         inputs = [input_prompt, input_completion_a, input_completion_b]
         inputs = cls._validate_and_assign_interactive_inputs(inputs, interactive)
         return cls(
@@ -1629,11 +1680,11 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
                     return None, "", ""
 
         # UI Config
-        image, question, answer = next_input(None, None, None)
+        args = next_input(*[None] * len(cls.output_columns))
         inputs = [
-            gradio.Image(value=image, label="image"),
-            gradio.Textbox(value=question, label="question"),
-            gradio.Textbox(value=answer, label="answer"),
+            gradio.Image(value=args[0], label="image"),
+            gradio.Textbox(value=args[1], label="question"),
+            gradio.Textbox(value=args[2], label="answer"),
         ]
         inputs = cls._validate_and_assign_interactive_inputs(inputs, interactive)
         return cls(
