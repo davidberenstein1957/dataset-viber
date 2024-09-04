@@ -616,6 +616,96 @@ interface.launch()
 
 </details>
 
+<details>
+<summary><code>image-classification</code></summary>
+
+```python
+from dataset_viber import AnnotatorInterFace
+from dataset_viber.synthesizer import Synthesizer
+
+synthesizer = Synthesizer.for_image_classification(prompt_context="A phone company customer support expert")
+
+interface = AnnotatorInterFace.for_image_classification(
+    fn_next_input=synthesizer,
+    labels=["positive", "negative"]
+)
+interface.launch()
+```
+
+</details>
+
+<details>
+
+<summary><code>image-generation</code></summary>
+
+```python
+from dataset_viber import AnnotatorInterFace
+from dataset_viber.synthesizer import Synthesizer
+
+synthesizer = Synthesizer.for_image_generation(prompt_context="A phone company customer support expert")
+
+interface = AnnotatorInterFace.for_image_generation(
+    fn_next_input=synthesizer
+)
+interface.launch()
+```
+
+</details>
+
+<details>
+
+<summary><code>image-description</code></summary>
+
+```python
+from dataset_viber import AnnotatorInterFace
+from dataset_viber.synthesizer import Synthesizer
+
+synthesizer = Synthesizer.for_image_description(prompt_context="A phone company customer support expert")
+
+interface = AnnotatorInterFace.for_image_description(
+    fn_next_input=synthesizer
+)
+interface.launch()
+```
+
+</details>
+
+<details>
+
+<summary><code>image-question-answering</code></summary>
+
+```python
+from dataset_viber import AnnotatorInterFace
+from dataset_viber.synthesizer import Synthesizer
+
+synthesizer = Synthesizer.for_image_question_answering(prompt_context="A phone company customer support expert")
+
+interface = AnnotatorInterFace.for_image_question_answering(
+    fn_next_input=synthesizer
+)
+interface.launch()
+```
+
+</details>
+
+<details>
+
+<summary><code>image-generation-preference</code></summary>
+
+```python
+from dataset_viber import AnnotatorInterFace
+from dataset_viber.synthesizer import Synthesizer
+
+synthesizer = Synthesizer.for_image_generation_preference(prompt_context="A phone company customer support expert")
+
+interface = AnnotatorInterFace.for_image_generation_preference(
+    fn_next_input=synthesizer
+)
+interface.launch()
+```
+
+</details>
+
 ### BulkInterface
 
 > Built on top of the `Dash`, `plotly-express`, `umap-learn`, and `fast-sentence-transformers` to embed and understand your distribution and annotate your data.
