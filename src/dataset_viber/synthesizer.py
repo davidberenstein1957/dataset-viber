@@ -12,10 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import warnings
 from typing import Any, Dict, Optional
 
 from distilabel.llms import LLM, InferenceEndpointsLLM
 from distilabel.steps.tasks import GenerateTextClassificationData, Magpie
+
+from dataset_viber._constants import TASK_MAPPING
+
 
 _DEFAULT_MODEL_ID = "meta-llama/Meta-Llama-3.1-8B-Instruct"
 _GENERATION_KWARGS = {"max_new_tokens": 4000, "temperature": 1, "do_sample": True}
@@ -27,6 +31,7 @@ _DEFAULT_LLM = InferenceEndpointsLLM(
 )
 
 
+
 class Synthesizer:
     def __init__(self, next_input: callable, prompt_context: str):
         """Initialize the Synthesizer with a callable for input processing."""
@@ -36,6 +41,13 @@ class Synthesizer:
     def __call__(self, *args: Any, **kwds: Any) -> Any:
         """Invoke the next input callable with provided arguments."""
         return self.next_input(*args, **kwds)
+
+    def batch_synthesize(self, n: int):
+        """Batch the input callable with provided arguments."""
+        batch = []
+        for _ in range(n):
+            batch.append(self.next_input(*self.input_columns))
+        return [list(x) for x in zip(*batch)]
 
     @classmethod
     def for_text_classification(
@@ -70,6 +82,14 @@ class Synthesizer:
         Returns:
             A Synthesizer for text classification tasks.
         """
+        if llm:
+            warnings.warn(
+                "custom LLM passed, make sure to set do_sample=True for generation_kwargs within the llm"
+            )
+        task_config = TASK_MAPPING["text-classification"]
+        cls.input_columns = task_config["input_columns"]
+        cls.output_columns = task_config["output_columns"]
+
         task_generator = GenerateTextClassificationData(
             llm=llm or _DEFAULT_LLM,
             language=language,
@@ -114,6 +134,10 @@ class Synthesizer:
         Returns:
             A Synthesizer for text generation tasks.
         """
+        if llm:
+            warnings.warn(
+                "custom LLM passed, make sure to set do_sample=True for generation_kwargs within the llm"
+            )
         task_generator = Magpie(llm=llm or _DEFAULT_LLM)
         task_generator.load()
         task_generator.set_runtime_parameters({"n_turns": 1, "end_with_user": False})
@@ -152,6 +176,10 @@ class Synthesizer:
         Returns:
             A Synthesizer for chat generation with preference tasks.
         """
+        if llm:
+            warnings.warn(
+                "custom LLM passed, make sure to set do_sample=True for generation_kwargs within the llm"
+            )
         task_generator = Magpie(llm=llm or _DEFAULT_LLM)
         task_generator.load()
         task_generator.set_runtime_parameters({"n_turns": 1, "end_with_user": False})
@@ -208,6 +236,14 @@ class Synthesizer:
         Returns:
             A Synthesizer for chat generation tasks.
         """
+        if llm:
+            warnings.warn(
+                "custom LLM passed, make sure to set do_sample=True for generation_kwargs within the llm"
+            )
+        task_config = TASK_MAPPING["chat-generation"]
+        cls.input_columns = task_config["input_columns"]
+        cls.output_columns = task_config["output_columns"]
+        
         assert n_turns > 1, "n_turns must be greater than 1"
         task_generator = Magpie(llm=llm or _DEFAULT_LLM)
         task_generator.load()
@@ -255,6 +291,10 @@ class Synthesizer:
         Returns:
             A Synthesizer for chat classification tasks.
         """
+        task_config = TASK_MAPPING["chat-classification"]
+        cls.input_columns = task_config["input_columns"]
+        cls.output_columns = task_config["output_columns"]
+      
         assert n_turns > 1, "n_turns must be greater than 1"
         task_generator = Magpie(llm=llm or _DEFAULT_LLM)
         task_generator.load()
@@ -298,6 +338,14 @@ class Synthesizer:
         Returns:
             A Synthesizer for chat generation with preference tasks.
         """
+        if llm:
+            warnings.warn(
+                "custom LLM passed, make sure to set do_sample=True for generation_kwargs within the llm"
+            )
+        task_config = TASK_MAPPING["chat-generation-preference"]
+        cls.input_columns = task_config["input_columns"]
+        cls.output_columns = task_config["output_columns"]
+
         assert n_turns > 1, "n_turns must be greater than 1"
         task_generator = Magpie(llm=llm or _DEFAULT_LLM)
         task_generator.load()

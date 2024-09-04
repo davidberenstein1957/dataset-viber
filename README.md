@@ -21,7 +21,7 @@ Need any tweaks or want to hear more about a specific tool? Just [open an issue]
 > - Data is logged to a local CSV or directly to the Hugging Face Hub.
 > - All tools also run in `.ipynb` notebooks.
 > - Models in the loop through `fn_model`.
-> - Input data streamers through `fn_next_input`.
+> - Input with custom data streamers or pre-built `Synthesizer` classes with the `fn_next_input` argument.
 > - It supports various tasks for `text`, `chat` and `image` modalities.
 > - Import and export from the Hugging Face Hub or CSV files.
 
@@ -38,7 +38,7 @@ You can install the package via pip:
 pip install dataset-viber
 ```
 
-Or install `Synthesizer` dependencies:
+Or install `Synthesizer` dependencies. Note, that the `Synthesizer` relies on `distilabel[hf-inference-endpoints]`, but you can use other [LLMs available to distilabel](https://distilabel.argilla.io) too, like for example `distilabel[ollama]`.
 
 ```bash
 pip install dataset-viber[synthesizer]
@@ -519,6 +519,9 @@ interface.launch()
 ### Synthesizer
 
 > Built on top of the `distilabel` to synthesize data with models in the loop.
+
+> [!TIP]
+> You can use also call the synthesizer directly to generate data. `synthesizer() -> Tuple` or `Synthesizer.batch_synthesize(n) -> List[Tuple]` to get inputs for the various tasks.
 
 <details>
 <summary><code>text-classification</code></summary>

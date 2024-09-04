@@ -36,6 +36,7 @@ from gradio.oauth import (
     get_space,
 )
 
+from dataset_viber._constants import TASK_MAPPING
 from dataset_viber._gradio._mixins._import_export import ImportExportMixin
 from dataset_viber._gradio._mixins._task_config import TaskConfigMixin
 from dataset_viber._gradio.collector import CollectorInterface
@@ -215,13 +216,15 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             if not multi_label
             else "text-classification-multi-label"
         )
+        task_config = TASK_MAPPING[cls.task]
         cls.labels = labels or []
-        cls.input_columns = ["text", "suggestion"]
-
-        cls.output_columns = ["text", "label"]
+        cls.input_columns = task_config["input_columns"]
+        cls.output_columns = task_config["output_columns"]
         if isinstance(fn_next_input, Synthesizer):
             cls.output_columns.append("context")
-        cls.input_data = {"text": texts or [], "suggestion": suggestions or []}
+        cls.input_data = {col: [] for col in cls.input_columns}
+        cls.input_data["text"] = texts or []
+        cls.input_data["suggestion"] = suggestions or []
         cls.output_data = {label: [] for label in cls.output_columns}
         cls.start = len(cls.input_data["text"])
 
@@ -336,11 +339,13 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         """
         # IO Config
         cls.task = "token-classification"
+        task_config = TASK_MAPPING[cls.task]
         cls.labels = labels or []
-        cls.input_columns = ["text"]
-        cls.output_columns = ["text", "spans"]
-        cls.input_data = {"text": texts or []}
-        cls.output_data = {label: [] for label in cls.output_columns}
+        cls.input_columns = task_config["input_columns"]
+        cls.output_columns = task_config["output_columns"]
+        cls.input_data = {col: [] for col in cls.input_columns}
+        cls.input_data["text"] = texts or []
+        cls.output_data = {col: [] for col in cls.output_columns}
         cls.start = len(cls.input_data["text"])
 
         # Process function
@@ -434,9 +439,12 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         """
         # IO Config
         cls.task = "question-answering"
-        cls.input_columns = ["question", "context"]
-        cls.output_columns = ["question", "context"]
-        cls.input_data = {"question": questions or [], "context": contexts or []}
+        task_config = TASK_MAPPING[cls.task]
+        cls.input_columns = task_config["input_columns"]
+        cls.output_columns = task_config["output_columns"]
+        cls.input_data = {col: [] for col in cls.input_columns}
+        cls.input_data["question"] = questions or []
+        cls.input_data["context"] = contexts or []
         cls.output_data = {col: [] for col in cls.output_columns}
         cls.start = len(cls.input_data["question"])
 
@@ -540,11 +548,15 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         """
         # IO Config
         cls.task = "text-generation"
-        cls.input_columns = ["prompt", "completion"]
-        cls.output_columns = ["prompt", "completion"]
+        task_config = TASK_MAPPING[cls.task]
+        cls.input_columns = task_config["input_columns"]
+        cls.output_columns = task_config["output_columns"]
+        cls.input_data = {col: [] for col in cls.input_columns}
+        cls.input_data["prompt"] = prompts or []
+        cls.input_data["completion"] = completions or []
         if isinstance(fn_next_input, Synthesizer):
             cls.output_columns.append("context")
-        cls.input_data = {"prompt": prompts or [], "completion": completions or []}
+        cls.input_data = {col: [] for col in cls.input_columns}
         cls.output_data = {col: [] for col in cls.output_columns}
         cls.start = len(cls.input_data["prompt"])
 
@@ -644,8 +656,9 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         """
         # IO Config
         cls.task = "text-generation-preference"
-        cls.input_columns = ["prompt", "completion_a", "completion_b"]
-        cls.output_columns = ["prompt", "completion_a", "completion_b", "flag"]
+        task_config = TASK_MAPPING[cls.task]
+        cls.input_columns = task_config["input_columns"]
+        cls.output_columns = task_config["output_columns"]
         if isinstance(fn_next_input, Synthesizer):
             cls.output_columns = [
                 "prompt",
@@ -654,11 +667,10 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
                 "context",
                 "flag",
             ]
-        cls.input_data = {
-            "prompt": prompts or [],
-            "completion_a": completions_a or [],
-            "completion_b": completions_b or [],
-        }
+        cls.input_data = {col: [] for col in cls.input_columns}
+        cls.input_data["prompt"] = prompts or []
+        cls.input_data["completion_a"] = completions_a or []
+        cls.input_data["completion_b"] = completions_b or []
         cls.output_data = {col: [] for col in cls.output_columns}
         cls.start = len(cls.input_data["prompt"])
 
@@ -755,7 +767,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         Annotator Interface for chat classification tasks.
 
         Parameters:
-            prompts (Optional[List[List[Dict[str, str]]]): List of chat messages to annotate.
+            prompts (Optional[List[List[Dict[str, str]]]]): List of chat messages to annotate.
             suggestions (Optional[List[str]]): List of suggestions to correct for. Defaults to None.
             labels (Optional[List[str]]): List of labels to choose from.
             multi_label (Optional[bool]): Whether to allow multiple labels. Defaults to False.
@@ -782,12 +794,15 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             if not multi_label
             else "chat-classification-multi-label"
         )
-        cls.labels = labels
-        cls.input_columns = ["prompt", "suggestion"]
-        cls.output_columns = ["prompt", "label"]
+        task_config = TASK_MAPPING[cls.task]
+        cls.labels = labels or []
+        cls.input_columns = task_config["input_columns"]
+        cls.output_columns = task_config["output_columns"]   
         if isinstance(fn_next_input, Synthesizer):
             cls.output_columns.append("context")
-        cls.input_data = {"prompt": prompts or [], "suggestion": suggestions or []}
+        cls.input_data = {col: [] for col in cls.input_columns}
+        cls.input_data["prompt"] = prompts or []
+        cls.input_data["suggestion"] = suggestions or []
         cls.output_data = {col: [] for col in cls.output_columns}
         cls.start = len(cls.input_data["prompt"])
 
@@ -907,11 +922,14 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         """
         # IO Config
         cls.task = "chat-generation"
-        cls.input_columns = ["prompt", "completion"]
-        cls.output_columns = ["prompt", "completion"]
+        task_config = TASK_MAPPING[cls.task]
+        cls.input_columns = task_config["input_columns"]
+        cls.output_columns = task_config["output_columns"]
         if isinstance(fn_next_input, Synthesizer):
             cls.output_columns.append("context")
-        cls.input_data = {"prompt": prompts or [], "completion": completions or []}
+        cls.input_data = {col: [] for col in cls.input_columns}
+        cls.input_data["prompt"] = prompts or []
+        cls.input_data["completion"] = completions or []
         cls.output_data = {col: [] for col in cls.output_columns}
         cls.start = len(cls.input_data["prompt"])
 
@@ -1024,8 +1042,9 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         """
         # IO Config
         cls.task = "chat-generation-preference"
-        cls.input_columns = ["prompt", "completion_a", "completion_a"]
-        cls.output_columns = ["prompt", "completion_a", "completion_a", "flag"]
+        task_config = TASK_MAPPING[cls.task]
+        cls.input_columns = task_config["input_columns"]
+        cls.output_columns = task_config["output_columns"]
         if isinstance(fn_next_input, Synthesizer):
             cls.output_columns = [
                 "prompt",
@@ -1034,11 +1053,10 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
                 "context",
                 "flag",
             ]
-        cls.input_data = {
-            "prompt": prompts or [],
-            "completion_a": completions_a or [],
-            "completion_b": completions_b or [],
-        }
+        cls.input_data = {col: [] for col in cls.input_columns}
+        cls.input_data["prompt"] = prompts or []
+        cls.input_data["completion_a"] = completions_a or []
+        cls.input_data["completion_b"] = completions_b or []
         cls.output_data = {col: [] for col in cls.output_columns}
         cls.start = len(cls.input_data["prompt"])
 
@@ -1168,10 +1186,13 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
             if not multi_label
             else "image-classification-multi-label"
         )
+        task_config = TASK_MAPPING[cls.task]
         cls.labels = labels or []
-        cls.input_columns = ["image", "suggestion"]
-        cls.output_columns = ["image", "label"]
-        cls.input_data = {"image": images or [], "suggestion": suggestions or []}
+        cls.input_columns = task_config["input_columns"]
+        cls.output_columns = task_config["output_columns"]
+        cls.input_data = {col: [] for col in cls.input_columns}
+        cls.input_data["image"] = images or []
+        cls.input_data["suggestion"] = suggestions or []
         cls.output_data = {col: [] for col in cls.output_columns}
         cls.start = len(cls.input_data["image"])
 
@@ -1276,11 +1297,14 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         """
         # IO Config
         cls.task = "image-generation"
-        cls.input_columns = ["prompt", "completion"]
-        cls.output_columns = ["prompt", "completion"]
-        cls.input_data = {"prompt": prompts or [], "completion": completions or []}
+        task_config = TASK_MAPPING[cls.task]
+        cls.input_columns = task_config["input_columns"]
+        cls.output_columns = task_config["output_columns"]
+        cls.input_data = {col: [] for col in cls.input_columns}
+        cls.input_data["prompt"] = prompts or []
+        cls.input_data["completion"] = completions or []
         cls.output_data = {col: [] for col in cls.output_columns}
-        cls.start: int = len(cls.input_data["prompt"])
+        cls.start = len(cls.input_data["prompt"])
 
         # Process function
         if fn_next_input is not None:
@@ -1377,9 +1401,12 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         """
         # IO Config
         cls.task = "image-description"
-        cls.input_columns = ["image", "description"]
-        cls.output_columns = ["image", "description"]
-        cls.input_data = {"image": images or [], "description": descriptions or []}
+        task_config = TASK_MAPPING[cls.task]
+        cls.input_columns = task_config["input_columns"]
+        cls.output_columns = task_config["output_columns"]
+        cls.input_data = {col: [] for col in cls.input_columns}
+        cls.input_data["image"] = images or []
+        cls.input_data["description"] = descriptions or []
         cls.output_data = {col: [] for col in cls.output_columns}
         cls.start = len(cls.input_data["image"])
 
@@ -1464,7 +1491,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
                 If a list is provided, it should be of the same length as the number of inputs.
                 Defaults to True.
             fn_model (Optional[Union["Pipeline", callable]]): Prediction function to apply to the prompt to generate an image.
-                it should take a `str` and return `PIL.Image.Image`.
+                it takes a `str` and returns `PIL.Image.Image`.
                 Defaults to None.
             fn_next_input (Optional[callable]): Custom function to forward the next input in an active setting.
                 Expecting it takes and return a Tuple[`str`, PIL.Image.Image, PIL.Image.Image].
@@ -1476,13 +1503,13 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         """
         # IO Config
         cls.task = "image-generation-preference"
-        cls.input_columns = ["prompt", "completion_a", "completion_b"]
-        cls.output_columns = ["prompt", "completion_a", "completion_b", "flag"]
-        cls.input_data = {
-            "prompt": prompts or [],
-            "completion_a": completions_a or [],
-            "completion_b": completions_b or [],
-        }
+        task_config = TASK_MAPPING[cls.task]
+        cls.input_columns = task_config["input_columns"]
+        cls.output_columns = task_config["output_columns"]
+        cls.input_data = {col: [] for col in cls.input_columns}
+        cls.input_data["prompt"] = prompts or []
+        cls.input_data["completion_a"] = completions_a or []
+        cls.input_data["completion_b"] = completions_b or []
         cls.output_data = {col: [] for col in cls.output_columns}
         cls.start = len(cls.input_data["prompt"])
 
@@ -1580,7 +1607,7 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         Annotator Interface for image question answering tasks.
 
         Parameters:
-            images (List[Union[np.array, PIL.Image.Image, str]]): List of images to annotate.
+            images (List[Union[np.ndarray, PIL.Image.Image, str]]): List of images to annotate.
             questions (Optional[List[str]]): List of questions to annotate. Defaults to None.
             answers (Optional[List[str]]): List of answers to annotate. Defaults to None.
             interactive (Optional[Union[bool, List[bool]]]): Whether to allow interactive gradio components.
@@ -1602,13 +1629,13 @@ class AnnotatorInterFace(CollectorInterface, ImportExportMixin, TaskConfigMixin)
         """
         # IO Config
         cls.task = "image-question-answering"
-        cls.input_columns = ["image", "question", "answer"]
-        cls.output_columns = ["image", "question", "answer"]
-        cls.input_data = {
-            "image": images or [],
-            "question": questions or [],
-            "answer": answers or [],
-        }
+        task_config = TASK_MAPPING[cls.task]
+        cls.input_columns = task_config["input_columns"]
+        cls.output_columns = task_config["output_columns"]
+        cls.input_data = {col: [] for col in cls.input_columns}
+        cls.input_data["image"] = images or []
+        cls.input_data["question"] = questions or []
+        cls.input_data["answer"] = answers or []
         cls.output_data = {col: [] for col in cls.output_columns}
         cls.start = len(cls.input_data["image"])
 
